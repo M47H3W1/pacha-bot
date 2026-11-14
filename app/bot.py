@@ -301,8 +301,9 @@ async def cultivo(update: Update, ctx, arg: str):
                       KB([[("1️⃣ Mi terreno", "t")], [MENU]]))
         return
     if arg == "ya":
+        img = await asyncio.to_thread(charts.galeria, E.cultivos_aptos(sitio.elev), "¿Cuál tiene sembrado?")
         await mostrar(update, "🌱 <b>¿Qué tiene sembrado ahora?</b>\n"
-                      f"Estos cultivos se dan a {num(sitio.elev)} metros.", kb_cultivos(sitio.elev, "c:s:"))
+                      f"Estos cultivos se dan a {num(sitio.elev)} metros.", kb_cultivos(sitio.elev, "c:s:"), foto=img)
     elif arg.startswith("s:"):
         ctx.user_data["nuevo_cultivo"] = arg[2:]
         await mostrar(update, f"📅 <b>¿En qué mes sembró su {CROPS[arg[2:]].nombre.lower()}?</b>",
@@ -363,7 +364,9 @@ async def empezar(update: Update, ctx, arg: str):
         rows = [[(f["crop"].etiqueta, f"n:p:{f['crop'].id}")] for f in recs]
         await mostrar(update, texto, KB(rows + [[("📋 Ver todos los cultivos", "n:all")], [MENU]]), foto=img)
     elif arg == "all":
-        await mostrar(update, "🌱 <b>Elija el cultivo que quiere sembrar</b>", kb_cultivos(sitio.elev, "n:p:"))
+        img = await asyncio.to_thread(charts.galeria, E.cultivos_aptos(sitio.elev), "¿Qué quiere sembrar?")
+        await mostrar(update, "🌱 <b>Elija el cultivo que quiere sembrar</b>", kb_cultivos(sitio.elev, "n:p:"),
+                      foto=img)
     elif arg.startswith("p:"):
         hoy = dt.date.today()
         mes = ctx.user_data.get("mes_nuevo", hoy.month % 12 + 1)
@@ -790,7 +793,7 @@ async def responder(update: Update, ctx, pregunta: str, st: dict, registrar=True
         except Exception as e:
             log.warning("No se pudo guardar la conversación: %s", e)
         await historial(update, "pregunta", pregunta[:90])
-    ctx.user_data["voz"] = texto
+    ctx.user_data.update(voz=texto, voz_clave=None, voz_turno=ctx.user_data.get("voz_turno", 0) + 1)
     await update.effective_chat.send_message(texto, reply_markup=KB([[("🔊 Escuchar", "v"), ("🗣️ Otra pregunta", "q")],
                                                                      [MENU]]))
 
@@ -808,7 +811,7 @@ async def nota_de_voz(update: Update, ctx):
     texto = await asyncio.to_thread(LLM.responder, "El agricultor envió esta nota de voz. Escúchala y respóndele.",
                                     contexto_llm(st), None, datos)
     texto = texto or "🙏 No entendí bien el audio. ¿Puede repetirlo o usar los botones?"
-    ctx.user_data["voz"] = texto
+    ctx.user_data.update(voz=texto, voz_clave=None, voz_turno=ctx.user_data.get("voz_turno", 0) + 1)
     await historial(update, "pregunta", "Nota de voz")
     await update.effective_chat.send_message(texto, reply_markup=KB([[("🔊 Escuchar", "v")], [MENU]]))
 

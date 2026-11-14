@@ -12,6 +12,7 @@ from app.llm import Gemini  # noqa: E402
 from app.storage import SQLiteStorage  # noqa: E402
 
 SALIDAS = []
+BORRADOS = []
 
 
 class Chat:
@@ -30,10 +31,15 @@ class Chat:
     async def send_action(self, *a, **kw):
         pass
 
-    async def send_audio(self, audio, **kw):
-        assert len(audio) > 1000, "audio vacío"
+    async def send_voice(self, voice, **kw):
+        assert len(voice) > 1000, "audio vacío"
         SALIDAS.append(("audio", "(audio)", None))
-        return Msg(None)
+        m = Msg(None)
+        m.message_id = len(SALIDAS)
+        return m
+
+    async def delete_message(self, message_id):
+        BORRADOS.append(message_id)
 
 
 class Msg:
@@ -80,7 +86,7 @@ async def main():
     ctx = SimpleNamespace(user_data={})
     pasos = ["id:ki", "m", "ch", "t:prov", "t:p:CHI", "ch", "v", "qs", "c:ya", "c:s:papa", "c:m:10",
              "rs:sig", "rs:plan", "r:1:papa", "r:2:descanso", "rs:ok", "cr", "cr:r:b", "cr:cambiar", "cr:r:g",
-             "vh", "mas", "mas:audio", "mas:audio", "mas:id:es", "qs", "c:new", "n:m:12", "n:t:12", "n:p:haba",
+             "vh", "v", "v", "mas", "mas:audio", "mas:audio", "mas:id:es", "qs", "c:new", "n:m:12", "n:t:12", "n:p:haba",
              "r:cmp", "r:k:1", "t:info", "b", "b:a:1000", "b:e:a", "b:w", "s", "s:go", "a", "x:bank",
              "mt", "g", "g:et", "i", "h", "q", "b:reset", "b:aw"]
     todos = set()
@@ -105,6 +111,8 @@ async def main():
     await bot.cmd_start(update(), ctx)
     print("OK /start con banner")
     print("historial:", [h["summary"][:40] for h in bot.STORE.list_history(42, 30)][:6])
+    assert BORRADOS, "no borró el audio anterior"
+    print(f"OK {len(BORRADOS)} audios anteriores borrados antes de enviar el nuevo")
     print(f"\nTodo bien: {len(pasos)} pasos, {len(todos)} botones distintos verificados.")
 
 
