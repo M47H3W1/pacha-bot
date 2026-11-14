@@ -11,13 +11,24 @@ python -m venv .venv
 pip install -r requirements.txt pytest
 ```
 
+## Ramas
+| Rama | Para qué | Cómo entra el código |
+|---|---|---|
+| `develop` | Integración diaria (rama por defecto) | PR desde `feat/…`, `fix/…`, `docs/…`. Se fusiona solo cuando CI pasa |
+| `main` | Solo versiones estables | PR de `develop` a `main` con una aprobación del equipo, y luego etiqueta `vX.Y.Z` |
+
 ## Flujo de trabajo
-1. Actualiza `main`: `git checkout main && git pull`.
+1. Actualiza `develop`: `git checkout develop && git pull`.
 2. Crea una rama por tarea: `git checkout -b feat/nombre-corto` (o `fix/…`, `docs/…`).
 3. Haz commits pequeños con mensajes claros en español.
 4. Corre las pruebas: `python -m pytest -q` y `python scripts/dry_run.py`.
-5. Sube la rama y abre un Pull Request hacia `main`. Otra persona del equipo lo revisa.
-6. No se hace push directo a `main`.
+5. Sube la rama y abre un PR hacia `develop`. Si quieres revisión antes del merge, ábrelo como borrador.
+6. Nadie hace push directo a `develop` ni a `main`.
+
+## Publicar una versión estable
+1. Abre un PR de `develop` a `main` titulado `Versión X.Y.Z` con la lista de cambios.
+2. Otra persona del equipo lo aprueba y se fusiona con merge commit.
+3. Etiqueta: `git checkout main && git pull && git tag vX.Y.Z && git push origin vX.Y.Z`.
 
 ## Reglas de credenciales
 - Los secretos viven **solo** en `.env`, que está en `.gitignore`. Nunca en el código, el README, los issues ni el chat.
