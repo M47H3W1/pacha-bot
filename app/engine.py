@@ -302,7 +302,8 @@ def riego_semana(sitio: Sitio, crop: Crop, fecha_siembra: dt.date, hoy: dt.date 
                if t is not None and t <= FROST_T]
     return {"dia": dia, "etapa": etapa(crop, dia), "gasto": gasto, "lluvia": lluvia,
             "lluvia_util": util, "falta": max(gasto - util, 0), "heladas": heladas,
-            "tmin": f["tmin"], "fechas": f["fecha"]}
+            "tmin": f["tmin"], "fechas": f["fecha"], "lluvia_dia": [x or 0 for x in f["lluvia"]],
+            "falta_dia": [max(k * (e or 0) - (x or 0) * 0.8, 0) for k, e, x in zip(kcs, f["et0"], f["lluvia"])]}
 
 
 # ---------------------------------------------------------------- análisis por cultivo

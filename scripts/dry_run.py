@@ -30,6 +30,11 @@ class Chat:
     async def send_action(self, *a, **kw):
         pass
 
+    async def send_audio(self, audio, **kw):
+        assert len(audio) > 1000, "audio vacío"
+        SALIDAS.append(("audio", "(audio)", None))
+        return Msg(None)
+
 
 class Msg:
     def __init__(self, text=None):
@@ -73,10 +78,11 @@ async def main():
     bot.STORE, bot.LLM = SQLiteStorage(tmp / "t.db"), Gemini()
     bot.LLM.activo = False
     ctx = SimpleNamespace(user_data={})
-    pasos = ["m", "t", "t:prov", "t:p:CHI", "c", "c:ya", "c:s:papa", "c:m:10", "r:1:haba", "r:2:cebada",
-             "r:k:0", "r:k:1", "r:pr", "r:pp:agua", "r:ok:1", "b", "b:a:1000", "b:e:a", "b:w",
-             "s", "s:p:-0.1", "s:t:2.0", "s:go", "a", "x:bank", "x:rot", "c:new", "n:m:12", "n:p:haba",
-             "r:k:2", "n:all", "g", "g:et", "i", "h", "q", "b:reset", "b:aw"]
+    pasos = ["id:ki", "m", "ch", "t:prov", "t:p:CHI", "ch", "v", "qs", "c:ya", "c:s:papa", "c:m:10",
+             "rs:sig", "rs:plan", "r:1:papa", "r:2:descanso", "rs:ok", "cr", "cr:r:b", "cr:cambiar", "cr:r:g",
+             "vh", "mas", "mas:audio", "mas:audio", "mas:id:es", "qs", "c:new", "n:m:12", "n:t:12", "n:p:haba",
+             "r:cmp", "r:k:1", "t:info", "b", "b:a:1000", "b:e:a", "b:w", "s", "s:go", "a", "x:bank",
+             "mt", "g", "g:et", "i", "h", "q", "b:reset", "b:aw"]
     todos = set()
     for p in pasos:
         n0 = len(SALIDAS)

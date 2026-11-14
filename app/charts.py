@@ -111,3 +111,103 @@ def recomendados(filas: list[dict], mes: str) -> bytes:
     ax.set_xlim(0, 110)
     ax.set_title(f"Mejores cultivos para sembrar en {mes}")
     return _png(fig)
+
+
+# ---------------------------------------------------------------- pictogramas para el modo campo
+def _gota(ax, x, y, s=1.0, color=AZUL):
+    t = np.linspace(0, 2 * np.pi, 60)
+    xs = x + 0.36 * s * np.sin(t) * np.sin(t / 2)  # gota clásica: punta arriba, base redonda
+    ys = y + 0.38 * s * np.cos(t)
+    ax.fill(xs, ys, color=color, zorder=3)
+
+
+def _sol(ax, x, y, s=1.0):
+    for a in np.linspace(0, 2 * np.pi, 9)[:-1]:
+        ax.plot([x + 0.28 * s * np.cos(a), x + 0.42 * s * np.cos(a)],
+                [y + 0.28 * s * np.sin(a), y + 0.42 * s * np.sin(a)], color="#f6b93b", lw=3, zorder=3)
+    ax.add_patch(Circle((x, y), 0.22 * s, color="#f6b93b", zorder=4))
+
+
+def _nube(ax, x, y, s=1.0, color="#b0bec5"):
+    for dx, dy, r in ((-0.18, 0, 0.16), (0.0, 0.08, 0.2), (0.2, 0, 0.15)):
+        ax.add_patch(Circle((x + dx * s, y + dy * s), r * s, color=color, zorder=3))
+
+
+def _copo(ax, x, y, s=1.0):
+    ax.text(x, y, "❄", ha="center", va="center", fontsize=30 * s, color="#4fa3e0", zorder=5,
+            fontfamily="DejaVu Sans")
+
+
+def tira_meses(tipos: list[str], heladas: list[int], titulo: str) -> bytes:
+    """12 meses con un dibujo cada uno: gota (llueve), sol (seco), nube (medio) y copo (helada)."""
+    fig = plt.figure(figsize=(12, 3.6), facecolor="white")
+    ax = fig.add_axes([0, 0, 1, 0.84])
+    ax.set_xlim(-0.6, 11.6)
+    ax.set_ylim(-0.9, 1.5)
+    ax.axis("off")
+    for i, t in enumerate(tipos):
+        ax.add_patch(plt.Rectangle((i - 0.46, -0.85), 0.92, 2.25, color="#f4f8fb" if t != "seco" else "#fff7e6",
+                                   zorder=1))
+        if t == "lluvia":
+            _gota(ax, i, 0.45)
+        elif t == "seco":
+            _sol(ax, i, 0.45)
+        else:
+            _nube(ax, i, 0.45)
+        if i in heladas:
+            _copo(ax, i, 1.15, 0.8)
+        ax.text(i, -0.55, MESES[i].capitalize(), ha="center", fontsize=17, fontweight="bold", color="#333")
+    fig.suptitle(titulo, fontsize=20, fontweight="bold", y=0.98)
+    return _png(fig)
+
+
+def tira_semana(dias: list[dict], titulo: str) -> bytes:
+    """7 días: gota grande = regar, copo = helada, nube = lluvia. dias: {fecha, regar, helada, lluvia}."""
+    nombres = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"]
+    fig = plt.figure(figsize=(11, 3.8), facecolor="white")
+    ax = fig.add_axes([0, 0, 1, 0.84])
+    ax.set_xlim(-0.6, len(dias) - 0.4)
+    ax.set_ylim(-1.0, 1.6)
+    ax.axis("off")
+    for i, d in enumerate(dias):
+        ax.add_patch(plt.Rectangle((i - 0.46, -0.95), 0.92, 2.45, color="#e3f2fd" if d["regar"] else "#f5f5f5",
+                                   zorder=1))
+        if d["regar"]:
+            _gota(ax, i, 0.45, 1.25)
+            ax.text(i, -0.3, "Regar", ha="center", fontsize=14, fontweight="bold", color=AZUL)
+        elif d["lluvia"] >= 5:
+            _nube(ax, i, 0.5)
+            ax.text(i, -0.3, "Lluvia", ha="center", fontsize=13, color="#607d8b")
+        if d["helada"]:
+            _copo(ax, i, 1.2, 0.85)
+        f = d["fecha"]
+        ax.text(i, -0.75, f"{nombres[f.weekday()]} {f.day}", ha="center", fontsize=16, fontweight="bold", color="#333")
+    fig.suptitle(titulo, fontsize=20, fontweight="bold", y=0.98)
+    return _png(fig)
+
+
+COLOR_CULTIVO = {"solanacea": "#8d6e63", "poacea": "#d4a017", "fabacea": "#43a047", "amarantacea": "#e65100",
+                 "basellacea": "#f9a825", "oxalidacea": "#ef6c00", "pasto": "#2e7d32", "ninguna": "#a1887f"}
+
+
+def tarjeta_cultivos(crops: list, titulo: str, flechas: bool = True) -> bytes:
+    """Cajas grandes con el nombre de cada cultivo; con flechas si es una rotación, con números si es una lista."""
+    n = len(crops)
+    fig = plt.figure(figsize=(3.6 * n + 0.6, 3.4), facecolor="white")
+    ax = fig.add_axes([0, 0, 1, 0.8])
+    ax.set_xlim(0, 3.6 * n + 0.6)
+    ax.set_ylim(0, 2)
+    ax.axis("off")
+    for i, c in enumerate(crops):
+        x0 = 0.4 + i * 3.6
+        ax.add_patch(matplotlib.patches.FancyBboxPatch((x0, 0.25), 2.7, 1.5, boxstyle="round,pad=0.08",
+                                                       color=COLOR_CULTIVO.get(c.familia, VERDE)))
+        ax.text(x0 + 1.35, 1.0, c.nombre, ha="center", va="center", fontsize=24 if len(c.nombre) < 9 else 19,
+                fontweight="bold", color="white")
+        if not flechas:
+            ax.text(x0 + 0.25, 1.55, str(i + 1), fontsize=18, fontweight="bold", color="white", va="center")
+        if flechas and i < n - 1:
+            ax.annotate("", xy=(x0 + 3.45, 1.0), xytext=(x0 + 2.85, 1.0),
+                        arrowprops=dict(arrowstyle="-|>", lw=4, color="#555", mutation_scale=28))
+    fig.suptitle(titulo, fontsize=20, fontweight="bold", y=0.97)
+    return _png(fig)
