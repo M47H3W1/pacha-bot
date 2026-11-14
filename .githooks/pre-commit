@@ -1,0 +1,16 @@
+#!/bin/sh
+# Bloquea commits que contengan archivos .env o patrones de credenciales.
+staged=$(git diff --cached --name-only --diff-filter=ACM)
+for f in $staged; do
+  case "$f" in
+    .env.example) ;;
+    .env|.env.*|*.pem|*.key) echo "❌ No se puede versionar $f (contiene secretos)."; exit 1 ;;
+  esac
+done
+patron='[0-9]{8,10}:AA[A-Za-z0-9_-]{33}|AIza[0-9A-Za-z_-]{35}|eyJ[A-Za-z0-9_-]{20,}\.eyJ[A-Za-z0-9_-]{20,}|sb_secret_[A-Za-z0-9_-]{20,}|gh[pousr]_[A-Za-z0-9]{36}'
+if git diff --cached -U0 -- . ':(exclude).env.example' | grep -E '^\+' | grep -Eq "$patron"; then
+  echo "❌ Parece que el commit incluye un token o clave (Telegram, Google, Supabase o GitHub)."
+  echo "   Muévelo a .env y vuelve a intentar."
+  exit 1
+fi
+exit 0

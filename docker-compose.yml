@@ -1,0 +1,10 @@
+services:
+  pacha-bot:
+    build: .
+    container_name: pacha-bot
+    env_file: .env
+    restart: unless-stopped
+    volumes:
+      - pacha-data:/data
+volumes:
+  pacha-data:

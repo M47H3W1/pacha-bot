@@ -1,0 +1,28 @@
+# Secretos: nunca se versionan
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+credentials*.json
+service-account*.json
+
+# Datos locales y caché
+cache/
+data/
+*.db
+*.sqlite*
+
+# Python
+.venv/
+venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Editor y sistema
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
