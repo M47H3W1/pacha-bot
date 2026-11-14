@@ -31,7 +31,12 @@ Pensado para agricultores con poca lectura o que hablan poco español:
 - ET0 diaria FAO-56 Penman-Monteith con NASA POWER 2001–2024.
 - Lluvia y temperatura de POWER corregidas mes a mes con ECMWF IFS de 9 km (Open-Meteo), que ya está a la
   altura real. Sin esa corrección POWER duplica la lluvia en los Andes (≈1.650 mm frente a ≈800 mm en Chimborazo).
-- Lluvia útil mensual USDA-SCS (CROPWAT). Kc por etapas FAO-56. Chocho, melloco y oca con Kc estimado.
+- Balance diario de agua en el suelo (modelo del notebook AgroBot v2 del equipo): reserva = raíz × agua útil del
+  suelo, arranca a la mitad, lluvia efectiva 85 %, escenario seco con 20 % menos lluvia. Se simula el ciclo en cada
+  uno de los ~23 años de NASA POWER y se da un veredicto (sí / con riego de apoyo / no) y un semáforo por mes.
+- Kc por etapas FAO-56; ciclos de variedades INIAP (Superchola, Sultana, Tunkahuan). Chocho, melloco y oca con Kc estimado.
+- Rotaciones de referencia del equipo: R0 papa-papa-barbecho, R1 Illangama y R2 granos andinos (app/rotaciones_ref.csv).
+- Fuente complementaria: Open-Meteo/ERA5 (la del notebook) solo para validar lluvia y ET0 y decir qué tan seguros estamos.
 - Helada: probabilidad de aire a 2 m ≤ 4 °C, porque las hojas se enfrían 3–5 °C más en noches despejadas.
 - Suelo: SoilGrids (ISRIC). Si no responde, se usa "franco" y se avisa.
 

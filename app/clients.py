@@ -128,3 +128,35 @@ def ifs_diario(lat: float, lon: float) -> dict:
 
     data = _cached(_key("ifs", lat, lon), fetch)
     return data if data.get("ok") else None
+
+
+def era5_anual(lat: float, lon: float) -> dict | None:
+    """Lluvia y ET0 anuales (mediana 2015-2024) de Open-Meteo Archive, modelo por defecto (ERA5).
+    Es la fuente del notebook del equipo; Pacha la usa solo para validar, no para calcular."""
+    lat, lon = round(lat, 2), round(lon, 2)
+
+    def fetch():
+        try:
+            r = httpx.get("https://archive-api.open-meteo.com/v1/archive", headers=UA, timeout=60, params={
+                "latitude": lat, "longitude": lon, "start_date": "2015-01-01", "end_date": "2024-12-31",
+                "daily": "precipitation_sum,et0_fao_evapotranspiration", "timezone": "America/Guayaquil"})
+            r.raise_for_status()
+            d = r.json()["daily"]
+        except Exception as e:
+            log.warning("ERA5 no disponible: %s", e)
+            return {"ok": False}
+        por_anio = {}
+        for t, p, e in zip(d["time"], d["precipitation_sum"], d["et0_fao_evapotranspiration"]):
+            a = por_anio.setdefault(t[:4], [0.0, 0.0, 0])
+            a[0] += p or 0
+            a[1] += e or 0
+            a[2] += 1
+        completos = [v for v in por_anio.values() if v[2] >= 360]
+        if not completos:
+            return {"ok": False}
+        lluvias = sorted(v[0] for v in completos)
+        et0s = sorted(v[1] for v in completos)
+        return {"ok": True, "lluvia": lluvias[len(lluvias) // 2], "et0": et0s[len(et0s) // 2], "anios": len(completos)}
+
+    data = _cached(_key("era5", lat, lon), fetch)
+    return data if data.get("ok") else None

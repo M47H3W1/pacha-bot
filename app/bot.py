@@ -377,7 +377,7 @@ async def empezar(update: Update, ctx, arg: str):
         await guardar(update, ctx)
         await historial(update, "cultivo", f"Quiere sembrar {CROPS[st['crop']].nombre} en {MESES_LARGO[mes - 1]}")
         from . import campo
-        await campo.rotacion_simple(update, ctx, "")
+        await campo.decision(update, ctx)
 
 
 async def rotacion(update: Update, ctx, arg: str):
@@ -567,8 +567,15 @@ async def banco(update: Update, ctx, arg: str):
              f"🟢 Entra (lluvia útil): {num(b['total_lluvia_util'])} L por m²\n"
              f"🟤 Sale (gasto del cultivo): {num(b['total_gasto'])} L por m²\n"
              f"⚖️ Saldo: {'+' if saldo >= 0 else '−'}{num(abs(saldo))} L por m²\n\n{cuerpo}\n\n"
-             f"<i>1 mm = 1 litro por m². Año normal = mitad de los {b['anios']} años; año seco = 8 de cada 10 "
-             f"años necesitan menos. Clima: {esc(clima.metodo)}.</i>")
+             f"{['✅ La lluvia alcanza', '⚠️ A veces hay que regar', '❌ Necesita riego'][['si', 'cuidado', 'no'].index(b['veredicto'])]}: "
+             f"bien en {b['n_bien']} de {b['anios']} años, mal en {b['n_mal']}. "
+             f"Lluvia del ciclo: {num(b['lluvia_ciclo'])} mm (entre {num(b['lluvia_min'])} y {num(b['lluvia_max'])}).\n"
+             + (f"📖 Guías INIAP/FAO: {crop.nombre.lower()} necesita {' a '.join(num(x) for x in crop.lluvia_ref)} mm "
+                f"de lluvia en el ciclo.\n" if crop.lluvia_ref else "")
+             + (f"⚠️ {esc(crop.riesgo)}\n" if crop.riesgo else "")
+             + f"\n<i>Balance diario de agua en el suelo (raíz {num(crop.zr, 1)} m, suelo guarda {num(clima.agua_util)} mm "
+             f"por metro). Año normal = mitad de los {b['anios']} años; año seco = 20 % menos lluvia. "
+             f"Clima: {esc(clima.metodo)}.</i>")
     st["banco_resumen"] = {"cultivo": crop.nombre, "mes_siembra": MESES_LARGO[st["mes"] - 1],
                            "lluvia_util_L_m2": round(b["total_lluvia_util"]), "gasto_L_m2": round(b["total_gasto"]),
                            "riego_L_m2": round(L["por_m2"]), "riego_total_L": round(L["total"]),
@@ -889,6 +896,8 @@ async def boton(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
             await campo.rotacion_ok(update, ctx)
         elif arg == "plan":
             await rotacion(update, ctx, "plan")
+        elif arg in ("ref", "tec") or arg.startswith("usa:"):
+            await campo.rotaciones_probadas(update, ctx, "" if arg == "ref" else arg)
         else:
             await campo.rotacion_simple(update, ctx, arg)
     elif sec == "n" and arg.startswith("m:"):

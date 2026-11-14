@@ -1,15 +1,15 @@
-id,nombre,emoji,familia,fija_n,alt_min,alt_max,ciclo_dias,kc_ini,kc_mid,kc_end,f_ini,f_dev,f_mid,f_late,helada,ingreso,uso,fuente
-papa,Papa,🥔,solanacea,0,2700,3600,165,0.50,1.15,0.75,0.19,0.23,0.35,0.23,alta,alto,alimento y venta,FAO-56
-maiz,Maíz suave,🌽,poacea,0,2200,3000,210,0.30,1.20,0.35,0.17,0.28,0.33,0.22,alta,medio,choclo y grano,FAO-56
-haba,Haba,🫘,fabacea,1,2500,3500,180,0.50,1.15,0.30,0.20,0.30,0.30,0.20,media,medio,grano y verde,FAO-56
-arveja,Arveja,🟢,fabacea,1,2400,3200,130,0.50,1.15,1.10,0.17,0.28,0.38,0.17,media,medio,verde y grano,FAO-56
-frejol,Fréjol,🫛,fabacea,1,1500,2800,120,0.40,1.15,0.35,0.18,0.27,0.37,0.18,alta,medio,grano,FAO-56
-cebada,Cebada,🌾,poacea,0,2800,3500,160,0.30,1.15,0.25,0.13,0.21,0.41,0.25,baja,bajo,grano y máchica,FAO-56
-trigo,Trigo,🌾,poacea,0,2500,3300,180,0.30,1.15,0.30,0.15,0.19,0.44,0.22,baja,bajo,grano y harina,FAO-56
-avena,Avena con vicia,🐄,poacea,1,2700,3600,130,0.30,1.15,0.25,0.15,0.25,0.40,0.20,baja,bajo,forraje para animales,FAO-56 (avena)
-quinua,Quinua,🌿,amarantacea,0,2500,3600,160,0.52,1.00,0.70,0.20,0.30,0.30,0.20,media,alto,grano andino,Garcia et al. 2003 (estimado)
-chocho,Chocho,🌼,fabacea,1,2600,3500,210,0.40,1.05,0.35,0.15,0.30,0.35,0.20,media,medio,grano andino,estimado
-melloco,Melloco,🟡,basellacea,0,2800,3800,210,0.50,1.10,0.75,0.19,0.23,0.35,0.23,media,medio,tubérculo andino,estimado (similar a papa)
-oca,Oca,🟠,oxalidacea,0,2800,3800,220,0.50,1.10,0.75,0.19,0.23,0.35,0.23,media,bajo,tubérculo andino,estimado (similar a papa)
-pasto,Pasto con trébol,🌱,pasto,1,2400,3800,365,0.90,0.95,0.95,0.10,0.20,0.60,0.10,baja,medio,pastoreo y leche,FAO-56 (pastura)
-descanso,Descanso,🟫,ninguna,0,1500,4200,180,0.30,0.30,0.30,0.25,0.25,0.25,0.25,ninguna,ninguno,dejar reposar el suelo,FAO-56 (suelo desnudo)
+id,nombre,emoji,familia,fija_n,alt_min,alt_max,ciclo_dias,kc_ini,kc_mid,kc_end,f_ini,f_dev,f_mid,f_late,helada,ingreso,uso,fuente,variedad,zr,aporte,riesgo,lluvia_min,lluvia_max
+papa,Papa,🥔,solanacea,0,2700,3600,196,0.50,1.15,0.75,0.19,0.23,0.35,0.23,alta,alto,alimento y venta,FAO-56,"Superchola, a madurez",0.5,tubérculo comercial,"Priorizar humedad en floración y tuberización. Revisar heladas, lancha y sanidad del lote antes de volver a sembrar papa.",,
+maiz,Maíz suave,🌽,poacea,0,2200,3000,210,0.30,1.20,0.35,0.17,0.28,0.33,0.22,alta,medio,choclo y grano,FAO-56,,1.0,choclo y grano,,,
+haba,Haba,🫘,fabacea,1,2500,3500,220,0.50,1.15,0.30,0.20,0.30,0.30,0.20,media,medio,grano y verde,FAO-56,"Sultana, grano seco (tierno: 175 días)",0.6,fijación biológica potencial y grano,"Confirmar nodulación, humedad disponible y destino del grano. Evitar sucesiones de leguminosas si hay problemas sanitarios comunes.",700,
+arveja,Arveja,🟢,fabacea,1,2400,3200,130,0.50,1.15,1.10,0.17,0.28,0.38,0.17,media,medio,verde y grano,FAO-56,,0.8,fija nitrógeno y grano,,,
+frejol,Fréjol,🫛,fabacea,1,1500,2800,120,0.40,1.15,0.35,0.18,0.27,0.37,0.18,alta,medio,grano,FAO-56,,0.7,fija nitrógeno y grano,,,
+cebada,Cebada,🌾,poacea,0,2800,3500,160,0.30,1.15,0.25,0.13,0.21,0.41,0.25,baja,bajo,grano y máchica,FAO-56,,1.0,grano y paja; raíz que suelta el suelo,,,
+trigo,Trigo,🌾,poacea,0,2500,3300,180,0.30,1.15,0.30,0.15,0.19,0.44,0.22,baja,bajo,grano y harina,FAO-56,,1.0,grano y paja,,,
+avena,Avena con vicia,🐄,poacea,1,2700,3600,105,0.30,1.15,0.25,0.15,0.25,0.40,0.20,baja,bajo,forraje para animales,FAO-56 (avena),avena con vicia cortada para forraje,0.8,forraje y cobertura del suelo,,,
+quinua,Quinua,🌿,amarantacea,0,2500,3600,180,0.52,1.00,0.70,0.20,0.30,0.30,0.20,media,alto,grano andino,Garcia et al. 2003 (estimado),"Tunkahuan, a cosecha",0.8,grano y diversificación de familia,"Confirmar semilla, mercado, nutrientes y riesgo de helada. Revisar humedad en establecimiento y llenado de grano.",500,800
+chocho,Chocho,🌼,fabacea,1,2600,3500,210,0.40,1.05,0.35,0.15,0.30,0.35,0.20,media,medio,grano andino,estimado,,0.8,fija nitrógeno y grano andino,,,
+melloco,Melloco,🟡,basellacea,0,2800,3800,210,0.50,1.10,0.75,0.19,0.23,0.35,0.23,media,medio,tubérculo andino,estimado (similar a papa),,0.4,tubérculo andino,,,
+oca,Oca,🟠,oxalidacea,0,2800,3800,220,0.50,1.10,0.75,0.19,0.23,0.35,0.23,media,bajo,tubérculo andino,estimado (similar a papa),,0.4,tubérculo andino,,,
+pasto,Pasto con trébol,🌱,pasto,1,2400,3800,365,0.90,0.95,0.95,0.10,0.20,0.60,0.10,baja,medio,pastoreo y leche,FAO-56 (pastura),,0.6,pastoreo y cobertura permanente,,,
+descanso,Descanso,🟫,ninguna,0,1500,4200,180,0.30,0.30,0.30,0.25,0.25,0.25,0.25,ninguna,ninguno,dejar reposar el suelo,FAO-56 (suelo desnudo),,0.3,deja reposar el suelo,Sin cobertura el suelo queda expuesto a la erosión.,,
