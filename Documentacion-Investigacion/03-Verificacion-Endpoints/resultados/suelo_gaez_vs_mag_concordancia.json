@@ -1,0 +1,144 @@
+{
+ "n_puntos": 2340,
+ "tipo_suelo_tabla": {
+  "Andosols | Andisoles": 618,
+  "Phaeozems | Mollisoles": 437,
+  "Andosols | Mollisoles": 294,
+  "Leptosols | Andisoles": 236,
+  "Andosols | Inceptisoles": 133,
+  "Phaeozems | Andisoles": 119,
+  "Andosols | Sin suelo / misceláneo": 113,
+  "Andosols | Entisoles": 100,
+  "Phaeozems | Inceptisoles": 76,
+  "Phaeozems | Sin suelo / misceláneo": 67,
+  "Leptosols | Sin suelo / misceláneo": 44,
+  "Phaeozems | Entisoles": 38,
+  "Leptosols | Inceptisoles": 20,
+  "Luvisols | Andisoles": 17,
+  "Luvisols | Mollisoles": 10,
+  "Leptosols | Entisoles": 9,
+  "Agua | Sin suelo / misceláneo": 3,
+  "Leptosols | Histosoles": 3,
+  "Leptosols | Mollisoles": 2,
+  "Andosols | Histosoles": 1
+ },
+ "tipo_suelo_coincide_pct": 48,
+ "mag_orden": {
+  "Andisoles": 990,
+  "Mollisoles": 743,
+  "Inceptisoles": 229,
+  "Sin suelo / misceláneo": 227,
+  "Entisoles": 147,
+  "Histosoles": 4
+ },
+ "gaez_suelo": {
+  "Andosols": 1259,
+  "Phaeozems": 737,
+  "Leptosols": 314,
+  "Luvisols": 27,
+  "Agua": 3
+ },
+ "pendiente": {
+  "n": 2297,
+  "spearman": 0.62,
+  "gaez_mediana_pct": 23.0,
+  "mag_mediana_pct": 55.0,
+  "mag_mayor_40pct": 60,
+  "gaez_mayor_30pct": 47
+ },
+ "raices_SQ3_vs_profundidad": {
+  "n": 2113,
+  "spearman": 0.34,
+  "gaez_sin_restriccion_pct": 84,
+  "mag_superficial_o_poco_prof_pct": 34,
+  "mag_superficial_donde_gaez_10_pct": 6
+ },
+ "nutrientes_SQ1": {
+  "materia_organica": {
+   "n": 2113,
+   "spearman_con_SQ1": 0.2
+  },
+  "cic": {
+   "n": 2113,
+   "spearman_con_SQ1": 0.46
+  },
+  "saturacion_bases": {
+   "n": 2113,
+   "spearman_con_SQ1": 0.21
+  },
+  "ph": {
+   "n": 2113,
+   "spearman_con_SQ1": 0.51
+  }
+ },
+ "ph_acido_donde_gaez_sin_restriccion_pct": 3,
+ "ph_mag": {
+  "PRACTICAMENTE NEUTRO": 750,
+  "LIGERAMENTE ACIDO": 726,
+  "MEDIANAMENTE ACIDO": 287,
+  "NO APLICABLE": 227,
+  "ACIDO": 123,
+  "LIGERAMENTE ALCALINO": 111,
+  "MUY ACIDO": 49,
+  "MEDIANAMENTE ALCALINO": 43,
+  "NEUTRO": 15,
+  "ALCALINO": 9
+ },
+ "toxicidad_mag": {
+  "NULA": 1900,
+  "NO APLICABLE": 227,
+  "ALTA (AC)": 116,
+  "MEDIA (AC)": 45,
+  "LIGERA (CAR)": 37,
+  "ALTA (CAR)": 7,
+  "LIGERA (AC)": 5,
+  "MEDIA (CAR)": 3
+ },
+ "laboreo_SQ7_vs_pedregosidad": {
+  "n": 2113,
+  "spearman": -0.32,
+  "mag_frecuentes_o_mas_donde_gaez_10_pct": 7
+ },
+ "oxigeno_SQ4": {
+  "10": 2340
+ },
+ "drenaje_mag": {
+  "BUENO": 1941,
+  "NO APLICABLE": 227,
+  "EXCESIVO": 112,
+  "MODERADO": 35,
+  "MAL DRENADO": 25
+ },
+ "salinidad_SQ5": {
+  "10": 2340
+ },
+ "salinidad_mag": {
+  "NO SALINO": 2112,
+  "NO APLICABLE": 227,
+  "SALINO": 1
+ },
+ "gaez_limitante_principal": {
+  "Pendiente": 2013,
+  "Sin restricción": 271,
+  "Retención de nutrientes": 56
+ },
+ "mag_no_aplicable_pct": 10,
+ "gaez_aptitud_suelo": {
+  "1": 1880,
+  "4": 316,
+  "2": 134,
+  "3": 7,
+  "9": 3
+ },
+ "gaez_aptitud_suelo_terreno": {
+  "1": 448,
+  "2": 405,
+  "6": 355,
+  "5": 296,
+  "3": 278,
+  "7": 275,
+  "4": 272,
+  "8": 8,
+  "9": 3
+ }
+}

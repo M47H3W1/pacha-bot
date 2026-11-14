@@ -1,0 +1,236 @@
+[
+ {
+  "sn": "SPL3SMP_E",
+  "ver": "006",
+  "ini": "2015-03-31",
+  "fin": "en curso",
+  "dc": "NSIDC_CPRD",
+  "granulos_chimborazo": "4167",
+  "title": "SMAP Enhanced L3 Radiometer Global and Polar Grid Daily 9 km EASE-Grid Soil Moisture V006"
+ },
+ {
+  "sn": "SPL4SMGP",
+  "ver": "008",
+  "ini": "2015-03-31",
+  "fin": "en curso",
+  "dc": "NSIDC_CPRD",
+  "granulos_chimborazo": "33961",
+  "title": "SMAP L4 Global 3-hourly 9 km EASE-Grid Surface and Root Zone Soil Moisture Geophysical Data V008"
+ },
+ {
+  "sn": "SPL3FTP",
+  "ver": "004",
+  "ini": "2015-03-31",
+  "fin": "en curso",
+  "dc": "NSIDC_CPRD",
+  "granulos_chimborazo": "4160",
+  "title": "SMAP L3 Radiometer Global and Northern Hemisphere Daily 36 km EASE-Grid Freeze/Thaw State V004"
+ },
+ {
+  "sn": "SPL2SMAP_S",
+  "ver": "003",
+  "ini": "2015-03-31",
+  "fin": "en curso",
+  "dc": "NSIDC_CPRD",
+  "granulos_chimborazo": "2208",
+  "title": "SMAP/Sentinel-1 L2 Radiometer/Radar 30-Second Scene 3 km EASE-Grid Soil Moisture V003"
+ },
+ {
+  "sn": "GPM_3IMERGDF",
+  "ver": "07",
+  "ini": "1998-01-01",
+  "fin": "2025-09-30",
+  "dc": "GES_DISC",
+  "granulos_chimborazo": "10135",
+  "title": "GPM IMERG Final Precipitation L3 1 day 0.1 degree x 0.1 degree V07 (GPM_3IMERGDF)"
+ },
+ {
+  "sn": "GPM_3IMERGM",
+  "ver": "07",
+  "ini": "1998-01-01",
+  "fin": "2025-09-30",
+  "dc": "GES_DISC",
+  "granulos_chimborazo": "333",
+  "title": "GPM IMERG Final Precipitation L3 1 month 0.1 degree x 0.1 degree V07 (GPM_3IMERGM)"
+ },
+ {
+  "sn": "MOD13Q1",
+  "ver": "061",
+  "ini": "2000-02-18",
+  "fin": "en curso",
+  "dc": "LPCLOUD",
+  "granulos_chimborazo": "614",
+  "title": "MODIS/Terra Vegetation Indices 16-Day L3 Global 250m SIN Grid V061"
+ },
+ {
+  "sn": "MYD13Q1",
+  "ver": "061",
+  "ini": "2002-07-04",
+  "fin": "en curso",
+  "dc": "LPCLOUD",
+  "granulos_chimborazo": "560",
+  "title": "MODIS/Aqua Vegetation Indices 16-Day L3 Global 250m SIN Grid V061"
+ },
+ {
+  "sn": "VNP13A1",
+  "ver": "002",
+  "ini": "2012-01-17",
+  "fin": "en curso",
+  "dc": "LPCLOUD",
+  "granulos_chimborazo": "680",
+  "title": "VIIRS/NPP Vegetation Indices 16-Day L3 Global 500m SIN Grid V002"
+ },
+ {
+  "sn": "MOD16A2GF",
+  "ver": "061",
+  "ini": "2000-01-01",
+  "fin": "en curso",
+  "dc": "LPCLOUD",
+  "granulos_chimborazo": "1196",
+  "title": "MODIS/Terra Net Evapotranspiration Gap-Filled 8-Day L4 Global 500m SIN Grid V061"
+ },
+ {
+  "sn": "MOD11A2",
+  "ver": "061",
+  "ini": "2000-02-18",
+  "fin": "en curso",
+  "dc": "LPCLOUD",
+  "granulos_chimborazo": "1226",
+  "title": "MODIS/Terra Land Surface Temperature/Emissivity 8-Day L3 Global 1km SIN Grid V061"
+ },
+ {
+  "sn": "MOD15A2H",
+  "ver": "061",
+  "ini": "2000-02-18",
+  "fin": "en curso",
+  "dc": "LPCLOUD",
+  "granulos_chimborazo": "1223",
+  "title": "MODIS/Terra Leaf Area Index/FPAR 8-Day L4 Global 500m SIN Grid V061"
+ },
+ {
+  "sn": "HLSL30",
+  "ver": "2.0",
+  "ini": "2013-04-11",
+  "fin": "en curso",
+  "dc": "LPCLOUD",
+  "granulos_chimborazo": "2467",
+  "title": "HLS Landsat Operational Land Imager Surface Reflectance and TOA Brightness Daily Global 30m v2.0"
+ },
+ {
+  "sn": "HLSS30",
+  "ver": "2.0",
+  "ini": "2015-11-28",
+  "fin": "en curso",
+  "dc": "LPCLOUD",
+  "granulos_chimborazo": "3407",
+  "title": "HLS Sentinel-2 Multi-spectral Instrument Surface Reflectance Daily Global 30m v2.0"
+ },
+ {
+  "sn": "ECO_L2T_LSTE",
+  "ver": "003",
+  "ini": "2018-07-09",
+  "fin": "en curso",
+  "dc": "LPCLOUD",
+  "granulos_chimborazo": "840",
+  "title": "ECOSTRESS Tiled Land Surface Temperature and Emissivity Instantaneous L2 Global 70 m V003"
+ },
+ {
+  "sn": "ECO_L3T_JET",
+  "ver": "003",
+  "ini": "2018-07-09",
+  "fin": "en curso",
+  "dc": "LPCLOUD",
+  "granulos_chimborazo": "81",
+  "title": "ECOSTRESS Tiled Evapotranspiration PT-JPL Instantaneous and Daytime L3 Global 70 m v003"
+ },
+ {
+  "sn": "ECO_L4T_ESI",
+  "ver": "003",
+  "ini": "2018-07-09",
+  "fin": "en curso",
+  "dc": "LPCLOUD",
+  "granulos_chimborazo": "81",
+  "title": "ECOSTRESS Tiled Evaporative Stress Index PT-JPL Instantaneous L4 Global 70 m v003"
+ },
+ {
+  "sn": "GLDAS_NOAH025_3H",
+  "ver": "2.1",
+  "ini": "2000-01-01",
+  "fin": "en curso",
+  "dc": "GES_DISC",
+  "granulos_chimborazo": "77671",
+  "title": "GLDAS Noah Land Surface Model L4 3 hourly 0.25 x 0.25 degree V2.1 (GLDAS_NOAH025_3H)"
+ },
+ {
+  "sn": "GLDAS_NOAH025_M",
+  "ver": "2.1",
+  "ini": "2000-01-01",
+  "fin": "en curso",
+  "dc": "GES_DISC",
+  "granulos_chimborazo": "319",
+  "title": "GLDAS Noah Land Surface Model L4 monthly 0.25 x 0.25 degree V2.1 (GLDAS_NOAH025_M)"
+ },
+ {
+  "sn": "GLDAS_CLSM025_DA1_D",
+  "ver": "2.2",
+  "ini": "2003-02-01",
+  "fin": "en curso",
+  "dc": "GES_DISC",
+  "granulos_chimborazo": "8613",
+  "title": "GLDAS Catchment Land Surface Model L4 daily 0.25 x 0.25 degree GRACE-DA1 V2.2 (GLDAS_CLSM025_DA1_D)"
+ },
+ {
+  "sn": "FLDAS_NOAH01_C_GL_M",
+  "ver": "001",
+  "ini": "1982-01-01",
+  "fin": "en curso",
+  "dc": "GES_DISC",
+  "granulos_chimborazo": "537",
+  "title": "FLDAS Noah Land Surface Model L4 Global Monthly 0.1 x 0.1 degree (MERRA-2 and CHIRPS) V001 (FLDAS_NOAH01_C_GL_M)"
+ },
+ {
+  "sn": "SRTMGL1",
+  "ver": "003",
+  "ini": "2000-02-11",
+  "fin": "2000-02-21",
+  "dc": "LPCLOUD",
+  "granulos_chimborazo": "4",
+  "title": "NASA Shuttle Radar Topography Mission Global 1 arc second V003"
+ },
+ {
+  "sn": "NASADEM_HGT",
+  "ver": "001",
+  "ini": "2000-02-11",
+  "fin": "2000-02-21",
+  "dc": "LPCLOUD",
+  "granulos_chimborazo": "4",
+  "title": "NASADEM Merged DEM Global 1 arc second V001"
+ },
+ {
+  "sn": "GEDI02_B",
+  "ver": "003",
+  "ini": "2019-04-04",
+  "fin": "en curso",
+  "dc": "LPCLOUD",
+  "granulos_chimborazo": "263",
+  "title": "GEDI L2B Canopy Cover and Vertical Profile Metrics Data Global Footprint Level V003"
+ },
+ {
+  "sn": "MCD12Q1",
+  "ver": "061",
+  "ini": "2001-01-01",
+  "fin": "en curso",
+  "dc": "LPCLOUD",
+  "granulos_chimborazo": "25",
+  "title": "MODIS/Terra+Aqua Land Cover Type Yearly L3 Global 500m SIN Grid V061"
+ },
+ {
+  "sn": "OPERA_L3_DSWX-HLS_V1",
+  "ver": "1.0",
+  "ini": "2016-01-01",
+  "fin": "en curso",
+  "dc": "POCLOUD",
+  "granulos_chimborazo": "5734",
+  "title": "OPERA Dynamic Surface Water Extent from Harmonized Landsat Sentinel-2 product (Version 1)"
+ }
+]

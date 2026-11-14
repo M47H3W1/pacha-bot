@@ -1,0 +1,73 @@
+{
+ "Guamote": {
+  "era5": {
+   "lluvia": 1722,
+   "tmin": 8.7,
+   "et0": 1263,
+   "elev": 3036.0
+  },
+  "era5_land": "mean requires at least one data point",
+  "ecmwf_ifs": {
+   "lluvia": 1169,
+   "tmin": 10.3,
+   "et0": 1195,
+   "elev": 3036.0
+  },
+  "POWER_PRECTOTCORR": 1589,
+  "POWER_IMERG_PRECTOT": 866,
+  "POWER_T2M_MIN": 7.5,
+  "POWER_elev_celda": 2983.94
+ },
+ "Riobamba": {
+  "era5": {
+   "lluvia": 1525,
+   "tmin": 10.3,
+   "et0": 1314,
+   "elev": 2762.0
+  },
+  "era5_land": "mean requires at least one data point",
+  "ecmwf_ifs": {
+   "lluvia": 935,
+   "tmin": 11.4,
+   "et0": 1268,
+   "elev": 2762.0
+  },
+  "POWER_PRECTOTCORR": 1632,
+  "POWER_IMERG_PRECTOT": 964,
+  "POWER_T2M_MIN": 7.3,
+  "POWER_elev_celda": 3003.46
+ },
+ "Cayambe": {
+  "era5": {
+   "lluvia": 2207,
+   "tmin": 9.9,
+   "et0": 1142,
+   "elev": 2829.0
+  },
+  "era5_land": "mean requires at least one data point",
+  "ecmwf_ifs": {
+   "lluvia": 3128,
+   "tmin": 9.7,
+   "et0": 1256,
+   "elev": 2829.0
+  },
+  "POWER_PRECTOTCORR": 1487,
+  "POWER_IMERG_PRECTOT": 1512,
+  "POWER_T2M_MIN": 6.5,
+  "POWER_elev_celda": 3141.44
+ },
+ "Saraguro": {
+  "era5": {
+   "lluvia": 1647,
+   "tmin": 11.7,
+   "et0": 1197,
+   "elev": 2500.0
+  },
+  "era5_land": "mean requires at least one data point",
+  "ecmwf_ifs": "HTTP Error 429: Too Many Requests",
+  "POWER_PRECTOTCORR": 662,
+  "POWER_IMERG_PRECTOT": 1009,
+  "POWER_T2M_MIN": 12.8,
+  "POWER_elev_celda": 1976.38
+ }
+}

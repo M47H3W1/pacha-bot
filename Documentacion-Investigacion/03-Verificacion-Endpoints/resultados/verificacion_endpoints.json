@@ -1,0 +1,173 @@
+{
+ "fecha": "2026-11-14",
+ "resultados": [
+  {
+   "endpoint": "NASA POWER diario",
+   "uso": "Clima base, GWETROOT, TSOIL1, AOD_55, PAR (#2, #9, #10)",
+   "ok": true,
+   "detalle": "9 parámetros x 31 días, sin -999",
+   "segundos": 4.4
+  },
+  {
+   "endpoint": "NASA POWER IMERG con time-standard=UTC",
+   "uso": "Lluvia (#1)",
+   "ok": true,
+   "detalle": "31 días válidos",
+   "segundos": 0.7
+  },
+  {
+   "endpoint": "NASA POWER IMERG sin UTC (control: debe fallar)",
+   "uso": "Requisito documentado",
+   "ok": true,
+   "detalle": "devuelve -999, como se documentó",
+   "segundos": 0.7
+  },
+  {
+   "endpoint": "NASA POWER horario",
+   "uso": "Lancha (#6)",
+   "ok": true,
+   "detalle": "48 horas",
+   "segundos": 0.5
+  },
+  {
+   "endpoint": "NASA POWER climatología",
+   "uso": "Extremos de helada (#3)",
+   "ok": true,
+   "detalle": "climatología mensual",
+   "segundos": 0.5
+  },
+  {
+   "endpoint": "NASA CMR (Earthdata) colecciones y gránulos",
+   "uso": "SMAP, NASADEM, OMI, OMPS, MODIS, IMERG",
+   "ok": true,
+   "detalle": "SPL4SMGP=33961, NASADEM_HGT=4, OMSO2e=8043, OMPS_NPP_NMSO2_PCA_L2=5469, MOD13Q1=614, GPM_3IMERGDF=10135",
+   "segundos": 5.0
+  },
+  {
+   "endpoint": "ORNL MODIS MOD13Q1 250m_16_days_NDVI",
+   "uso": "NDVI (#5)",
+   "ok": true,
+   "detalle": "3 fechas, ejemplo [6452, 5865, 6697] (escala 0.0001)",
+   "segundos": 36.1
+  },
+  {
+   "endpoint": "ORNL MODIS MOD11A2 LST_Night_1km",
+   "uso": "LST nocturna (#3)",
+   "ok": true,
+   "detalle": "5 fechas, ejemplo [13688, 13902, 13945] (escala 0.02)",
+   "segundos": 44.1
+  },
+  {
+   "endpoint": "ORNL MODIS MOD17A2HGF Gpp_500m",
+   "uso": "GPP (#7)",
+   "ok": true,
+   "detalle": "5 fechas, ejemplo [349, 358, 386] (escala 0.0001)",
+   "segundos": 41.0
+  },
+  {
+   "endpoint": "ORNL MODIS MCD15A2H Lai_500m",
+   "uso": "LAI (#7)",
+   "ok": true,
+   "detalle": "5 fechas, ejemplo [6, 19, 9] (escala 0.1)",
+   "segundos": 184.2
+  },
+  {
+   "endpoint": "ORNL SMAP: productos disponibles",
+   "uso": "Humedad del suelo sin clave (#2)",
+   "ok": true,
+   "detalle": "SMAP en ORNL: ['SPL3SMP_E', 'SPL4CMDL']. SPL4SMGP (zona de raíces) NO está: requiere Earthdata",
+   "segundos": 47.3
+  },
+  {
+   "endpoint": "FAO GAEZ v4 LR getSamples (suelo dominante)",
+   "uso": "Suelo, respaldo global (#11-#15)",
+   "ok": true,
+   "detalle": "valor=3 (3 = Andosols)",
+   "segundos": 1.1
+  },
+  {
+   "endpoint": "FAO GAEZ v4 sin User-Agent de navegador (control: debe fallar)",
+   "uso": "Requisito documentado",
+   "ok": true,
+   "detalle": "HTTP 403, como se documentó",
+   "segundos": 0.3
+  },
+  {
+   "endpoint": "FAO GAEZ v4 res05 (catálogo de aptitud por cultivo)",
+   "uso": "Aptitud por cultivo (#15)",
+   "ok": true,
+   "detalle": "122708 rásteres",
+   "segundos": 0.5
+  },
+  {
+   "endpoint": "MAG geoportal: zip geopedológico 1:25.000",
+   "uso": "Suelo, fuente principal (#11-#15)",
+   "ok": true,
+   "detalle": "HTTP 206, bytes 0-99/1293801341",
+   "segundos": 0.0
+  },
+  {
+   "endpoint": "MAG geoserver (control: no hay servicio por punto)",
+   "uso": "Consulta por punto",
+   "ok": true,
+   "detalle": "sigue sin servicio (<urlopen error [WinError 10060] Se produjo un erro)",
+   "segundos": 21.0
+  },
+  {
+   "endpoint": "Datos Abiertos: CSV INAMHI precipitación",
+   "uso": "Contraste de lluvia",
+   "ok": true,
+   "detalle": "HTTP 200",
+   "segundos": 3.9
+  },
+  {
+   "endpoint": "Datos Abiertos: CSV INAMHI temperatura mínima",
+   "uso": "Contraste de helada",
+   "ok": true,
+   "detalle": "HTTP 200",
+   "segundos": 0.6
+  },
+  {
+   "endpoint": "Datos Abiertos: API CKAN package_search",
+   "uso": "Precios MAG, INEC",
+   "ok": true,
+   "detalle": "1 conjuntos",
+   "segundos": 0.6
+  },
+  {
+   "endpoint": "Open-Meteo archivo ERA5",
+   "uso": "ERA5 (convocatoria)",
+   "ok": true,
+   "detalle": "5 días",
+   "segundos": 0.9
+  },
+  {
+   "endpoint": "Open-Meteo elevation (fuera de la regla; usado hoy)",
+   "uso": "clients.elevation",
+   "ok": true,
+   "detalle": "[3056.0] m",
+   "segundos": 0.3
+  },
+  {
+   "endpoint": "Open-Meteo forecast (fuera de la regla; usado hoy)",
+   "uso": "clients.forecast_week",
+   "ok": true,
+   "detalle": "7 días",
+   "segundos": 0.8
+  },
+  {
+   "endpoint": "ISRIC SoilGrids (fuera de la regla; usado hoy)",
+   "uso": "clients.soil",
+   "ok": true,
+   "detalle": "responde",
+   "segundos": 3.9
+  },
+  {
+   "endpoint": "INAMHI servicios web (portal)",
+   "uso": "Avisos y descargas",
+   "ok": true,
+   "detalle": "HTTP 200",
+   "segundos": 0.3
+  }
+ ]
+}

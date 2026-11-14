@@ -1,0 +1,86 @@
+[
+ {
+  "nombre": "INGUINCHO",
+  "alt": 3140.0,
+  "lat": 0.2575,
+  "obs": 2595,
+  "IFS_sesgo": 44,
+  "IFS_r": 0.91,
+  "MERRA2_sesgo": -9,
+  "MERRA2_r": 0.85,
+  "IMERG_sesgo": 15,
+  "IMERG_r": 0.71
+ },
+ {
+  "nombre": "LA TOLA",
+  "alt": 2480.0,
+  "lat": -0.2318,
+  "obs": 1707,
+  "IFS_sesgo": 30,
+  "IFS_r": 0.66,
+  "MERRA2_sesgo": 67,
+  "MERRA2_r": 0.66,
+  "IMERG_sesgo": 57,
+  "IMERG_r": 0.82
+ },
+ {
+  "nombre": "IZOBAMBA",
+  "alt": 3058.0,
+  "lat": -0.365833,
+  "obs": 2828,
+  "IFS_sesgo": -3,
+  "IFS_r": 0.77,
+  "MERRA2_sesgo": -9,
+  "MERRA2_r": 0.85,
+  "IMERG_sesgo": 13,
+  "IMERG_r": 0.85
+ },
+ {
+  "nombre": "RUMIPAMBA-SALCEDO",
+  "alt": 2685.0,
+  "lat": -1.02,
+  "obs": 988,
+  "IFS_sesgo": 302,
+  "IFS_r": -0.36,
+  "MERRA2_sesgo": 194,
+  "MERRA2_r": 0.61,
+  "IMERG_sesgo": 82,
+  "IMERG_r": 0.51
+ },
+ {
+  "nombre": "LA ARGELIA-LOJA",
+  "alt": 2160.0,
+  "lat": -4.0375,
+  "obs": 1817,
+  "IFS_sesgo": 56,
+  "IFS_r": 0.82,
+  "MERRA2_sesgo": -33,
+  "MERRA2_r": 0.94,
+  "IMERG_sesgo": 15,
+  "IMERG_r": 0.67
+ },
+ {
+  "nombre": "SAN GABRIEL",
+  "alt": 2860.0,
+  "lat": 0.604166667,
+  "obs": 1773,
+  "IFS_sesgo": 66,
+  "IFS_r": 0.29,
+  "MERRA2_sesgo": 33,
+  "MERRA2_r": 0.82,
+  "IMERG_sesgo": 74,
+  "IMERG_r": 0.66
+ },
+ {
+  "nombre": "TOMALON-TABACUNDO",
+  "alt": 2790.0,
+  "lat": 0.011155556,
+  "obs": 1068,
+  "IFS_sesgo": 179,
+  "IFS_r": 0.71,
+  "MERRA2_sesgo": 154,
+  "MERRA2_r": 0.8,
+  "IMERG_sesgo": 100,
+  "IMERG_r": 0.74
+ }
+]
