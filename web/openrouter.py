@@ -44,7 +44,9 @@ def _llamar(modelos: list[str], mensajes: list[dict]) -> str | None:
         grupo = [m.strip() for m in modelos[i:i + 3] if m.strip()]
         try:
             r = httpx.post(URL, headers=cab, timeout=40, json={
-                "models": grupo, "messages": mensajes, "max_tokens": 400, "temperature": 0.4})
+                "models": grupo, "messages": mensajes, "max_tokens": 1200, "temperature": 0.4,
+                # los modelos gratuitos con razonamiento gastaban los tokens pensando y devolvían texto vacío
+                "reasoning": {"effort": "low", "exclude": True}})
             r.raise_for_status()
             j = r.json()
             texto = (j["choices"][0]["message"].get("content") or "").strip()
