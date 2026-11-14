@@ -1,4 +1,5 @@
 """Cultivos de la sierra ecuatoriana, provincias y textos fijos."""
+from __future__ import annotations
 import csv
 from dataclasses import dataclass
 from pathlib import Path
@@ -68,6 +69,37 @@ def _load_rotaciones():
 
 # Rotaciones de referencia del equipo (ensayo Illangama, INIAP) para comparar
 ROTACIONES_REF = _load_rotaciones()
+
+# Calendario de siembra (hoja "Calendario de siembra · Sierra" del Excel del equipo) y casos de rotación de campo.
+ZONA_PROVINCIA = {"Chimborazo": "centro", "Cotopaxi": "centro", "Tungurahua": "centro", "Pichincha": "norte",
+                  "Imbabura": "norte", "Carchi": "norte", "Bolívar": "norte", "Cañar": "austro", "Azuay": "austro",
+                  "Loja": "austro"}
+
+
+def _load_calendario():
+    out = {}
+    with open(Path(__file__).with_name("calendario.csv"), encoding="utf-8") as f:
+        for r in csv.DictReader(f):
+            out[(r["id"], r["zona"])] = {"meses": {int(m) for m in r["meses"].split(";")}, "texto": r["texto"],
+                                         "fuente": r["fuente"]}
+    return out
+
+
+CALENDARIO = _load_calendario()
+
+
+def ventana(crop_id: str, provincia: str | None) -> dict | None:
+    """Meses de siembra del cultivo para la zona de la provincia (o la ventana general de la sierra)."""
+    zona = ZONA_PROVINCIA.get(provincia or "", "")
+    return CALENDARIO.get((crop_id, zona)) or CALENDARIO.get((crop_id, "todas"))
+
+
+def _load_casos():
+    with open(Path(__file__).with_name("casos.csv"), encoding="utf-8") as f:
+        return [{**r, "secuencia": r["secuencia"].split(";")} for r in csv.DictReader(f)]
+
+
+CASOS = _load_casos()
 
 # Punto rural representativo por provincia de la sierra (lat, lon)
 PROVINCIAS = {

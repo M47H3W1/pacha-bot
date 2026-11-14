@@ -76,6 +76,20 @@ async def hablar(t: Texto):
     return Response(datos, media_type="audio/mpeg", headers={"Cache-Control": "public, max-age=86400"})
 
 
+class Audio(BaseModel):
+    audio: str = Field(max_length=3_000_000)  # WAV mono 16 kHz en base64 (unos 60 s)
+    formato: str = Field(default="wav", pattern="^(wav|mp3)$")
+
+
+@app.post("/api/transcribir")
+async def transcribir(a: Audio):
+    if not openrouter.disponible():
+        return {"texto": None}
+    texto = await run_in_threadpool(openrouter.transcribir, a.audio, a.formato)
+    log.info("transcripción %s", "ok" if texto else "vacía")
+    return {"texto": texto}
+
+
 @app.post("/api/pregunta")
 async def pregunta(p: Pregunta):
     st = _limpiar_estado(p.estado)

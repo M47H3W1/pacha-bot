@@ -71,3 +71,16 @@ def responder(pregunta: str | None, hechos: str, historial: list[dict] | None = 
         return _llamar(MODELOS_AUDIO, mensajes)
     mensajes.append({"role": "user", "content": pregunta or ""})
     return _llamar(MODELOS, mensajes)
+
+
+def transcribir(audio_b64: str, formato: str = "wav") -> str | None:
+    """Convierte la nota de voz del agricultor en texto (modelo abierto con audio). None si no se pudo."""
+    mensajes = [{"role": "user", "content": [
+        {"type": "text", "text": "Transcribe literalmente este audio en español de Ecuador. "
+                                 "Responde solo con las palabras dichas, sin comentarios. Si no se entiende, responde: ..."},
+        {"type": "input_audio", "input_audio": {"data": audio_b64, "format": formato}}]}]
+    texto = _llamar(MODELOS_AUDIO, mensajes)
+    if not texto:
+        return None
+    texto = texto.strip().strip('"').strip()
+    return None if texto in ("", "...") else texto[:800]

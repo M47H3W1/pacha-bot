@@ -1,0 +1,23 @@
+id,zona,meses,texto,fuente
+papa,centro,1;5;7;8;9;10;11;12,"ene, may y de jul a dic",C01 C02
+papa,todas,5;6;11;12,may-jun y nov-dic,C02
+haba,centro,5;9;10;11;12;1,may y de sep a ene,C01 C03
+haba,todas,9;10;11;12;1,de sep a ene,C03
+cebada,centro,11;12;1,de nov a ene,C04
+cebada,norte,1;2;3,de ene a mar,C04
+cebada,todas,11;12;1;2;3,de nov a mar,C04
+avena,todas,1;2;3;4;5;6;7;8;9;10;11;12,"después de la cosecha, con humedad",C16 C18
+quinua,todas,10;11;12;1;2,de oct a feb,C01 C06
+chocho,todas,10;11;12;1;2;3,de oct a mar,C07
+maiz,todas,9;10;11;12;1,de sep a ene,C01 C08
+frejol,norte,2;4;9;11,"feb, abr, sep y nov",C10
+frejol,todas,2;3;4;5;7;8;9,de feb a may y de jul a sep,C09
+arveja,todas,2;3;4;5;6;7;8,de feb a ago,C09
+trigo,centro,11;12;1,de nov a ene,C11
+trigo,norte,1;2;3,de ene a mar,C11
+trigo,todas,11;12;1;2;3,de nov a mar,C11
+melloco,centro,8;9;10;11;12,de ago a dic,C12 C13
+melloco,todas,10;11;12,de oct a dic,C12
+oca,todas,9;10;11,de sep a nov,C13
+pasto,todas,1;2;3;4;5;6;7;8;9;10;11;12,al inicio de las lluvias,C14 C15
+descanso,todas,1;2;3;4;5;6;7;8;9;10;11;12,cualquier mes,
