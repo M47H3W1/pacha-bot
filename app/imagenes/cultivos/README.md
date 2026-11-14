@@ -41,8 +41,7 @@ Después de fusionar, reinicia el bot para que tome las fotos nuevas.
 |---|---|---|---|
 | `papa.jpg` | Richard Webb | CC BY-SA 2.0 | [Potato harvest - geograph.org.uk - 1507081.jpg](https://commons.wikimedia.org/wiki/File:Potato_harvest_-_geograph.org.uk_-_1507081.jpg) |
 | `haba.jpg` | Schlaghecken Josef | CC BY-SA 4.0 | [Dicke Bohne (Vicia faba) erntereife Hülsen, Josef Schlaghecken.jpg](https://commons.wikimedia.org/wiki/File:Dicke_Bohne_(Vicia_faba)_erntereife_H%C3%BClsen,_Josef_Schlaghecken.jpg) |
-| `arveja.jpg` | Kolforn (Kolforn)
-I'd appreciate if | CC BY-SA 4.0 | [-2022-06-13 Forming garden pea pods (Pisum sativum), Trimingham, Norfolk.JPG](https://commons.wikimedia.org/wiki/File:-2022-06-13_Forming_garden_pea_pods_(Pisum_sativum),_Trimingham,_Norfolk.JPG) |
+| `arveja.jpg` | Kolforn | CC BY-SA 4.0 | [-2022-06-13 Forming garden pea pods (Pisum sativum), Trimingham, Norfolk.JPG](https://commons.wikimedia.org/wiki/File:-2022-06-13_Forming_garden_pea_pods_(Pisum_sativum),_Trimingham,_Norfolk.JPG) |
 | `frejol.jpg` | Sanjay Acharya | CC BY-SA 4.0 | [Pinto Beans Seeds.jpg](https://commons.wikimedia.org/wiki/File:Pinto_Beans_Seeds.jpg) |
 | `cebada.jpg` | Roger Culos | CC BY-SA 3.0 | [Hordeum vulgare MHNT.BOT.2015.2.39.jpg](https://commons.wikimedia.org/wiki/File:Hordeum_vulgare_MHNT.BOT.2015.2.39.jpg) |
 | `trigo.jpg` | Daniela M. | CC BY-SA 4.0 | [Ears of wheat.jpg](https://commons.wikimedia.org/wiki/File:Ears_of_wheat.jpg) |
