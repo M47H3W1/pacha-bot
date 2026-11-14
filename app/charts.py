@@ -1,5 +1,6 @@
 """Imágenes PNG grandes y legibles en celular."""
 import io
+from pathlib import Path
 
 import matplotlib
 
@@ -190,24 +191,74 @@ COLOR_CULTIVO = {"solanacea": "#8d6e63", "poacea": "#d4a017", "fabacea": "#43a04
                  "basellacea": "#f9a825", "oxalidacea": "#ef6c00", "pasto": "#2e7d32", "ninguna": "#a1887f"}
 
 
+FOTOS = Path(__file__).with_name("imagenes") / "cultivos"
+
+
+def foto_cultivo(crop_id: str):
+    """Foto cuadrada (array) de app/imagenes/cultivos/<id>.(jpg|jpeg|png|webp), o None si no hay."""
+    for ext in ("jpg", "jpeg", "png", "webp"):
+        f = FOTOS / f"{crop_id}.{ext}"
+        if f.exists():
+            from PIL import Image, ImageOps
+            img = ImageOps.exif_transpose(Image.open(f)).convert("RGB")
+            lado = min(img.size)
+            x0, y0 = (img.width - lado) // 2, (img.height - lado) // 2
+            return np.asarray(img.crop((x0, y0, x0 + lado, y0 + lado)).resize((420, 420)))
+    return None
+
+
+def _panel(ax, c, x0, y0, ancho, alto, numero=None):
+    """Foto de la planta con su nombre abajo; si no hay foto, caja de color con el nombre."""
+    img = foto_cultivo(c.id)
+    alto_nombre = 0.45
+    if img is not None:
+        ax.imshow(img, extent=(x0, x0 + ancho, y0 + alto_nombre, y0 + alto), zorder=2)
+        ax.add_patch(matplotlib.patches.Rectangle((x0, y0), ancho, alto_nombre, color="#3d2b1f", zorder=2))
+        ax.text(x0 + ancho / 2, y0 + alto_nombre / 2, c.nombre, ha="center", va="center", fontsize=19,
+                fontweight="bold", color="white", zorder=3)
+    else:
+        ax.add_patch(matplotlib.patches.FancyBboxPatch((x0, y0), ancho, alto, boxstyle="round,pad=0.05",
+                                                       color=COLOR_CULTIVO.get(c.familia, VERDE), zorder=2))
+        ax.text(x0 + ancho / 2, y0 + alto / 2, c.nombre, ha="center", va="center",
+                fontsize=24 if len(c.nombre) < 9 else 19, fontweight="bold", color="white", zorder=3)
+    if numero is not None:
+        ax.add_patch(Circle((x0 + 0.28, y0 + alto - 0.28), 0.22, color="white", zorder=4))
+        ax.text(x0 + 0.28, y0 + alto - 0.28, str(numero), ha="center", va="center", fontsize=17,
+                fontweight="bold", color="#3d2b1f", zorder=5)
+
+
 def tarjeta_cultivos(crops: list, titulo: str, flechas: bool = True) -> bytes:
-    """Cajas grandes con el nombre de cada cultivo; con flechas si es una rotación, con números si es una lista."""
+    """Fotos (o cajas) de cultivos; con flechas si es una rotación, con números si es una lista."""
     n = len(crops)
-    fig = plt.figure(figsize=(3.6 * n + 0.6, 3.4), facecolor="white")
-    ax = fig.add_axes([0, 0, 1, 0.8])
-    ax.set_xlim(0, 3.6 * n + 0.6)
-    ax.set_ylim(0, 2)
+    ancho, paso = 2.7, 3.6
+    fig = plt.figure(figsize=(paso * n + 0.6, 4.4), facecolor="white")
+    ax = fig.add_axes([0, 0, 1, 0.86])
+    ax.set_xlim(0, paso * n + 0.6)
+    ax.set_ylim(0, 3.3)
     ax.axis("off")
     for i, c in enumerate(crops):
-        x0 = 0.4 + i * 3.6
-        ax.add_patch(matplotlib.patches.FancyBboxPatch((x0, 0.25), 2.7, 1.5, boxstyle="round,pad=0.08",
-                                                       color=COLOR_CULTIVO.get(c.familia, VERDE)))
-        ax.text(x0 + 1.35, 1.0, c.nombre, ha="center", va="center", fontsize=24 if len(c.nombre) < 9 else 19,
-                fontweight="bold", color="white")
-        if not flechas:
-            ax.text(x0 + 0.25, 1.55, str(i + 1), fontsize=18, fontweight="bold", color="white", va="center")
+        x0 = 0.4 + i * paso
+        _panel(ax, c, x0, 0.1, ancho, 3.15, numero=None if flechas else i + 1)
         if flechas and i < n - 1:
-            ax.annotate("", xy=(x0 + 3.45, 1.0), xytext=(x0 + 2.85, 1.0),
+            ax.annotate("", xy=(x0 + paso - 0.1, 1.7), xytext=(x0 + ancho + 0.12, 1.7),
                         arrowprops=dict(arrowstyle="-|>", lw=4, color="#555", mutation_scale=28))
-    fig.suptitle(titulo, fontsize=20, fontweight="bold", y=0.97)
+    fig.suptitle(titulo, fontsize=21, fontweight="bold", y=0.98)
+    return _png(fig)
+
+
+def galeria(crops: list, titulo: str) -> bytes | None:
+    """Cuadrícula de cultivos para elegir viendo la planta. None si no hay ninguna foto."""
+    if not any(foto_cultivo(c.id) is not None for c in crops):
+        return None
+    cols = 4
+    filas = (len(crops) + cols - 1) // cols
+    fig = plt.figure(figsize=(12, 3.2 * filas + 0.6), facecolor="white")
+    ax = fig.add_axes([0, 0, 1, 1 - 0.6 / (3.2 * filas + 0.6)])
+    ax.set_xlim(0, cols * 3.0)
+    ax.set_ylim(0, filas * 3.0)
+    ax.axis("off")
+    for k, c in enumerate(crops):
+        f, col = divmod(k, cols)
+        _panel(ax, c, col * 3.0 + 0.15, (filas - 1 - f) * 3.0 + 0.1, 2.7, 2.8)
+    fig.suptitle(titulo, fontsize=21, fontweight="bold", y=0.995)
     return _png(fig)

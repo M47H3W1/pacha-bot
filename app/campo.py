@@ -134,29 +134,54 @@ def plan_riego(w: dict, ef: float, textura: str) -> dict:
 
 
 # ---------------------------------------------------------------- envío con audio
-async def decir(update, ctx, texto: str, filas_kb: list, foto: bytes | None = None, tecnico: str | None = None):
-    """Muestra una pantalla sencilla con 🔊 Escuchar y, si existe, 📊 Ver los números."""
-    st = await B.estado(update, ctx)
+def _nueva_voz(ctx, texto: str, clave: str | None):
+    """Registra el texto de la pantalla actual. El número de turno invalida audios de pantallas anteriores."""
     ctx.user_data["voz"] = texto
+    ctx.user_data["voz_clave"] = clave
+    ctx.user_data["voz_turno"] = ctx.user_data.get("voz_turno", 0) + 1
+
+
+async def decir(update, ctx, texto: str, filas_kb: list, foto: bytes | None = None, tecnico: str | None = None,
+                clave: str | None = None):
+    """Muestra una pantalla sencilla con 🔊 Escuchar y, si existe, 📊 Ver los números.
+    clave: nombre de la grabación en kichwa para esta pantalla (app/audios/kichwa/<clave>.ogg)."""
+    st = await B.estado(update, ctx)
+    _nueva_voz(ctx, texto, clave)
     extra = [("🔊 Escuchar", "v")]
     if tecnico:
         extra.append(("📊 Ver los números", tecnico))
     kb = B.KB(filas_kb + [extra, [B.MENU]])
     await B.mostrar(update, texto, kb, foto=foto)
     if st.get("audio_auto"):
-        await escuchar(update, ctx)
+        tarea = escuchar(update, ctx)
+        app = getattr(ctx, "application", None)
+        app.create_task(tarea) if app else await tarea
 
 
 async def escuchar(update, ctx):
+    """Envía una sola nota de voz: borra la anterior y descarta el audio si el usuario ya cambió de pantalla."""
     texto = ctx.user_data.get("voz")
     if not texto:
         return
-    await update.effective_chat.send_action("record_voice")
-    mp3 = await asyncio.to_thread(voz.audio, texto)
-    if mp3:
-        await update.effective_chat.send_audio(audio=mp3, title="Pacha", performer="Pacha", filename="pacha.mp3")
+    turno = ctx.user_data.get("voz_turno")
+    st = await B.estado(update, ctx)
+    chat = update.effective_chat
+    await chat.send_action("record_voice")
+    datos = voz.grabacion_kichwa(ctx.user_data.get("voz_clave")) if st.get("idioma") == "ki" else None
+    datos = datos or await voz.audio(texto)
+    if ctx.user_data.get("voz_turno") != turno:
+        return  # el usuario ya está en otra pantalla: este audio sobra
+    anterior = ctx.user_data.pop("audio_msg", None)
+    if anterior:
+        try:
+            await chat.delete_message(anterior)
+        except Exception:
+            pass
+    if datos:
+        m = await chat.send_voice(voice=datos)
+        ctx.user_data["audio_msg"] = m.message_id
     else:
-        await update.effective_chat.send_message("🔇 No pude preparar el audio ahora. Intente más tarde.")
+        await chat.send_message("🔇 No pude preparar el audio ahora. Intente más tarde.")
 
 
 # ---------------------------------------------------------------- pantallas
@@ -172,8 +197,12 @@ async def menu(update, ctx):
              [(kb_k("❄️ ¿Viene helada?", "kasa", st), "vh")],
              [(kb_k("🗣️ Preguntar", "tapuy", st), "q")],
              [(kb_k("➕ Más", "ashtawan", st), "mas")]]
-    ctx.user_data["voz"] = "Hola. ¿Qué necesita hoy? Mi chakra. Qué sembrar. Cuánto regar. ¿Viene helada? Preguntar."
+    _nueva_voz(ctx, "Hola. ¿Qué necesita hoy? Mi chakra. Qué sembrar. Cuánto regar. ¿Viene helada? Preguntar.", "menu")
     await B.mostrar(update, texto, B.KB(filas + [[("🔊 Escuchar", "v")]]))
+    if st.get("audio_auto"):
+        tarea = escuchar(update, ctx)
+        app = getattr(ctx, "application", None)
+        app.create_task(tarea) if app else await tarea
 
 
 async def chakra(update, ctx):
@@ -181,7 +210,8 @@ async def chakra(update, ctx):
     sitio = B.sitio_de(st)
     if not sitio:
         await decir(update, ctx, "📍 <b>¿Dónde está su chakra?</b>\nPárese en su terreno y toque «Enviar ubicación». "
-                    "O elija su provincia.", [[("📍 Enviar ubicación", "t:loc")], [("🗺️ Elegir provincia", "t:prov")]])
+                    "O elija su provincia.", [[("📍 Enviar ubicación", "t:loc")], [("🗺️ Elegir provincia", "t:prov")]],
+                    clave="chakra_pedir")
         return
     clima = await asyncio.to_thread(B.clima_de, sitio)
     await mostrar_chakra(update, ctx, sitio, clima.resumen())
@@ -204,7 +234,7 @@ async def que_sembrar(update, ctx):
     if st.get("crop"):
         texto += f"\nAhora tiene: {CROPS[st['crop']].etiqueta}"
         filas.insert(0, [(f"🔁 Ver qué sembrar después", "rs")])
-    await decir(update, ctx, texto, filas)
+    await decir(update, ctx, texto, filas, clave=None if st.get("crop") else "sembrar_pregunta")
 
 
 async def recomendar(update, ctx, mes: int):
@@ -285,7 +315,7 @@ async def rotacion_ok(update, ctx):
     await B.guardar(update, ctx)
     await B.historial(update, "rotacion_elegida", "Eligió: " + " → ".join(CROPS[i].nombre for i in ids))
     await decir(update, ctx, f"✅ <b>Listo, lo guardé.</b>\nAhora veamos cuánta agua necesita su "
-                f"{CROPS[st['crop']].nombre.lower()}.", [[("💧 Cuánto regar", "cr")]])
+                f"{CROPS[st['crop']].nombre.lower()}.", [[("💧 Cuánto regar", "cr")]], clave="rotacion_ok")
 
 
 async def regar(update, ctx, arg: str = ""):
@@ -304,7 +334,7 @@ async def regar(update, ctx, arg: str = ""):
     if not st.get("riego"):
         filas = [[("🪣 Con balde o regadera", "cr:r:b")], [("🌊 Por surcos", "cr:r:g")],
                  [("🚿 Con aspersor", "cr:r:a")], [("💧 Con goteo", "cr:r:d")], [("🌧️ No riego, solo lluvia", "cr:r:n")]]
-        await decir(update, ctx, "💧 <b>¿Cómo riega su chakra?</b>", filas)
+        await decir(update, ctx, "💧 <b>¿Cómo riega su chakra?</b>", filas, clave="regar_pregunta")
         return
     crop = CROPS[st["crop"]]
     msg = await B.espera(update, "⏳ Mirando el tiempo de esta semana…")
@@ -381,7 +411,7 @@ async def helada(update, ctx):
     else:
         texto = "🙂 <b>Esta semana no viene helada.</b>"
     img = await asyncio.to_thread(charts.tira_semana, tira, "Heladas esta semana")
-    await decir(update, ctx, texto, [], foto=img, tecnico="a")
+    await decir(update, ctx, texto, [], foto=img, tecnico="a", clave=None if dias_helada else "helada_no")
 
 
 async def mas(update, ctx, arg: str = ""):
