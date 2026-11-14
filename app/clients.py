@@ -10,6 +10,7 @@ import httpx
 log = logging.getLogger(__name__)
 CACHE = Path(os.getenv("CACHE_DIR", Path(__file__).resolve().parent.parent / "cache"))
 CACHE.mkdir(parents=True, exist_ok=True)
+SEMILLAS = Path(__file__).with_name("semillas")
 
 POWER_PARAMS = "T2M_MAX,T2M_MIN,PRECTOTCORR,RH2M,WS2M,ALLSKY_SFC_SW_DWN"
 POWER_START, POWER_END = 2001, 2024
@@ -22,6 +23,10 @@ def _key(*parts) -> str:
 
 def _cached(name: str, fetch):
     """Guarda en disco solo respuestas válidas (las que no traen ok=False)."""
+    semilla = SEMILLAS / f"{name}.json.gz"
+    if semilla.exists():  # datos de sitios de demostración que vienen con el código (solo lectura)
+        with gzip.open(semilla, "rt", encoding="utf-8") as f:
+            return json.load(f)
     path = CACHE / f"{name}.json.gz"
     if path.exists():
         with gzip.open(path, "rt", encoding="utf-8") as f:
@@ -160,3 +165,23 @@ def era5_anual(lat: float, lon: float) -> dict | None:
 
     data = _cached(_key("era5", lat, lon), fetch)
     return data if data.get("ok") else None
+
+
+def elevaciones(puntos: list[tuple[float, float]]) -> list[float] | None:
+    """Altura de varios puntos en una sola consulta (Open-Meteo, modelo de 90 m). None si falla."""
+    lats = ",".join(f"{la:.5f}" for la, _ in puntos)
+    lons = ",".join(f"{lo:.5f}" for _, lo in puntos)
+
+    def fetch():
+        try:
+            r = httpx.get("https://api.open-meteo.com/v1/elevation", headers=UA, timeout=15,
+                          params={"latitude": lats, "longitude": lons})
+            r.raise_for_status()
+            return {"ok": True, "elev": r.json()["elevation"]}
+        except Exception as e:
+            log.warning("Elevación múltiple no disponible: %s", e)
+            return {"ok": False}
+
+    import hashlib
+    data = _cached("elevs_" + hashlib.sha1((lats + lons).encode()).hexdigest()[:16], fetch)
+    return data["elev"] if data.get("ok") else None

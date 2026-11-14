@@ -64,3 +64,40 @@ python scripts/dry_run.py
 
 ## Equipo
 Lee [CONTRIBUTING.md](CONTRIBUTING.md) antes de tu primer commit: ramas, Pull Requests y manejo de credenciales.
+
+## Maqueta web estilo chat (Vercel)
+
+Página para celular que simula una conversación de mensajería con Pacha. Pacha responde **solo con imágenes y
+notas de voz**, calculadas con los datos reales (NASA POWER corregido con ECMWF, FAO-56, balance de suelo).
+
+- El agricultor envía su terreno desde el clip → **Ubicación**: un punto y un **círculo** con el área (se puede marcar
+  desde cualquier lugar). El área se usa para contar el agua en baldes, tanques o tanqueros; el clima sigue siendo
+  el de la celda de NASA corregida a la altura del punto.
+- Preguntas escritas o por nota de voz: **OpenRouter** con modelos abiertos gratuitos en cascada.
+- Sitios de demostración (Guano, Cayambe, Saquisilí) vienen con datos guardados en `app/semillas/` para no
+  depender de la red durante la presentación.
+
+| Archivo | Qué hace |
+|---|---|
+| `public/` | Página (HTML, CSS, JS sin compilación, mapa Leaflet) |
+| `api/index.py` | API FastAPI (función Python de Vercel) |
+| `web/servicio.py` | Arma cada respuesta: imagen + guion de audio |
+| `web/openrouter.py` | Preguntas libres con OpenRouter |
+
+Variables de entorno (en Vercel → Settings → Environment Variables, o en `.env` local; **nunca en el código**):
+
+| Variable | Para qué |
+|---|---|
+| `OPENROUTER_API_KEY` | Activa las preguntas libres. Sin ella, la maqueta funciona solo con botones |
+| `OPENROUTER_MODELS` | Opcional. Modelos de texto separados por coma (los gratuitos cambian seguido) |
+| `OPENROUTER_AUDIO_MODELS` | Opcional. Modelos que entienden notas de voz |
+
+En local:
+
+```bash
+pip install -r requirements.txt uvicorn
+uvicorn api.index:app --port 8765
+```
+
+Las fotos de los cultivos están en `app/imagenes/cultivos/` (ver su README). Al cambiar una foto, se ve en la web
+después del siguiente despliegue.
