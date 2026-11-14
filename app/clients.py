@@ -14,7 +14,7 @@ SEMILLAS = Path(__file__).with_name("semillas")
 
 POWER_PARAMS = "T2M_MAX,T2M_MIN,PRECTOTCORR,RH2M,WS2M,ALLSKY_SFC_SW_DWN"
 POWER_START, POWER_END = 2001, 2024
-UA = {"User-Agent": "PachaBot/1.0 (NASA Space Apps 2026)"}
+UA = {"User-Agent": "PachaBot/1.0 (NASA Space Apps 2026 demo; https://github.com/M47H3W1)"}
 
 
 def _key(*parts) -> str:

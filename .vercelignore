@@ -10,3 +10,6 @@ Dockerfile
 docker-compose.yml
 **/__pycache__/
 *.db
+node_modules/
+package.json
+package-lock.json

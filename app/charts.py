@@ -203,7 +203,43 @@ def foto_cultivo(crop_id: str):
             img = ImageOps.exif_transpose(Image.open(f)).convert("RGB")
             # Sin recortar ni estirar: la foto entra completa y se rellena con un fondo suave.
             return np.asarray(ImageOps.pad(img, (480, 480), color=(244, 239, 230), method=Image.LANCZOS))
-    return None
+    return _foto_commons(crop_id)
+
+
+# Si la foto no está en la carpeta (por ejemplo, en un despliegue sin imágenes), se baja la misma de
+# Wikimedia Commons (créditos en app/imagenes/cultivos/README.md) y se guarda en la caché.
+COMMONS = {
+    "papa": "Potato_harvest_-_geograph.org.uk_-_1507081.jpg",
+    "haba": "Dicke_Bohne_(Vicia_faba)_erntereife_Hülsen,_Josef_Schlaghecken.jpg",
+    "arveja": "-2022-06-13_Forming_garden_pea_pods_(Pisum_sativum),_Trimingham,_Norfolk.JPG",
+    "frejol": "Pinto_Beans_Seeds.jpg",
+    "cebada": "Hordeum_vulgare_MHNT.BOT.2015.2.39.jpg",
+    "trigo": "Ears_of_wheat.jpg",
+    "avena": "Field_with_mixed_intercropping_of_oat_and_rye.jpg",
+    "quinua": "Chenopodium_quinoa_-red_faro-_MHNT.BOT.2007.43.66.jpg",
+    "chocho": "Peruvian_Field_Lupines.jpg",
+}
+
+
+def _foto_commons(crop_id: str):
+    nombre = COMMONS.get(crop_id)
+    if not nombre:
+        return None
+    from PIL import Image, ImageOps
+    from .clients import CACHE, UA
+    f = CACHE / "fotos" / f"{crop_id}.jpg"
+    try:
+        if not f.exists():
+            import httpx
+            r = httpx.get(f"https://commons.wikimedia.org/wiki/Special:FilePath/{nombre}", params={"width": 480},
+                          headers=UA, follow_redirects=True, timeout=15)
+            r.raise_for_status()
+            f.parent.mkdir(parents=True, exist_ok=True)
+            f.write_bytes(r.content)
+        img = ImageOps.exif_transpose(Image.open(f)).convert("RGB")
+        return np.asarray(ImageOps.pad(img, (480, 480), color=(244, 239, 230), method=Image.LANCZOS))
+    except Exception:
+        return None
 
 
 def _panel(ax, c, x0, y0, ancho, alto, numero=None):
