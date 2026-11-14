@@ -1,6 +1,6 @@
 python-telegram-bot>=21.6,<22
 httpx>=0.27,<0.29
-numpy>=1.26
+numpy>=2.5.4
 matplotlib>=3.8
 gTTS>=2.5,<3
 edge-tts>=7,<8
