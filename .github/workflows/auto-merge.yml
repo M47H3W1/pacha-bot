@@ -1,0 +1,24 @@
+name: Auto-merge a develop
+
+# Todo PR hacia develop se fusiona solo (squash) en cuanto CI pasa.
+# Los PR de Dependabot se revisan a mano porque pueden traer cambios grandes.
+on:
+  pull_request:
+    branches: [develop]
+    types: [opened, reopened, ready_for_review, synchronize]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  activar:
+    if: github.actor != 'dependabot[bot]' && github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    steps:
+      - name: Activar auto-merge
+        run: gh pr merge --auto --squash "$PR" --repo "$REPO"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
