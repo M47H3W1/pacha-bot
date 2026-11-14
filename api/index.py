@@ -80,14 +80,13 @@ async def hablar(t: Texto):
 async def pregunta(p: Pregunta):
     st = _limpiar_estado(p.estado)
     if not openrouter.disponible():
-        texto = ("Todavía no tengo activadas las preguntas libres. Use los botones y le respondo con los "
-                 "datos de su terreno.")
+        texto = "Por ahora use los botones, por favor."
     else:
         hechos = await run_in_threadpool(servicio.contexto, st)
         texto = await run_in_threadpool(openrouter.responder, p.texto, hechos, p.historial, p.audio)
-        texto = texto or "Perdón, ahora no pude pensar la respuesta. Intente otra vez o use los botones."
-    return {"mensajes": [{"tipo": "audio", "texto": texto}], "botones": servicio.MENU if "lat" in st else
-            [{"t": "📍 Enviar mi terreno", "accion": "mapa"}], "estado": {}}
+        texto = texto or "Perdón, no pude responder. Intente otra vez o use los botones."
+    return {"mensajes": servicio._decir(texto), "botones": servicio.MENU if "lat" in st else
+            [{"t": "📍 Enviar mi tierra", "accion": "mapa"}], "estado": {}}
 
 
 if not os.getenv("VERCEL"):  # en local, la misma app sirve la página

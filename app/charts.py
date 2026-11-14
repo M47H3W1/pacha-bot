@@ -39,7 +39,7 @@ def banner() -> bytes:
         ax.add_patch(Polygon([[0, 2.2 - i * 0.37], [10, 2.2 - i * 0.37 + 0.15],
                               [10, 2.2 - (i + 1) * 0.37 + 0.15], [0, 2.2 - (i + 1) * 0.37]], color=c))
     ax.text(0.4, 4.25, "Pacha", fontsize=54, fontweight="bold", color="#3d2b1f")
-    ax.text(0.45, 3.65, "Tu chacra con datos de la NASA", fontsize=20, color="#3d2b1f")
+    ax.text(0.45, 3.65, "Su tierra con datos de la NASA", fontsize=20, color="#3d2b1f")
     ax.text(0.45, 3.25, "Sierra del Ecuador", fontsize=16, color="#5b4636", style="italic")
     return _png(fig)
 
@@ -162,27 +162,30 @@ def tira_meses(tipos: list[str], heladas: list[int], titulo: str) -> bytes:
     return _png(fig)
 
 
-def tira_semana(dias: list[dict], titulo: str) -> bytes:
-    """7 días: gota grande = regar, copo = helada, nube = lluvia. dias: {fecha, regar, helada, lluvia}."""
+def tira_semana(dias: list[dict], titulo: str, nota: str = "") -> bytes:
+    """7 días: gota grande = regar, nube = lluvia, con los milímetros de lluvia del pronóstico.
+    dias: {fecha, regar, lluvia}. nota: cuánta agua por riego (se escribe debajo de cada gota)."""
     nombres = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"]
-    fig = plt.figure(figsize=(11, 3.8), facecolor="white")
+    fig = plt.figure(figsize=(11, 4.3), facecolor="white")
     ax = fig.add_axes([0, 0, 1, 0.84])
     ax.set_xlim(-0.6, len(dias) - 0.4)
-    ax.set_ylim(-1.0, 1.6)
+    ax.set_ylim(-1.35, 1.6)
     ax.axis("off")
     for i, d in enumerate(dias):
-        ax.add_patch(plt.Rectangle((i - 0.46, -0.95), 0.92, 2.45, color="#e3f2fd" if d["regar"] else "#f5f5f5",
-                                   zorder=1))
+        ax.add_patch(plt.Rectangle((i - 0.46, -1.3), 0.92, 2.8, color="#e3f2fd" if d["regar"] else "#f5f5f5", zorder=1))
         if d["regar"]:
-            _gota(ax, i, 0.45, 1.25)
-            ax.text(i, -0.3, "Regar", ha="center", fontsize=14, fontweight="bold", color=AZUL)
+            _gota(ax, i, 0.5, 1.25)
+            ax.text(i, -0.2, "Regar", ha="center", fontsize=15, fontweight="bold", color=AZUL)
+            if nota:
+                ax.text(i, -0.5, nota, ha="center", fontsize=10.5, color=AZUL)
         elif d["lluvia"] >= 5:
-            _nube(ax, i, 0.5)
-            ax.text(i, -0.3, "Lluvia", ha="center", fontsize=13, color="#607d8b")
-        if d["helada"]:
-            _copo(ax, i, 1.2, 0.85)
+            _nube(ax, i, 0.55)
+            ax.text(i, -0.2, "Llueve", ha="center", fontsize=14, color="#607d8b")
+        else:
+            _sol(ax, i, 0.55, 0.8)
+        ax.text(i, 1.28, f"{d['lluvia']:.0f} mm", ha="center", fontsize=12, color="#607d8b")
         f = d["fecha"]
-        ax.text(i, -0.75, f"{nombres[f.weekday()]} {f.day}", ha="center", fontsize=16, fontweight="bold", color="#333")
+        ax.text(i, -1.05, f"{nombres[f.weekday()]} {f.day}", ha="center", fontsize=16, fontweight="bold", color="#333")
     fig.suptitle(titulo, fontsize=20, fontweight="bold", y=0.98)
     return _png(fig)
 
@@ -268,14 +271,18 @@ def _panel(ax, c, x0, y0, ancho, alto, numero=None):
                 fontweight="bold", color="#3d2b1f", zorder=5)
 
 
-def tarjeta_cultivos(crops: list, titulo: str, flechas: bool = True) -> bytes:
-    """Fotos (o cajas) de cultivos; con flechas si es una rotación, con números si es una lista."""
+def tarjeta_cultivos(crops: list, titulo: str, flechas: bool = True, notas: list | None = None) -> bytes:
+    """Fotos de cultivos; con flechas si es una rotación, con números si es una lista.
+    notas: por cultivo, lista de (texto, color) que se escribe debajo de la foto."""
     n = len(crops)
     ancho, paso = 2.7, 3.6
-    fig = plt.figure(figsize=(paso * n + 0.6, 3.3 / 0.86), facecolor="white")
+    filas = max((len(x) for x in notas), default=0) if notas else 0
+    bajo = 0.48 * filas + (0.15 if filas else 0)
+    alto = 3.3 + bajo
+    fig = plt.figure(figsize=(paso * n + 0.6, alto / 0.86), facecolor="white")
     ax = fig.add_axes([0, 0, 1, 0.86])
     ax.set_xlim(0, paso * n + 0.6)
-    ax.set_ylim(0, 3.3)
+    ax.set_ylim(-bajo, 3.3)
     ax.set_aspect("equal")
     ax.axis("off")
     for i, c in enumerate(crops):
@@ -284,6 +291,9 @@ def tarjeta_cultivos(crops: list, titulo: str, flechas: bool = True) -> bytes:
         if flechas and i < n - 1:
             ax.annotate("", xy=(x0 + paso - 0.1, 1.7), xytext=(x0 + ancho + 0.12, 1.7),
                         arrowprops=dict(arrowstyle="-|>", lw=4, color="#555", mutation_scale=28))
+        for k, (texto, color) in enumerate((notas or [[]] * n)[i]):
+            ax.text(x0 + ancho / 2, -0.22 - 0.48 * k, texto, ha="center", va="center", fontsize=16 if k == 0 else 14,
+                    fontweight="bold" if k == 0 else "normal", color=color)
     fig.suptitle(titulo, fontsize=21, fontweight="bold", y=0.98)
     return _png(fig)
 
@@ -310,14 +320,15 @@ def galeria(crops: list, titulo: str) -> bytes | None:
 SEMAFORO = {"verde": ("#2e7d32", "Hay agua"), "amarillo": ("#f9a825", "Justo"), "rojo": ("#c62828", "Falta agua")}
 
 
-def semaforo(crop, meses: list[str], estados: list[str], titulo: str) -> bytes:
-    """Foto del cultivo y, mes a mes, un círculo verde (hay agua), amarillo (justo) o rojo (falta agua)."""
+def semaforo(crop, meses: list[str], estados: list[str], titulo: str, riego: list[str] | None = None) -> bytes:
+    """Foto del cultivo y, mes a mes, un círculo verde (hay agua), amarillo (justo) o rojo (falta agua).
+    Marca el mes de siembra y de cosecha. riego: por mes, cuánta agua poner (texto corto) o ""."""
     n = len(meses)
     ancho_total = 3.4 + 1.25 * n
-    fig = plt.figure(figsize=(ancho_total, 3.3 / 0.85), facecolor="white")
+    fig = plt.figure(figsize=(ancho_total, 3.85 / 0.85), facecolor="white")
     ax = fig.add_axes([0, 0, 1, 0.85])
     ax.set_xlim(0, ancho_total)
-    ax.set_ylim(0, 3.3)
+    ax.set_ylim(-0.55, 3.3)
     ax.set_aspect("equal")
     ax.axis("off")
     _panel(ax, crop, 0.2, 0.15, 2.8, 3.0)
@@ -325,7 +336,46 @@ def semaforo(crop, meses: list[str], estados: list[str], titulo: str) -> bytes:
         x = 3.6 + 1.25 * i + 0.55
         color, txt = SEMAFORO[e]
         ax.add_patch(Circle((x, 1.95), 0.5, color=color, zorder=3))
+        if i in (0, n - 1):
+            ax.text(x, 2.75, "Siembra" if i == 0 else "Cosecha", ha="center", fontsize=13, fontweight="bold",
+                    color="#3d2b1f")
         ax.text(x, 0.95, m.capitalize(), ha="center", fontsize=17, fontweight="bold", color="#333")
         ax.text(x, 0.45, txt, ha="center", fontsize=10.5, color=color, fontweight="bold")
+        if riego and riego[i]:
+            ax.text(x, -0.1, riego[i], ha="center", fontsize=10, color=AZUL, fontweight="bold")
+    if riego and any(riego):
+        ax.text(3.6, -0.45, "Agua a poner por mes en toda su tierra", fontsize=10, color="#607d8b")
     fig.suptitle(titulo, fontsize=20, fontweight="bold", y=0.98)
+    return _png(fig)
+
+
+
+
+TIPO_MES = {"lluvia": ("#e3f2fd", "Llueve"), "medio": ("#f4f8fb", "Poca"), "seco": ("#fff3e0", "Seco")}
+
+
+def anio_tierra(tipos: list[str], lluvia_mm: list[float], titulo: str, subtitulo: str = "") -> bytes:
+    """12 meses: dibujo (gota, nube o sol), los milímetros de lluvia del mes y "Regar" en los meses secos."""
+    fig = plt.figure(figsize=(12, 4.1), facecolor="white")
+    ax = fig.add_axes([0, 0, 1, 0.8])
+    ax.set_xlim(-0.6, 11.6)
+    ax.set_ylim(-1.3, 1.5)
+    ax.axis("off")
+    for i, t in enumerate(tipos):
+        fondo, palabra = TIPO_MES[t]
+        ax.add_patch(plt.Rectangle((i - 0.46, -1.25), 0.92, 2.7, color=fondo, zorder=1))
+        if t == "lluvia":
+            _gota(ax, i, 0.75)
+        elif t == "seco":
+            _sol(ax, i, 0.75)
+        else:
+            _nube(ax, i, 0.75)
+        ax.text(i, 0.1, f"{lluvia_mm[i]:.0f} mm", ha="center", fontsize=13, color="#455a64")
+        ax.text(i, -0.3, palabra, ha="center", fontsize=12, color="#607d8b")
+        if t == "seco":
+            ax.text(i, -0.7, "Regar", ha="center", fontsize=12, fontweight="bold", color="#e65100")
+        ax.text(i, -1.05, MESES[i].capitalize(), ha="center", fontsize=16, fontweight="bold", color="#333")
+    fig.suptitle(titulo, fontsize=20, fontweight="bold", y=0.985)
+    if subtitulo:
+        fig.text(0.5, 0.835, subtitulo, ha="center", fontsize=14, color="#555")
     return _png(fig)
