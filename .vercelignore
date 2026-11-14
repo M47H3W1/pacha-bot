@@ -1,0 +1,12 @@
+.env
+.env.*
+cache/
+tests/
+scripts/
+supabase/
+.githooks/
+.github/
+Dockerfile
+docker-compose.yml
+**/__pycache__/
+*.db

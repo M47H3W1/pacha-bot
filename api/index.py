@@ -1,0 +1,96 @@
+"""API del chat web de Pacha (Vercel Python Function, FastAPI).
+
+En Vercel el disco es de solo lectura salvo /tmp: caché y matplotlib van ahí.
+En local: uvicorn api.index:app --reload  (sirve también la carpeta public/)
+"""
+import os
+import sys
+from pathlib import Path
+
+RAIZ = Path(__file__).resolve().parent.parent
+if os.getenv("VERCEL"):
+    os.environ.setdefault("CACHE_DIR", "/tmp/pacha")
+    os.environ.setdefault("MPLCONFIGDIR", "/tmp/mpl")
+sys.path.insert(0, str(RAIZ))
+
+import logging  # noqa: E402
+
+from fastapi import FastAPI  # noqa: E402
+from fastapi.concurrency import run_in_threadpool  # noqa: E402
+from fastapi.responses import JSONResponse, Response  # noqa: E402
+from pydantic import BaseModel, Field  # noqa: E402
+
+from app import voz  # noqa: E402
+from web import openrouter, servicio  # noqa: E402
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
+log = logging.getLogger("pacha.api")
+app = FastAPI(title="Pacha web", docs_url=None, redoc_url=None)
+
+
+class Accion(BaseModel):
+    accion: str = Field(max_length=40)
+    estado: dict = {}
+
+
+class Texto(BaseModel):
+    texto: str = Field(max_length=1500)
+
+
+class Pregunta(BaseModel):
+    texto: str | None = Field(default=None, max_length=800)
+    audio: str | None = Field(default=None, max_length=3_000_000)  # WAV en base64, unos 60 s a 16 kHz
+    estado: dict = {}
+    historial: list[dict] = []
+
+
+def _limpiar_estado(st: dict) -> dict:
+    out = {}
+    for k in ("lat", "lon", "radio", "mes", "dias", "i"):
+        if k in st and isinstance(st[k], (int, float)):
+            out[k] = st[k]
+    if isinstance(st.get("crop"), str) and st["crop"] in servicio.CROPS:
+        out["crop"] = st["crop"]
+    if "radio" in out:
+        out["radio"] = min(max(out["radio"], 10), 3000)
+    return out
+
+
+@app.get("/api/salud")
+def salud():
+    return {"ok": True, "llm": openrouter.disponible()}
+
+
+@app.post("/api/accion")
+def accion(a: Accion):
+    st = _limpiar_estado(a.estado)
+    log.info("acción %s %s", a.accion, {k: st[k] for k in st if k not in ("lat", "lon")})
+    return JSONResponse(servicio.ejecutar(a.accion, st))
+
+
+@app.post("/api/voz")
+async def hablar(t: Texto):
+    datos = await voz.audio(t.texto)
+    if not datos:
+        return JSONResponse({"error": "sin voz"}, status_code=503)
+    return Response(datos, media_type="audio/mpeg", headers={"Cache-Control": "public, max-age=86400"})
+
+
+@app.post("/api/pregunta")
+async def pregunta(p: Pregunta):
+    st = _limpiar_estado(p.estado)
+    if not openrouter.disponible():
+        texto = ("Todavía no tengo activadas las preguntas libres. Use los botones y le respondo con los "
+                 "datos de su terreno.")
+    else:
+        hechos = await run_in_threadpool(servicio.contexto, st)
+        texto = await run_in_threadpool(openrouter.responder, p.texto, hechos, p.historial, p.audio)
+        texto = texto or "Perdón, ahora no pude pensar la respuesta. Intente otra vez o use los botones."
+    return {"mensajes": [{"tipo": "audio", "texto": texto}], "botones": servicio.MENU if "lat" in st else
+            [{"t": "📍 Enviar mi terreno", "accion": "mapa"}], "estado": {}}
+
+
+if not os.getenv("VERCEL"):  # en local, la misma app sirve la página
+    from fastapi.staticfiles import StaticFiles
+
+    app.mount("/", StaticFiles(directory=RAIZ / "public", html=True), name="public")
