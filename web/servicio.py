@@ -10,6 +10,8 @@ import base64
 import datetime as dt
 import logging
 import math
+
+import numpy as np
 from concurrent.futures import ThreadPoolExecutor
 
 from app import charts, clients
@@ -121,14 +123,46 @@ def _notas_rotacion(crops: list, mes: int) -> list:
     return notas
 
 
-MENU = [_boton("🌱 Qué sembrar", "sembrar"), _boton("💧 Cuánto regar", "regar_cultivo"),
-        _boton("📚 Rotaciones probadas", "probadas")]
+MENU = [_boton("📋 Ver mi tierra", "tierra"), _boton("🌱 Qué sembrar", "sembrar"),
+        _boton("💧 Cuánto regar", "regar_cultivo"), _boton("📚 Rotaciones probadas", "probadas")]
+CALOR = 25        # °C: sobre esto los cultivos andinos sufren (papa, haba, quinua)
+AGUACERO = 10     # mm en un día: lluvia fuerte para la malla de NASA POWER (que suaviza los picos)
+RAIZ_M = 0.5      # profundidad de suelo que se cuenta para la humedad
+KC_COBERTURA = 0.8  # tierra con pasto o rastrojo
+
+
+def caracteristicas(sitio: E.Sitio, clima: E.Clima) -> dict:
+    """Rasgos de la parcela con los 24 años de NASA POWER: calor, aguaceros, humedad del suelo y tendencias."""
+    anios = [y for y in clima.anios if (clima.anio == y).sum() >= 360]   # solo años completos
+    por_anio = lambda arr: np.array([arr[clima.anio == y].sum() for y in anios], dtype=float)  # noqa: E731
+    calor = por_anio(clima.tmax >= CALOR)
+    aguaceros = por_anio(clima.p >= AGUACERO)
+    lluvia = por_anio(clima.p)
+    tmedia = np.array([((clima.tmax + clima.tmin) / 2)[clima.anio == y].mean() for y in anios])
+    mitad = len(anios) // 2   # década reciente contra la anterior: más fácil de explicar que una recta
+    cambio_lluvia = (lluvia[-mitad:].mean() / lluvia[:mitad].mean() - 1) * 100
+    cambio_temp = tmedia[-mitad:].mean() - tmedia[:mitad].mean()
+    # Humedad del suelo: cubeta diaria (FAO-56) con pasto o rastrojo, sin riego; seco el suelo, evapora menos
+    taw = clima.agua_util * RAIZ_M
+    reserva, frac = 0.5 * taw, np.empty(len(clima.p))
+    for d in range(len(clima.p)):
+        ks = min(1.0, reserva / (0.5 * taw))
+        reserva = min(taw, max(0.0, reserva + E.LLUVIA_EFECTIVA * clima.p[d] - KC_COBERTURA * ks * clima.et0[d]))
+        frac[d] = reserva / taw
+    humedad = [float(np.median(frac[clima.mes == m])) for m in range(1, 13)]
+    return {"tmedia": float(tmedia.mean()), "calor": float(np.median(calor)), "aguaceros": float(np.median(aguaceros)),
+            "cambio_lluvia": float(cambio_lluvia), "cambio_temp": float(cambio_temp), "humedad": humedad,
+            "taw": taw, "periodo": f"{anios[0]}–{anios[-1]}",
+            "decadas": f"{anios[-mitad]}–{anios[-1]} contra {anios[0]}–{anios[mitad - 1]}"}
 
 
 # ---------------------------------------------------------------- pantallas
 def inicio(st: dict) -> dict:
     return _respuesta([_png(charts.banner()),
-                       *_decir("Hola, soy Pacha 🌱\nMándeme su tierra: toque 📎 y luego Ubicación.")],
+                       *_decir("🌱 ¡Hola! Soy Pacha, su ayudante del campo en la sierra.\n"
+                               "Le ayudo a conocer su tierra, a decidir qué sembrar después de la cosecha "
+                               "y a saber cuánta agua necesita.\n"
+                               "📍 Para empezar, mándeme dónde está su tierra.")],
                       [_boton("📍 Enviar mi tierra", "mapa")])
 
 
@@ -155,6 +189,56 @@ def chakra(st: dict) -> dict:
     img = charts.anio_tierra(tipos, res["lluvia_mes"], "Su tierra en el año",
                              f"{area} · {num(round(sitio.elev, -1))} m · lluvia de un año normal")
     return _respuesta([_png(img), *_decir("\n".join(lineas))], MENU, {**st, "elev": sitio.elev})
+
+
+def _signo(x: float, d: int = 0) -> str:
+    return ("+" if x > 0 else "−" if x < 0 else "") + num(abs(x), d)
+
+
+def tierra(st: dict) -> dict:
+    """Ficha de la parcela: lo que dicen los satélites de su suelo, su clima y cómo ha cambiado."""
+    lat, lon, radio = st["lat"], st["lon"], st.get("radio", 100)
+    sitio, clima = sitio_y_clima(lat, lon)
+    res, c = clima.resumen(), caracteristicas(sitio, clima)
+    tipos, _ = clasificar_meses(res)
+    area = decir_area(area_m2(radio))
+    dz = desnivel(lat, lon, radio)
+    pendiente = "sin dato de pendiente" if dz is None else (
+        "terreno plano" if dz < 5 else "pendiente suave" if dz < 15 else "pendiente fuerte")
+    suelo = sitio.suelo or {}
+    textura = suelo.get("textura", "franco").replace(" (supuesto)", "")
+    guarda = "guarda poca agua" if c["taw"] < 45 else "guarda bien el agua" if c["taw"] >= 70 else "guarda agua media"
+    mo = f"Materia orgánica {num(suelo['mo'], 1)} %" if suelo.get("mo") else guarda.capitalize()
+    falta = res["et0_anual"] - res["lluvia_anual"]
+    secos = [i for i, h in enumerate(c["humedad"]) if h < 0.3]
+    lluviosos = [i for i, t in enumerate(tipos) if t == "lluvia"]
+    calor = f"{num(c['calor'])} días al año" if c["calor"] >= 1 else "casi nunca"
+    tarjetas = [
+        ("Altura y tamaño", f"{num(round(sitio.elev, -1))} m", f"{area} · {pendiente}", "#5d4037"),
+        ("Suelo", textura.capitalize(), mo, "#8d6e63"),
+        ("Temperatura", f"{res['tmin']:.0f} a {res['tmax']:.0f} °C", f"Calor fuerte (>{CALOR} °C): {calor}",
+         "#e65100"),
+        ("Lluvia", f"{num(round(res['lluvia_anual'], -1))} mm", f"Año seco: {num(round(res['lluvia_seca'], -1))} mm · "
+                                                                 f"{num(c['aguaceros'])} aguaceros al año", "#2b6cb0"),
+        ("Se evapora", f"{num(round(res['et0_anual'], -1))} mm",
+         "Más de lo que llueve" if falta > 0 else "Menos de lo que llueve", "#c62828" if falta > 0 else "#2e7d32"),
+        ("Última década", f"Lluvia {_signo(c['cambio_lluvia'])} %",
+         "Temperatura igual" if abs(c["cambio_temp"]) < 0.1 else f"Temperatura {_signo(c['cambio_temp'], 1)} °C",
+         "#6a1b9a"),
+    ]
+    img = charts.ficha_tierra(tarjetas, c["humedad"], "Así es su tierra",
+                              f"Datos de la NASA {c['periodo']} · suelo de SoilGrids")
+    lineas = [f"📍 Su tierra: {area}, a {num(round(sitio.elev, -1))} m, suelo {textura} que {guarda}.",
+              f"🌡️ Entre {res['tmin']:.0f} y {res['tmax']:.0f} °C. 🌧️ {num(round(res['lluvia_anual'], -1))} mm de lluvia al año."]
+    if secos:
+        lineas.append(f"🏜️ Suelo seco {cuando(secos)}: ahí se riega.")
+    if lluviosos and c["aguaceros"] >= 3:
+        lineas.append(f"🌿 Téngala cubierta {cuando(lluviosos)}: los aguaceros lavan la tierra desnuda.")
+    if abs(c["cambio_lluvia"]) >= 5:
+        lineas.append(f"{'📉' if c['cambio_lluvia'] < 0 else '📈'} La última década llovió "
+                      f"{num(abs(c['cambio_lluvia']))} % {'menos' if c['cambio_lluvia'] < 0 else 'más'} que la anterior.")
+    return _respuesta([_png(img), *_decir("\n".join(lineas))],
+                      [b for b in MENU if b["accion"] != "tierra"], {**st, "elev": sitio.elev})
 
 
 def sembrar(st: dict) -> dict:
@@ -329,11 +413,16 @@ def contexto(st: dict) -> str:
         hechos.append(f"Cultivo elegido {crop.nombre} sembrado en {MESES_LARGO[mes - 1]}: veredicto '{b['veredicto']}', "
                       f"bien en {b['n_bien']} de {b['anios']} años, riego del ciclo {b['total_falta']:.0f} mm, "
                       f"mes más crítico {b['mes_critico']}.")
+    c = caracteristicas(sitio, clima)
+    hechos.append(f"Días al año sobre {CALOR} °C: {c['calor']:.0f}; aguaceros (>{AGUACERO} mm/día) al año: "
+                  f"{c['aguaceros']:.0f}; cambio {c['decadas']}: lluvia {c['cambio_lluvia']:+.0f} %, "
+                  f"temperatura {c['cambio_temp']:+.1f} °C; suelo seco "
+                  + (cuando([i for i, h in enumerate(c['humedad']) if h < 0.3]) or "ningún mes") + ".")
     hechos.append(f"Fuente: {clima.metodo}, años {res['anios']}.")
     return "\n".join(hechos)
 
 
-ACCIONES = {"inicio": inicio, "chakra": chakra, "sembrar": sembrar, "meses": meses, "todos": todos,
+ACCIONES = {"inicio": inicio, "chakra": chakra, "tierra": tierra, "sembrar": sembrar, "meses": meses, "todos": todos,
             "decision": decision, "rotacion": rotacion, "probadas": probadas, "regar_cultivo": regar_cultivo,
             "regar_hace": regar_hace, "regar": regar}
 NECESITAN_LUGAR = set(ACCIONES) - {"inicio", "meses", "regar_hace"}
