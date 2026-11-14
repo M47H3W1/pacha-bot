@@ -1,0 +1,1115 @@
+{
+ "power_guamote_2005_2024": {
+  "segundos": 9.8,
+  "parametros": {
+   "ALLSKY_SFC_PAR_TOT": {
+    "dias_validos": 7305,
+    "de": 7305,
+    "primero": "20050101",
+    "ultimo": "20241231",
+    "media": 6.337,
+    "mensual": {
+     "1": 6.392,
+     "2": 5.946,
+     "3": 5.904,
+     "4": 6.125,
+     "5": 6.092,
+     "6": 5.856,
+     "7": 6.011,
+     "8": 6.36,
+     "9": 6.893,
+     "10": 7.045,
+     "11": 7.011,
+     "12": 6.394
+    },
+    "max5": [
+     [
+      "20200205",
+      12.01
+     ],
+     [
+      "20150914",
+      11.96
+     ],
+     [
+      "20130921",
+      11.87
+     ],
+     [
+      "20091115",
+      11.69
+     ],
+     [
+      "20200211",
+      11.64
+     ]
+    ],
+    "unidad": "MJ/m^2/day"
+   },
+   "CLRSKY_SFC_PAR_TOT": {
+    "dias_validos": 7305,
+    "de": 7305,
+    "primero": "20050101",
+    "ultimo": "20241231",
+    "media": 11.449,
+    "mensual": {
+     "1": 11.91,
+     "2": 11.981,
+     "3": 11.915,
+     "4": 11.571,
+     "5": 10.883,
+     "6": 10.36,
+     "7": 10.481,
+     "8": 10.953,
+     "9": 11.653,
+     "10": 12.121,
+     "11": 11.909,
+     "12": 11.684
+    },
+    "max5": [
+     [
+      "20150320",
+      13.04
+     ],
+     [
+      "20110302",
+      12.94
+     ],
+     [
+      "20230309",
+      12.94
+     ],
+     [
+      "20110221",
+      12.92
+     ],
+     [
+      "20110311",
+      12.92
+     ]
+    ],
+    "unidad": "MJ/m^2/day"
+   },
+   "ALLSKY_SFC_UV_INDEX": {
+    "dias_validos": 7305,
+    "de": 7305,
+    "primero": "20050101",
+    "ultimo": "20241231",
+    "media": 1.795,
+    "mensual": {
+     "1": 1.877,
+     "2": 1.792,
+     "3": 1.761,
+     "4": 1.785,
+     "5": 1.696,
+     "6": 1.574,
+     "7": 1.601,
+     "8": 1.706,
+     "9": 1.892,
+     "10": 2.016,
+     "11": 2.006,
+     "12": 1.835
+    },
+    "max5": [
+     [
+      "20200205",
+      3.41
+     ],
+     [
+      "20061019",
+      3.35
+     ],
+     [
+      "20091115",
+      3.32
+     ],
+     [
+      "20210131",
+      3.32
+     ],
+     [
+      "20061020",
+      3.31
+     ]
+    ],
+    "unidad": "W m-2 x 40"
+   },
+   "ALLSKY_SFC_UVB": {
+    "dias_validos": 7305,
+    "de": 7305,
+    "primero": "20050101",
+    "ultimo": "20241231",
+    "media": 0.03,
+    "mensual": {
+     "1": 0.031,
+     "2": 0.03,
+     "3": 0.029,
+     "4": 0.03,
+     "5": 0.029,
+     "6": 0.027,
+     "7": 0.027,
+     "8": 0.029,
+     "9": 0.031,
+     "10": 0.033,
+     "11": 0.033,
+     "12": 0.031
+    },
+    "max5": [
+     [
+      "20050120",
+      0.05
+     ],
+     [
+      "20050223",
+      0.05
+     ],
+     [
+      "20050224",
+      0.05
+     ],
+     [
+      "20051120",
+      0.05
+     ],
+     [
+      "20051123",
+      0.05
+     ]
+    ],
+    "unidad": "MJ/m^2/day"
+   },
+   "AOD_55": {
+    "dias_validos": 7305,
+    "de": 7305,
+    "primero": "20050101",
+    "ultimo": "20241231",
+    "media": 0.395,
+    "mensual": {
+     "1": 0.334,
+     "2": 0.446,
+     "3": 0.491,
+     "4": 0.436,
+     "5": 0.381,
+     "6": 0.367,
+     "7": 0.368,
+     "8": 0.421,
+     "9": 0.413,
+     "10": 0.359,
+     "11": 0.371,
+     "12": 0.355
+    },
+    "max5": [
+     [
+      "20050921",
+      2.83
+     ],
+     [
+      "20050920",
+      2.34
+     ],
+     [
+      "20050922",
+      1.83
+     ],
+     [
+      "20100822",
+      1.71
+     ],
+     [
+      "20050919",
+      1.67
+     ]
+    ],
+    "unidad": "dimensionless"
+   },
+   "TO3": {
+    "dias_validos": 7305,
+    "de": 7305,
+    "primero": "20050101",
+    "ultimo": "20241231",
+    "media": 248.244,
+    "mensual": {
+     "1": 239.148,
+     "2": 239.882,
+     "3": 244.919,
+     "4": 245.891,
+     "5": 244.529,
+     "6": 247.323,
+     "7": 252.287,
+     "8": 258.41,
+     "9": 261.739,
+     "10": 255.724,
+     "11": 247.342,
+     "12": 241.297
+    },
+    "max5": [
+     [
+      "20221004",
+      282.56
+     ],
+     [
+      "20150921",
+      279.51
+     ],
+     [
+      "20150915",
+      279.36
+     ],
+     [
+      "20150914",
+      279.35
+     ],
+     [
+      "20150908",
+      279.1
+     ]
+    ],
+    "unidad": "Dobsons"
+   },
+   "TSOIL1": {
+    "dias_validos": 7305,
+    "de": 7305,
+    "primero": "20050101",
+    "ultimo": "20241231",
+    "media": 12.66,
+    "mensual": {
+     "1": 13.365,
+     "2": 13.33,
+     "3": 13.13,
+     "4": 12.981,
+     "5": 12.618,
+     "6": 11.532,
+     "7": 11.259,
+     "8": 11.542,
+     "9": 12.211,
+     "10": 13.172,
+     "11": 13.466,
+     "12": 13.36
+    },
+    "max5": [
+     [
+      "20070207",
+      16.52
+     ],
+     [
+      "20070206",
+      16.48
+     ],
+     [
+      "20070115",
+      16.26
+     ],
+     [
+      "20070116",
+      16.16
+     ],
+     [
+      "20070205",
+      16.08
+     ]
+    ],
+    "unidad": "C"
+   },
+   "TSOIL2": {
+    "dias_validos": 7305,
+    "de": 7305,
+    "primero": "20050101",
+    "ultimo": "20241231",
+    "media": 12.667,
+    "mensual": {
+     "1": 13.321,
+     "2": 13.326,
+     "3": 13.139,
+     "4": 13.005,
+     "5": 12.696,
+     "6": 11.726,
+     "7": 11.375,
+     "8": 11.586,
+     "9": 12.128,
+     "10": 13.044,
+     "11": 13.386,
+     "12": 13.312
+    },
+    "max5": [
+     [
+      "20070207",
+      15.87
+     ],
+     [
+      "20070208",
+      15.81
+     ],
+     [
+      "20070116",
+      15.77
+     ],
+     [
+      "20070206",
+      15.59
+     ],
+     [
+      "20070115",
+      15.58
+     ]
+    ],
+    "unidad": "C"
+   },
+   "GWETTOP": {
+    "dias_validos": 7305,
+    "de": 7305,
+    "primero": "20050101",
+    "ultimo": "20241231",
+    "media": 0.796,
+    "mensual": {
+     "1": 0.783,
+     "2": 0.814,
+     "3": 0.841,
+     "4": 0.852,
+     "5": 0.845,
+     "6": 0.833,
+     "7": 0.806,
+     "8": 0.776,
+     "9": 0.739,
+     "10": 0.742,
+     "11": 0.758,
+     "12": 0.766
+    },
+    "max5": [
+     [
+      "20080503",
+      0.95
+     ],
+     [
+      "20080504",
+      0.95
+     ],
+     [
+      "20080421",
+      0.94
+     ],
+     [
+      "20080425",
+      0.94
+     ],
+     [
+      "20080502",
+      0.94
+     ]
+    ],
+    "unidad": "1"
+   },
+   "CLOUD_AMT": {
+    "dias_validos": 7305,
+    "de": 7305,
+    "primero": "20050101",
+    "ultimo": "20241231",
+    "media": 78.535,
+    "mensual": {
+     "1": 79.733,
+     "2": 85.3,
+     "3": 86.67,
+     "4": 82.558,
+     "5": 76.737,
+     "6": 74.307,
+     "7": 73.08,
+     "8": 72.137,
+     "9": 72.132,
+     "10": 79.825,
+     "11": 79.711,
+     "12": 80.655
+    },
+    "max5": [
+     [
+      "20231124",
+      99.96
+     ],
+     [
+      "20170222",
+      99.91
+     ],
+     [
+      "20230423",
+      99.88
+     ],
+     [
+      "20140313",
+      99.87
+     ],
+     [
+      "20060118",
+      99.86
+     ]
+    ],
+    "unidad": "%"
+   },
+   "FROST_DAYS": {
+    "dias_validos": 7305,
+    "de": 7305,
+    "primero": "20050101",
+    "ultimo": "20241231",
+    "media": 0.0,
+    "mensual": {
+     "1": 0.0,
+     "2": 0.0,
+     "3": 0.0,
+     "4": 0.0,
+     "5": 0.0,
+     "6": 0.0,
+     "7": 0.0,
+     "8": 0.0,
+     "9": 0.0,
+     "10": 0.0,
+     "11": 0.0,
+     "12": 0.0
+    },
+    "max5": [
+     [
+      "20050101",
+      0.0
+     ],
+     [
+      "20050102",
+      0.0
+     ],
+     [
+      "20050103",
+      0.0
+     ],
+     [
+      "20050104",
+      0.0
+     ],
+     [
+      "20050105",
+      0.0
+     ]
+    ],
+    "unidad": "Days"
+   },
+   "QV2M": {
+    "dias_validos": 7305,
+    "de": 7305,
+    "primero": "20050101",
+    "ultimo": "20241231",
+    "media": 9.611,
+    "mensual": {
+     "1": 10.095,
+     "2": 10.399,
+     "3": 10.37,
+     "4": 10.29,
+     "5": 9.967,
+     "6": 9.169,
+     "7": 8.772,
+     "8": 8.574,
+     "9": 8.695,
+     "10": 9.432,
+     "11": 9.722,
+     "12": 9.895
+    },
+    "max5": [
+     [
+      "20240129",
+      12.11
+     ],
+     [
+      "20160227",
+      12.09
+     ],
+     [
+      "20240201",
+      12.03
+     ],
+     [
+      "20240131",
+      11.92
+     ],
+     [
+      "20240305",
+      11.9
+     ]
+    ],
+    "unidad": "g/kg"
+   },
+   "EVPTRNS": {
+    "dias_validos": 7305,
+    "de": 7305,
+    "primero": "20050101",
+    "ultimo": "20241231",
+    "media": 0.214,
+    "mensual": {
+     "1": 0.187,
+     "2": 0.182,
+     "3": 0.19,
+     "4": 0.214,
+     "5": 0.251,
+     "6": 0.256,
+     "7": 0.245,
+     "8": 0.232,
+     "9": 0.202,
+     "10": 0.203,
+     "11": 0.214,
+     "12": 0.187
+    },
+    "max5": [
+     [
+      "20201103",
+      0.77
+     ],
+     [
+      "20161121",
+      0.7
+     ],
+     [
+      "20121011",
+      0.62
+     ],
+     [
+      "20201102",
+      0.62
+     ],
+     [
+      "20110517",
+      0.61
+     ]
+    ],
+    "unidad": "MJ/m^2/day"
+   },
+   "PW": {
+    "dias_validos": 7305,
+    "de": 7305,
+    "primero": "20050101",
+    "ultimo": "20241231",
+    "media": 2.027,
+    "mensual": {
+     "1": 2.049,
+     "2": 2.155,
+     "3": 2.212,
+     "4": 2.195,
+     "5": 2.094,
+     "6": 1.9,
+     "7": 1.8,
+     "8": 1.797,
+     "9": 1.866,
+     "10": 2.067,
+     "11": 2.098,
+     "12": 2.094
+    },
+    "max5": [
+     [
+      "20200224",
+      3.03
+     ],
+     [
+      "20240213",
+      3.03
+     ],
+     [
+      "20100401",
+      2.96
+     ],
+     [
+      "20170420",
+      2.96
+     ],
+     [
+      "20160229",
+      2.9
+     ]
+    ],
+    "unidad": "cm"
+   },
+   "T2M": {
+    "dias_validos": 7305,
+    "de": 7305,
+    "primero": "20050101",
+    "ultimo": "20241231",
+    "media": 11.354,
+    "mensual": {
+     "1": 11.849,
+     "2": 11.89,
+     "3": 11.787,
+     "4": 11.776,
+     "5": 11.531,
+     "6": 10.56,
+     "7": 10.278,
+     "8": 10.425,
+     "9": 10.945,
+     "10": 11.628,
+     "11": 11.819,
+     "12": 11.796
+    },
+    "max5": [
+     [
+      "20240128",
+      14.41
+     ],
+     [
+      "20240129",
+      14.22
+     ],
+     [
+      "20240127",
+      14.18
+     ],
+     [
+      "20240130",
+      14.15
+     ],
+     [
+      "20240321",
+      14.14
+     ]
+    ],
+    "unidad": "C"
+   },
+   "RH2M": {
+    "dias_validos": 7305,
+    "de": 7305,
+    "primero": "20050101",
+    "ultimo": "20241231",
+    "media": 83.297,
+    "mensual": {
+     "1": 84.685,
+     "2": 86.542,
+     "3": 86.836,
+     "4": 86.313,
+     "5": 85.217,
+     "6": 83.78,
+     "7": 81.965,
+     "8": 79.662,
+     "9": 78.229,
+     "10": 80.882,
+     "11": 82.158,
+     "12": 83.489
+    },
+    "max5": [
+     [
+      "20060220",
+      95.07
+     ],
+     [
+      "20230323",
+      94.44
+     ],
+     [
+      "20190226",
+      93.92
+     ],
+     [
+      "20180413",
+      93.91
+     ],
+     [
+      "20210313",
+      93.9
+     ]
+    ],
+    "unidad": "%"
+   }
+  }
+ },
+ "cmr_chimborazo": [
+  {
+   "sn": "OCO2_L2_Lite_FP",
+   "ver": "11.3r",
+   "ini": "2014-06-01",
+   "fin": "en curso",
+   "dc": "GES_DISC",
+   "granulos_chimborazo": 970,
+   "titulo": "OCO-2 Level 2 bias-corrected XCO2 and other select fields from the full-physics retrieval aggregated as daily files, Retrospective processing V11.3r (OCO2_L2_Lite_FP)"
+  },
+  {
+   "sn": "OCO3_L2_Lite_FP",
+   "ver": "11r",
+   "ini": "2019-08-06",
+   "fin": "en curso",
+   "dc": "GES_DISC",
+   "granulos_chimborazo": 2151,
+   "titulo": "OCO-3 Level 2 bias-corrected XCO2 and other select fields from the full-physics retrieval aggregated as daily files, Retrospective processing V11r (OCO3_L2_Lite_FP)"
+  },
+  {
+   "sn": "OCO2_L2_Lite_SIF",
+   "ver": "11r",
+   "ini": "2014-09-01",
+   "fin": "2024-03-31",
+   "dc": "GES_DISC",
+   "granulos_chimborazo": 3274,
+   "titulo": "OCO-2 Level 2 bias-corrected solar-induced fluorescence and other select fields from the IMAP-DOAS algorithm aggregated as daily files, Retrospective processing V11r (OCO2_L2_Lite_SIF)"
+  },
+  {
+   "sn": "AIRS3STD",
+   "ver": "7.0",
+   "ini": "2002-08-31",
+   "fin": "en curso",
+   "dc": "GES_DISC",
+   "granulos_chimborazo": 8758,
+   "titulo": "Aqua/AIRS L3 Daily Standard Physical Retrieval (AIRS-only) 1 degree x 1 degree V7.0"
+  },
+  {
+   "sn": "AIRS3C2M",
+   "ver": "005",
+   "ini": "2010-01-01",
+   "fin": "2017-02-28",
+   "dc": "GES_DISC",
+   "granulos_chimborazo": 86,
+   "titulo": "AIRS/Aqua L3 Monthly CO2 in the free troposphere (AIRS-only) 2.5 degrees x 2 degrees V005 (AIRS3C2M)"
+  },
+  {
+   "sn": "OMNO2d",
+   "ver": "004",
+   "ini": "2004-10-01",
+   "fin": "en curso",
+   "dc": "GES_DISC",
+   "granulos_chimborazo": 8029,
+   "titulo": "OMI/Aura NO2 Cloud-Screened Total and Tropospheric Column L3 Global Gridded 0.25 degree x 0.25 degree Ver 5.0, Col 004 (OMNO2d)"
+  },
+  {
+   "sn": "OMSO2e",
+   "ver": "004",
+   "ini": "2004-10-01",
+   "fin": "en curso",
+   "dc": "GES_DISC",
+   "granulos_chimborazo": 8043,
+   "titulo": "OMI/Aura Sulfur Dioxide (SO2) Total Column Daily L3 1 day Best Pixel in 0.25 degree x 0.25 degree V4 (OMSO2e)"
+  },
+  {
+   "sn": "OMTO3e",
+   "ver": "004",
+   "ini": "2004-07-15",
+   "fin": "en curso",
+   "dc": "OMINRT",
+   "granulos_chimborazo": 0,
+   "titulo": "OMI/Aura TOMS-Like Ozone and Radiative Cloud Fraction L3 1 day 0.25 degree x 0.25 degree V004 (OMTO3e) NRT"
+  },
+  {
+   "sn": "OMPS_NPP_NMSO2_PCA_L2",
+   "ver": "2",
+   "ini": "2012-01-26",
+   "fin": "en curso",
+   "dc": "GES_DISC",
+   "granulos_chimborazo": 5469,
+   "titulo": "OMPS/NPP PCA SO2 Total Column 1-Orbit L2 Swath 50x50km V2 (OMPS_NPP_NMSO2_PCA_L2)"
+  },
+  {
+   "sn": "S5P_L2__NO2____HiR",
+   "ver": "3",
+   "ini": "2018-04-30",
+   "fin": "en curso",
+   "dc": "GES_DISC",
+   "granulos_chimborazo": 0,
+   "titulo": "Sentinel-5P TROPOMI Tropospheric NO2 1-Orbit L2 5.5km x 3.5km V3 (S5P_L2__NO2____HiR)"
+  },
+  {
+   "sn": "S5P_L2__SO2____HiR",
+   "ver": "3",
+   "ini": "2018-04-30",
+   "fin": "en curso",
+   "dc": "GES_DISC",
+   "granulos_chimborazo": 1,
+   "titulo": "Sentinel-5P TROPOMI Sulphur Dioxide SO2 1-Orbit L2 5.5km x 3.5km V3 (S5P_L2__SO2____HiR)"
+  },
+  {
+   "sn": "S5P_L2__CH4____HiR",
+   "ver": "3",
+   "ini": "2018-04-30",
+   "fin": "en curso",
+   "dc": "GES_DISC",
+   "granulos_chimborazo": 1,
+   "titulo": "Sentinel-5P TROPOMI Methane CH4 1-Orbit L2 5.5km x 7km V3 (S5P_L2__CH4____HiR)"
+  },
+  {
+   "sn": "S5P_L2__CO_____HiR",
+   "ver": "3",
+   "ini": "2018-04-30",
+   "fin": "en curso",
+   "dc": "GES_DISC",
+   "granulos_chimborazo": 3,
+   "titulo": "Sentinel-5P TROPOMI Carbon Monoxide CO Column 1-Orbit L2 5.5km x 7km V3 (S5P_L2__CO_____HiR)"
+  },
+  {
+   "sn": "S5P_L2__O3_TOT_HiR",
+   "ver": "3",
+   "ini": "2018-04-30",
+   "fin": "en curso",
+   "dc": "GES_DISC",
+   "granulos_chimborazo": 1,
+   "titulo": "Sentinel-5P TROPOMI Total Ozone Column 1-Orbit L2 5.5km x 3.5km V3 (S5P_L2__O3_TOT_HiR)"
+  },
+  {
+   "sn": "S5P_L2__AER_AI_HiR",
+   "ver": "3",
+   "ini": "2018-04-30",
+   "fin": "en curso",
+   "dc": "GES_DISC",
+   "granulos_chimborazo": 3,
+   "titulo": "Sentinel-5P TROPOMI Aerosol Index 1-Orbit L2 5.5km x 3.5km V3 (S5P_L2__AER_AI_HiR)"
+  },
+  {
+   "sn": "M2T1NXAER",
+   "ver": "5.12.4",
+   "ini": "1980-01-01",
+   "fin": "en curso",
+   "dc": "GES_DISC",
+   "granulos_chimborazo": 17076,
+   "titulo": "MERRA-2 tavg1_2d_aer_Nx: 2d,1-Hourly,Time-averaged,Single-Level,Assimilation,Aerosol Diagnostics 0.625 x 0.5 degree V5.12.4 (M2T1NXAER)"
+  },
+  {
+   "sn": "M2T1NXSLV",
+   "ver": "5.12.4",
+   "ini": "1980-01-01",
+   "fin": "en curso",
+   "dc": "GES_DISC",
+   "granulos_chimborazo": 17076,
+   "titulo": "MERRA-2 tavg1_2d_slv_Nx: 2d,1-Hourly,Time-Averaged,Single-Level,Assimilation,Single-Level Diagnostics 0.625 x 0.5 degree V5.12.4 (M2T1NXSLV)"
+  },
+  {
+   "sn": "M2I3NVCHM",
+   "ver": "5.12.4",
+   "ini": "1980-01-01",
+   "fin": "en curso",
+   "dc": "GES_DISC",
+   "granulos_chimborazo": 17076,
+   "titulo": "MERRA-2 inst3_3d_chm_Nv: 3d,3-Hourly,Instantaneous,Model-Level,Assimilation,Carbon Monoxide and Ozone Mixing Ratio 0.625 x 0.5 degree V5.12.4 (M2I3NVCHM)"
+  },
+  {
+   "sn": "MCD19A2",
+   "ver": "061",
+   "ini": "2000-02-24",
+   "fin": "en curso",
+   "dc": "LPCLOUD",
+   "granulos_chimborazo": 9690,
+   "titulo": "MODIS/Terra+Aqua Land Aerosol Optical Depth Daily L2G Global 1km SIN Grid V061"
+  },
+  {
+   "sn": "MOD17A2H",
+   "ver": "061",
+   "ini": "2021-01-01",
+   "fin": "en curso",
+   "dc": "LPCLOUD",
+   "granulos_chimborazo": 269,
+   "titulo": "MODIS/Terra Gross Primary Productivity 8-Day L4 Global 500m SIN Grid V061"
+  },
+  {
+   "sn": "MOD17A2HGF",
+   "ver": "061",
+   "ini": "2000-01-01",
+   "fin": "en curso",
+   "dc": "LPCLOUD",
+   "granulos_chimborazo": 1196,
+   "titulo": "MODIS/Terra Gross Primary Productivity Gap-Filled 8-Day L4 Global 500m SIN Grid V061"
+  },
+  {
+   "sn": "MCD15A2H",
+   "ver": "061",
+   "ini": "2002-07-04",
+   "fin": "en curso",
+   "dc": "LPCLOUD",
+   "granulos_chimborazo": 1117,
+   "titulo": "MODIS/Terra+Aqua Leaf Area Index/FPAR 8-Day L4 Global 500m SIN Grid V061"
+  },
+  {
+   "sn": "MCD64A1",
+   "ver": "061",
+   "ini": "2000-11-01",
+   "fin": "en curso",
+   "dc": "LPCLOUD",
+   "granulos_chimborazo": 311,
+   "titulo": "MODIS/Terra+Aqua Direct Broadcast Burned Area Monthly L3 Global 500m SIN Grid V061"
+  },
+  {
+   "sn": "MOD14A1",
+   "ver": "061",
+   "ini": "2000-02-18",
+   "fin": "en curso",
+   "dc": "LPCLOUD",
+   "granulos_chimborazo": 1227,
+   "titulo": "MODIS/Terra Thermal Anomalies/Fire Daily L3 Global 1km SIN Grid V061"
+  },
+  {
+   "sn": "TEMPO_NO2_L2",
+   "ver": "V04",
+   "ini": "2023-08-02",
+   "fin": "en curso",
+   "dc": "LARC_CLOUD",
+   "granulos_chimborazo": 0,
+   "titulo": "TEMPO NO2 tropospheric and stratospheric columns V04 (PROVISIONAL)"
+  },
+  {
+   "sn": "GEOSCF_CHM",
+   "encontrado": false
+  }
+ ],
+ "ornl_guamote": {
+  "MOD17A2H/Gpp_500m": {
+   "n_fechas": 268,
+   "primera": "A2021001",
+   "ultima": "A2026297",
+   "muestra_2023": [
+    [
+     "2023-01-01",
+     32762,
+     "0.0001"
+    ],
+    [
+     "2023-01-09",
+     32762,
+     "0.0001"
+    ],
+    [
+     "2023-01-17",
+     32762,
+     "0.0001"
+    ],
+    [
+     "2023-01-25",
+     32762,
+     "0.0001"
+    ],
+    [
+     "2023-02-02",
+     32762,
+     "0.0001"
+    ],
+    [
+     "2023-02-10",
+     32762,
+     "0.0001"
+    ],
+    [
+     "2023-02-18",
+     32762,
+     "0.0001"
+    ],
+    [
+     "2023-02-26",
+     32762,
+     "0.0001"
+    ],
+    [
+     "2023-03-06",
+     32762,
+     "0.0001"
+    ],
+    [
+     "2023-03-14",
+     32762,
+     "0.0001"
+    ]
+   ]
+  },
+  "MCD15A2H/Lai_500m": {
+   "n_fechas": 1116,
+   "primera": "A2002185",
+   "ultima": "A2026297",
+   "muestra_2023": [
+    [
+     "2023-01-01",
+     250,
+     "0.1"
+    ],
+    [
+     "2023-01-09",
+     250,
+     "0.1"
+    ],
+    [
+     "2023-01-17",
+     250,
+     "0.1"
+    ],
+    [
+     "2023-01-25",
+     250,
+     "0.1"
+    ],
+    [
+     "2023-02-02",
+     250,
+     "0.1"
+    ],
+    [
+     "2023-02-10",
+     250,
+     "0.1"
+    ],
+    [
+     "2023-02-18",
+     250,
+     "0.1"
+    ],
+    [
+     "2023-02-26",
+     250,
+     "0.1"
+    ],
+    [
+     "2023-03-06",
+     250,
+     "0.1"
+    ],
+    [
+     "2023-03-14",
+     250,
+     "0.1"
+    ]
+   ]
+  },
+  "MCD15A2H/Fpar_500m": {
+   "n_fechas": 1116,
+   "primera": "A2002185",
+   "ultima": "A2026297",
+   "muestra_2023": [
+    [
+     "2023-01-01",
+     250,
+     "0.01"
+    ],
+    [
+     "2023-01-09",
+     250,
+     "0.01"
+    ],
+    [
+     "2023-01-17",
+     250,
+     "0.01"
+    ],
+    [
+     "2023-01-25",
+     250,
+     "0.01"
+    ],
+    [
+     "2023-02-02",
+     250,
+     "0.01"
+    ],
+    [
+     "2023-02-10",
+     250,
+     "0.01"
+    ],
+    [
+     "2023-02-18",
+     250,
+     "0.01"
+    ],
+    [
+     "2023-02-26",
+     250,
+     "0.01"
+    ],
+    [
+     "2023-03-06",
+     250,
+     "0.01"
+    ],
+    [
+     "2023-03-14",
+     250,
+     "0.01"
+    ]
+   ]
+  }
+ }
+}

@@ -1,0 +1,481 @@
+{
+ "Guamote": {
+  "altura": 3056,
+  "metodo": "NASA POWER corregido mes a mes con ECMWF 9 km",
+  "meses": {
+   "oct": {
+    "top3_base": [
+     "avena",
+     "chocho",
+     "haba"
+    ],
+    "escenarios": {
+     "dP=-50% dT=+0.0": [
+      "chocho",
+      "haba",
+      "avena"
+     ],
+     "dP=-33% dT=+0.0": [
+      "chocho",
+      "haba",
+      "avena"
+     ],
+     "dP=+0% dT=+0.0": [
+      "avena",
+      "chocho",
+      "haba"
+     ],
+     "dP=+25% dT=+0.0": [
+      "chocho",
+      "avena",
+      "haba"
+     ],
+     "dP=+0% dT=-1.5": [
+      "avena",
+      "haba",
+      "chocho"
+     ],
+     "dP=+0% dT=+1.0": [
+      "chocho",
+      "avena",
+      "haba"
+     ],
+     "dP=-33% dT=-1.5": [
+      "chocho",
+      "haba",
+      "avena"
+     ]
+    },
+    "top1_igual_en_escenarios": 2,
+    "n_escenarios": 7,
+    "frecuencia_top1_por_anio": {
+     "chocho": 0.7,
+     "avena": 0.22,
+     "haba": 0.09
+    },
+    "anios": 23
+   },
+   "nov": {
+    "top3_base": [
+     "chocho",
+     "haba",
+     "avena"
+    ],
+    "escenarios": {
+     "dP=-50% dT=+0.0": [
+      "chocho",
+      "haba",
+      "avena"
+     ],
+     "dP=-33% dT=+0.0": [
+      "chocho",
+      "haba",
+      "avena"
+     ],
+     "dP=+0% dT=+0.0": [
+      "chocho",
+      "haba",
+      "avena"
+     ],
+     "dP=+25% dT=+0.0": [
+      "chocho",
+      "haba",
+      "avena"
+     ],
+     "dP=+0% dT=-1.5": [
+      "chocho",
+      "haba",
+      "avena"
+     ],
+     "dP=+0% dT=+1.0": [
+      "chocho",
+      "haba",
+      "avena"
+     ],
+     "dP=-33% dT=-1.5": [
+      "chocho",
+      "haba",
+      "avena"
+     ]
+    },
+    "top1_igual_en_escenarios": 7,
+    "n_escenarios": 7,
+    "frecuencia_top1_por_anio": {
+     "chocho": 0.52,
+     "haba": 0.39,
+     "arveja": 0.09
+    },
+    "anios": 23
+   },
+   "ene": {
+    "top3_base": [
+     "arveja",
+     "haba",
+     "avena"
+    ],
+    "escenarios": {
+     "dP=-50% dT=+0.0": [
+      "arveja",
+      "avena",
+      "haba"
+     ],
+     "dP=-33% dT=+0.0": [
+      "arveja",
+      "avena",
+      "haba"
+     ],
+     "dP=+0% dT=+0.0": [
+      "arveja",
+      "haba",
+      "avena"
+     ],
+     "dP=+25% dT=+0.0": [
+      "arveja",
+      "haba",
+      "avena"
+     ],
+     "dP=+0% dT=-1.5": [
+      "haba",
+      "avena",
+      "arveja"
+     ],
+     "dP=+0% dT=+1.0": [
+      "arveja",
+      "haba",
+      "avena"
+     ],
+     "dP=-33% dT=-1.5": [
+      "avena",
+      "arveja",
+      "haba"
+     ]
+    },
+    "top1_igual_en_escenarios": 5,
+    "n_escenarios": 7,
+    "frecuencia_top1_por_anio": {
+     "arveja": 0.7,
+     "haba": 0.26,
+     "avena": 0.04
+    },
+    "anios": 23
+   }
+  }
+ },
+ "San Juan (Chimborazo)": {
+  "altura": 3219,
+  "metodo": "NASA POWER corregido mes a mes con ECMWF 9 km",
+  "meses": {
+   "oct": {
+    "top3_base": [
+     "chocho",
+     "haba",
+     "quinua"
+    ],
+    "escenarios": {
+     "dP=-50% dT=+0.0": [
+      "chocho",
+      "avena",
+      "haba"
+     ],
+     "dP=-33% dT=+0.0": [
+      "chocho",
+      "avena",
+      "haba"
+     ],
+     "dP=+0% dT=+0.0": [
+      "chocho",
+      "haba",
+      "quinua"
+     ],
+     "dP=+25% dT=+0.0": [
+      "chocho",
+      "haba",
+      "avena"
+     ],
+     "dP=+0% dT=-1.5": [
+      "chocho",
+      "haba",
+      "avena"
+     ],
+     "dP=+0% dT=+1.0": [
+      "haba",
+      "quinua",
+      "chocho"
+     ],
+     "dP=-33% dT=-1.5": [
+      "chocho",
+      "avena",
+      "haba"
+     ]
+    },
+    "top1_igual_en_escenarios": 6,
+    "n_escenarios": 7,
+    "frecuencia_top1_por_anio": {
+     "chocho": 0.83,
+     "avena": 0.09,
+     "haba": 0.09
+    },
+    "anios": 23
+   },
+   "nov": {
+    "top3_base": [
+     "chocho",
+     "haba",
+     "avena"
+    ],
+    "escenarios": {
+     "dP=-50% dT=+0.0": [
+      "avena",
+      "haba",
+      "chocho"
+     ],
+     "dP=-33% dT=+0.0": [
+      "chocho",
+      "haba",
+      "avena"
+     ],
+     "dP=+0% dT=+0.0": [
+      "chocho",
+      "haba",
+      "avena"
+     ],
+     "dP=+25% dT=+0.0": [
+      "chocho",
+      "haba",
+      "quinua"
+     ],
+     "dP=+0% dT=-1.5": [
+      "chocho",
+      "haba",
+      "avena"
+     ],
+     "dP=+0% dT=+1.0": [
+      "chocho",
+      "haba",
+      "quinua"
+     ],
+     "dP=-33% dT=-1.5": [
+      "chocho",
+      "haba",
+      "avena"
+     ]
+    },
+    "top1_igual_en_escenarios": 6,
+    "n_escenarios": 7,
+    "frecuencia_top1_por_anio": {
+     "chocho": 0.78,
+     "haba": 0.17,
+     "avena": 0.04
+    },
+    "anios": 23
+   },
+   "ene": {
+    "top3_base": [
+     "avena",
+     "haba",
+     "quinua"
+    ],
+    "escenarios": {
+     "dP=-50% dT=+0.0": [
+      "avena",
+      "haba",
+      "quinua"
+     ],
+     "dP=-33% dT=+0.0": [
+      "avena",
+      "haba",
+      "quinua"
+     ],
+     "dP=+0% dT=+0.0": [
+      "avena",
+      "haba",
+      "quinua"
+     ],
+     "dP=+25% dT=+0.0": [
+      "avena",
+      "haba",
+      "quinua"
+     ],
+     "dP=+0% dT=-1.5": [
+      "avena",
+      "haba",
+      "quinua"
+     ],
+     "dP=+0% dT=+1.0": [
+      "avena",
+      "haba",
+      "quinua"
+     ],
+     "dP=-33% dT=-1.5": [
+      "avena",
+      "haba",
+      "quinua"
+     ]
+    },
+    "top1_igual_en_escenarios": 7,
+    "n_escenarios": 7,
+    "frecuencia_top1_por_anio": {
+     "avena": 0.52,
+     "haba": 0.48
+    },
+    "anios": 23
+   }
+  }
+ },
+ "Patate": {
+  "altura": 2200,
+  "metodo": "NASA POWER corregido mes a mes con ECMWF 9 km",
+  "meses": {
+   "oct": {
+    "top3_base": [
+     "frejol",
+     "maiz",
+     "arveja"
+    ],
+    "escenarios": {
+     "dP=-50% dT=+0.0": [
+      "frejol",
+      "maiz",
+      "arveja"
+     ],
+     "dP=-33% dT=+0.0": [
+      "frejol",
+      "maiz",
+      "arveja"
+     ],
+     "dP=+0% dT=+0.0": [
+      "frejol",
+      "maiz",
+      "arveja"
+     ],
+     "dP=+25% dT=+0.0": [
+      "frejol",
+      "maiz",
+      "arveja"
+     ],
+     "dP=+0% dT=-1.5": [
+      "frejol",
+      "maiz",
+      "arveja"
+     ],
+     "dP=+0% dT=+1.0": [
+      "frejol",
+      "maiz",
+      "arveja"
+     ],
+     "dP=-33% dT=-1.5": [
+      "frejol",
+      "maiz",
+      "arveja"
+     ]
+    },
+    "top1_igual_en_escenarios": 7,
+    "n_escenarios": 7,
+    "frecuencia_top1_por_anio": {
+     "frejol": 1.0
+    },
+    "anios": 23
+   },
+   "nov": {
+    "top3_base": [
+     "frejol",
+     "maiz",
+     "arveja"
+    ],
+    "escenarios": {
+     "dP=-50% dT=+0.0": [
+      "frejol",
+      "maiz",
+      "arveja"
+     ],
+     "dP=-33% dT=+0.0": [
+      "frejol",
+      "maiz",
+      "arveja"
+     ],
+     "dP=+0% dT=+0.0": [
+      "frejol",
+      "maiz",
+      "arveja"
+     ],
+     "dP=+25% dT=+0.0": [
+      "frejol",
+      "maiz",
+      "arveja"
+     ],
+     "dP=+0% dT=-1.5": [
+      "frejol",
+      "maiz",
+      "arveja"
+     ],
+     "dP=+0% dT=+1.0": [
+      "frejol",
+      "maiz",
+      "arveja"
+     ],
+     "dP=-33% dT=-1.5": [
+      "frejol",
+      "maiz",
+      "arveja"
+     ]
+    },
+    "top1_igual_en_escenarios": 7,
+    "n_escenarios": 7,
+    "frecuencia_top1_por_anio": {
+     "frejol": 1.0
+    },
+    "anios": 23
+   },
+   "ene": {
+    "top3_base": [
+     "frejol",
+     "maiz",
+     "arveja"
+    ],
+    "escenarios": {
+     "dP=-50% dT=+0.0": [
+      "frejol",
+      "maiz",
+      "arveja"
+     ],
+     "dP=-33% dT=+0.0": [
+      "frejol",
+      "maiz",
+      "arveja"
+     ],
+     "dP=+0% dT=+0.0": [
+      "frejol",
+      "maiz",
+      "arveja"
+     ],
+     "dP=+25% dT=+0.0": [
+      "frejol",
+      "maiz",
+      "arveja"
+     ],
+     "dP=+0% dT=-1.5": [
+      "frejol",
+      "maiz",
+      "arveja"
+     ],
+     "dP=+0% dT=+1.0": [
+      "frejol",
+      "maiz",
+      "arveja"
+     ],
+     "dP=-33% dT=-1.5": [
+      "frejol",
+      "maiz",
+      "arveja"
+     ]
+    },
+    "top1_igual_en_escenarios": 7,
+    "n_escenarios": 7,
+    "frecuencia_top1_por_anio": {
+     "frejol": 1.0
+    },
+    "anios": 23
+   }
+  }
+ }
+}
