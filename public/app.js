@@ -149,13 +149,11 @@
       const r = ev.currentTarget.getBoundingClientRect();
       reproductor.currentTime = ((ev.clientX - r.left) / r.width) * reproductor.duration;
     };
-    const tr = b.querySelector(".transcribir");
-    if (tr) tr.onclick = () => {
-      tr.remove();
-      const d = document.createElement("div");
-      d.className = "transcripcion";
-      d.textContent = texto;
-      b.appendChild(d);
+    // texto debajo de la nota de voz (la transcripción de lo que dijo el agricultor)
+    nota.escribir = (t) => {
+      let d = b.querySelector(".transcripcion");
+      if (!d) { d = document.createElement("div"); d.className = "transcripcion"; b.appendChild(d); }
+      d.textContent = t;
       bajar();
     };
     return nota;
@@ -336,9 +334,25 @@
       const blob = new Blob(trozos, { type: g.mimeType });
       const nota = notaDeVoz("yo", "");
       nota.listo(URL.createObjectURL(blob));
-      historial.push({ role: "user", content: "(nota de voz)" });
-      try { preguntar({ audio: await aWav16k(blob) }); }
-      catch { preguntar({ texto: "(no se pudo leer la nota de voz)" }); }
+      // 1) se transcribe la nota de voz, 2) el texto va al modelo como cualquier pregunta escrita
+      nota.escribir("📝 Escuchando su audio…");
+      lineaEstado.textContent = "escuchando audio…";
+      let texto = null;
+      try {
+        const r = await fetch("api/transcribir", { method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ audio: await aWav16k(blob) }) });
+        texto = (await r.json()).texto;
+      } catch { texto = null; }
+      lineaEstado.textContent = "en línea";
+      if (!texto) {
+        nota.escribir("📝 No se entendió");
+        await mostrar({ mensajes: [{ tipo: "texto", texto: "🙉 No le entendí bien. ¿Puede repetir o escribir?" },
+          { tipo: "audio", texto: "No le entendí bien. ¿Puede repetir o escribir?" }], botones: [] });
+        return;
+      }
+      nota.escribir("📝 " + texto);
+      historial.push({ role: "user", content: texto });
+      preguntar({ texto });
     };
     g.stop();
   }

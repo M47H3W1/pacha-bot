@@ -14,7 +14,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 from app import charts, clients
 from app import engine as E
-from app.catalog import CROPS, MESES, MESES_LARGO, ROTACIONES_REF
+from app.catalog import CASOS, CROPS, MESES, MESES_LARGO, ventana
 from app.textos import DIAS, NUMEROS, clasificar_meses, cuando, num, plan_riego
 
 log = logging.getLogger("pacha.web")
@@ -160,14 +160,25 @@ def chakra(st: dict) -> dict:
 def sembrar(st: dict) -> dict:
     sitio, clima = sitio_y_clima(st["lat"], st["lon"])
     mes = st.get("mes") or _mes_siguiente()
-    recs = E.recomendar_para_empezar(sitio, clima, mes, None)
+    todos_recs = E.recomendar_para_empezar(sitio, clima, mes, None, n=99)
+    recs = [f for f in todos_recs if f["crop"].id != "descanso"
+            and mes in (ventana(f["crop"].id, sitio.provincia) or {"meses": {mes}})["meses"]][:3]
+    if not recs:
+        conteo = {m: sum(1 for c in E.cultivos_aptos(sitio.elev)
+                         if m in (ventana(c.id, sitio.provincia) or {}).get("meses", ())) for m in range(1, 13)}
+        mejores = sorted(conteo, key=lambda m: -conteo[m])[:2]
+        return _respuesta(_decir(f"📅 {MESES_LARGO[mes - 1].capitalize()} no es época de siembra aquí.\n"
+                                 f"Mejor en {MESES_LARGO[mejores[0] - 1]} o {MESES_LARGO[mejores[1] - 1]}."),
+                          [_boton(MESES_LARGO[m - 1].capitalize(), "sembrar", mes=m) for m in mejores]
+                          + [_boton("📅 Otro mes", "meses")], {**st, "mes": mes})
     notas = []
     for f in recs:
         _, txt, color = VEREDICTO[f["banco"]["veredicto"]]
         notas.append([(txt, color), (f"Cosecha: {MESES_LARGO[f['banco']['mes_ids'][-1] - 1]}", "#555")])
     img = charts.tarjeta_cultivos([f["crop"] for f in recs], f"Para sembrar en {MESES_LARGO[mes - 1]}", False, notas)
     nombres = [f["crop"].nombre.lower() for f in recs]
-    texto = (f"🌱 Para {MESES_LARGO[mes - 1]}: {', '.join(nombres[:-1])} y {nombres[-1]}.\n"
+    lista = nombres[0] if len(nombres) == 1 else f"{', '.join(nombres[:-1])} y {nombres[-1]}"
+    texto = (f"🌱 Para {MESES_LARGO[mes - 1]}: {lista}.\n"
              "Toque uno para saber si es buen momento.")
     botones = [_boton(f"{f['crop'].emoji} {f['crop'].nombre}", "decision", crop=f["crop"].id, mes=mes) for f in recs]
     botones += [_boton("📅 Otro mes", "meses"), _boton("📋 Otros cultivos", "todos", mes=mes)]
@@ -202,6 +213,9 @@ def decision(st: dict) -> dict:
         lineas = [f"⚠️ Puede sembrar {nombre} en {mes_l}, pero riegue en {b['mes_critico']}."]
     else:
         lineas = [f"❌ Sin riego, mejor no siembre {nombre} en {mes_l}."]
+    v = ventana(crop.id, sitio.provincia)
+    if v and mes not in v["meses"]:
+        lineas.append(f"📅 Ojo: la época de siembra aquí es {v['texto']}.")
     lineas.append(f"🌾 Cosecha en {cosecha}.")
     m2 = area_m2(st.get("radio", 100))
     if b["total_falta"] >= 5:
@@ -232,19 +246,25 @@ def rotacion(st: dict) -> dict:
 
 
 def probadas(st: dict) -> dict:
+    """Casos de rotación medidos en el campo (hoja Rotaciones del Excel), empezando por la provincia del agricultor."""
     sitio, clima = sitio_y_clima(st["lat"], st["lon"])
     mes = int(st.get("mes") or _mes_siguiente())
-    evals = {rid: E.evaluar_rotacion(sitio, clima, [i for i in ref["secuencia"] if i in CROPS], mes)
-             for rid, ref in ROTACIONES_REF.items()}
-    lineas = ["📚 Probadas en la sierra (INIAP):"]
-    for rid in ("R1", "R2"):
-        ref, e = ROTACIONES_REF[rid], evals[rid]
-        lineas.append(f"• {ref['titulo']}: " + " → ".join(c.nombre.lower() for c in e["crops"]))
-    mejor = min(("R1", "R2"), key=lambda r: evals[r]["falta_anual"])
-    lineas.append(f"💧 En su tierra pide menos agua: {ROTACIONES_REF[mejor]['titulo']}.")
-    crops = evals[mejor]["crops"]
-    img = charts.tarjeta_cultivos(crops, ROTACIONES_REF[mejor]["titulo"], True, _notas_rotacion(crops, mes))
-    return _respuesta([_png(img), *_decir("\n".join(lineas))], MENU)
+    orden = sorted(CASOS, key=lambda c: c["provincia"] != sitio.provincia)
+    i = int(st.get("i", 0)) % len(orden)
+    caso = orden[i]
+    ids = [c for c in caso["secuencia"] if c in CROPS]
+    e = E.evaluar_rotacion(sitio, clima, ids, mes)
+    agua = ("casi no hay que regar" if e["falta_anual"] < 30 else
+            "hay que regar a veces" if e["falta_anual"] < 100 else "necesita riego")
+    lineas = [f"📚 Probado en {caso['lugar']} ({caso['provincia']}):",
+              " → ".join(CROPS[c].nombre.lower() for c in ids),
+              f"✅ {caso['resultado']}",
+              f"💧 En su tierra: {agua}."]
+    vistos = [CROPS[c] for c in ids[:5]]
+    img = charts.tarjeta_cultivos(vistos, f"{caso['lugar']} · {caso['periodo']}", True, _notas_rotacion(vistos, mes))
+    botones = [_boton("➡️ Otro caso probado", "probadas", i=i + 1), _boton("🌱 Qué sembrar", "sembrar"),
+               _boton("💧 Cuánto regar", "regar_cultivo")]
+    return _respuesta([_png(img), *_decir("\n".join(lineas))], botones)
 
 
 def regar_cultivo(st: dict) -> dict:
@@ -297,7 +317,12 @@ def contexto(st: dict) -> str:
               f"evapotranspiración anual {res['et0_anual']:.0f} mm.",
               "Meses lluviosos: " + (cuando([i for i, t in enumerate(tipos) if t == 'lluvia']) or "ninguno") + ".",
               "Meses secos: " + (cuando([i for i, t in enumerate(tipos) if t == 'seco']) or "ninguno") + ".",
-              "Cultivos aptos para su altura: " + ", ".join(c.nombre for c in E.cultivos_aptos(sitio.elev)) + "."]
+              "Cultivos aptos para su altura: " + ", ".join(c.nombre for c in E.cultivos_aptos(sitio.elev)) + ".",
+              "Época de siembra en su zona (INIAP): " + "; ".join(
+                  f"{c.nombre} {ventana(c.id, sitio.provincia)['texto']}" for c in E.cultivos_aptos(sitio.elev)
+                  if ventana(c.id, sitio.provincia)) + ".",
+              "Solo hablar de estos cultivos (los investigados por el equipo): "
+              + ", ".join(c.nombre for c in CROPS.values() if c.id != "descanso") + "."]
     if st.get("crop"):
         crop, mes = CROPS[st["crop"]], int(st.get("mes") or _mes_siguiente())
         b, _, _ = E.analisis_cultivo(clima, crop, mes)
