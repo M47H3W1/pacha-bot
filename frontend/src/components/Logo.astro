@@ -1,0 +1,25 @@
+---
+// Logo del mock: montaña con franjas de cultivo (verde, verde limón y amarillo) + "PACHA EC BOT".
+interface Props { compacto?: boolean }
+const { compacto = false } = Astro.props;
+---
+<a href="/" class:list={["logo", { compacto }]} aria-label="Pacha EC Bot, inicio">
+  <svg viewBox="0 0 120 70" aria-hidden="true">
+    <path d="M6 44 L44 10 L58 24 L68 16 L104 44" fill="none" stroke="var(--verde)" stroke-width="6" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M38 17 L44 10 L52 18 L46 16 Z" fill="var(--verde)"/>
+    <path d="M10 50 C40 38 74 38 108 46 L106 52 C74 45 42 46 12 58 Z" fill="#3f8a4f"/>
+    <path d="M14 58 C44 48 76 48 104 54 L100 60 C72 55 46 56 20 66 Z" fill="#a7c13a"/>
+    <path d="M24 66 C50 58 74 58 96 62 L90 68 C70 64 52 65 34 70 Z" fill="#e2b33a"/>
+  </svg>
+  {!compacto && <span class="barra" aria-hidden="true"></span>}
+  <span class="nombre">PACHA EC BOT</span>
+</a>
+
+<style>
+  .logo { display: inline-flex; align-items: center; gap: 0.75rem; text-decoration: none; color: var(--verde); }
+  svg { width: 74px; height: auto; }
+  .barra { width: 2px; height: 44px; background: var(--verde); opacity: 0.8; }
+  .nombre { font: 900 1.35rem/1 var(--fuente-titulo); letter-spacing: 0.01em; }
+  .compacto svg { width: 48px; }
+  .compacto .nombre { font-size: 1.05rem; }
+</style>

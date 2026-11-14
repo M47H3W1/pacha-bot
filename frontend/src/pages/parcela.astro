@@ -1,0 +1,117 @@
+---
+import Base from "../layouts/Base.astro";
+import "../styles/graficos.css";
+---
+<Base titulo="Mi parcela" nav="parcela">
+  <div class="encabezado">
+    <div>
+      <p class="peque" id="lugar-sub">Su parcela</p>
+      <h1 id="lugar">Mi parcela</h1>
+      <div class="raya"></div>
+    </div>
+    <div class="acciones-cab">
+      <button class="btn btn-suave mini" type="button" id="escuchar" aria-label="Escuchar el resumen">🔊 Escuchar</button>
+      <a class="btn btn-borde mini" href="/ubicacion">Cambiar</a>
+    </div>
+  </div>
+  <div id="contenido-parcela"></div>
+</Base>
+
+<script>
+  import { leer, tieneParcela } from "../lib/estado";
+  import { cargando, consultar, esc, hablar, mostrarError, num } from "../lib/api";
+  import { lluviaVsEvaporacion, tiraHumedad } from "../lib/graficos";
+
+  const e = leer();
+  if (!tieneParcela(e)) location.replace("/ubicacion");
+  const caja = document.getElementById("contenido-parcela")!;
+  document.getElementById("lugar")!.textContent = e.nombre || "Mi parcela";
+  let resumen = "";
+
+  const lista = (m: string[]) => m.length <= 1 ? (m[0] || "") : `${m.slice(0, -1).join(", ")} y ${m.at(-1)}`;
+  const fuente = (t: string, ec = false) => `<a class="fuente${ec ? " ec" : ""}" href="/datos">${t}</a>`;
+
+  async function cargar() {
+    cargando(caja);
+    try {
+      const d = await consultar("parcela");
+      const c = d.clima, s = d.suelo, l = d.lugar, t = d.tendencia;
+      document.getElementById("lugar-sub")!.textContent = `${l.provincia} · ${l.area_texto}${e.demo ? " · ejemplo" : ""}`;
+      const falta = c.et0_anual - c.lluvia_anual;
+      resumen = `Su parcela está a ${num(l.elev)} metros. Llueven unos ${num(c.lluvia_anual)} milímetros al año` +
+        (c.meses_lluvia.length ? `, sobre todo en ${lista(c.meses_lluvia)}` : "") +
+        (c.meses_secos.length ? `. Es seco en ${lista(c.meses_secos)}: ahí hay que regar.` : ".");
+      caja.innerHTML = `
+        <p class="resumen">${esc(resumen)}</p>
+        <div class="rejilla">
+          <article class="tarjeta">
+            <h3>Altura y terreno</h3>
+            <div class="cifra">${num(l.elev)} <small>m</small></div>
+            <p class="peque">${esc(l.area_texto)}${d.pendiente ? ` · terreno ${esc(d.pendiente.clase)} (desnivel ${num(d.pendiente.desnivel_m)} m)` : ""}</p>
+            ${fuente("Altura del terreno")}
+          </article>
+          <article class="tarjeta">
+            <h3>Temperatura</h3>
+            <div class="cifra">${num(c.tmin, 0)} a ${num(c.tmax, 0)} <small>°C</small></div>
+            <p class="peque">Noches frías y días templados. ${t.calor_dias ? `${num(t.calor_dias)} días al año pasan de 25 °C.` : "Casi nunca pasa de 25 °C."}</p>
+            ${fuente("NASA POWER")}
+          </article>
+          <article class="tarjeta">
+            <h3>Suelo</h3>
+            <div class="cifra">${esc(s.textura.charAt(0).toUpperCase() + s.textura.slice(1))}</div>
+            <p class="peque">Guarda ${esc(s.guarda)} agua: unos ${num(s.agua_util_mm)} mm donde están las raíces.${s.supuesto ? " (Dato de suelo supuesto: el servicio no respondió.)" : ""}</p>
+            ${fuente(s.supuesto ? "Valor típico" : "SoilGrids")}
+          </article>
+          <article class="tarjeta">
+            <h3>Lluvia en el año</h3>
+            <div class="cifra">${num(c.lluvia_anual)} <small>mm</small></div>
+            <p class="peque">En un año seco: ${num(c.lluvia_seca)} mm. Se evaporan ${num(c.et0_anual)} mm:
+              <strong>${falta > 0 ? "más de lo que llueve" : "menos de lo que llueve"}</strong>.</p>
+            ${fuente("NASA POWER + ECMWF")} ${fuente("FAO-56")}
+          </article>
+        </div>
+
+        <article class="tarjeta ancha">
+          <h3>Lluvia y evaporación, mes a mes</h3>
+          ${lluviaVsEvaporacion(c.lluvia_mes, c.et0_mes, c.tipo_mes)}
+          <div class="leyenda"><span><i style="background:var(--azul)"></i>Mes de lluvia</span>
+            <span><i style="background:var(--salvia)"></i>Mes intermedio</span><span><i style="background:var(--naranja)"></i>Mes seco</span>
+            <span><i style="background:var(--texto);height:3px"></i>Lo que se evapora</span></div>
+          ${fuente(`NASA POWER ${esc(d.periodo)}`)}
+        </article>
+
+        <article class="tarjeta ancha">
+          <h3>Humedad del suelo durante el año</h3>
+          <p class="peque">Suelo con pasto o rastrojo, sin riego. Naranja: suelo seco.</p>
+          ${tiraHumedad(c.humedad_mes)}
+          ${fuente("Balance de agua FAO-56")}
+        </article>
+
+        <article class="tarjeta ancha">
+          <h3>¿Cómo ha cambiado?</h3>
+          <p>${esc(t.decadas)}: la lluvia ${t.cambio_lluvia_pct >= 0 ? "subió" : "bajó"} <strong>${num(Math.abs(t.cambio_lluvia_pct))} %</strong>
+            y la temperatura ${Math.abs(t.cambio_temp_c) < 0.1 ? "se mantuvo igual" : `cambió <strong>${t.cambio_temp_c > 0 ? "+" : ""}${num(t.cambio_temp_c, 1)} °C</strong>`}.
+            ${t.aguaceros ? `Hay unos ${num(t.aguaceros)} aguaceros fuertes al año: mantenga la tierra cubierta.` : ""}</p>
+          ${fuente("NASA POWER")}
+        </article>
+
+        <p class="peque metodo">Método: ${esc(d.metodo)}. Los datos describen la zona de su parcela, no cada surco.</p>
+        <a class="btn btn-primario siguiente" href="/sembrar">¿Qué sembrar?</a>`;
+    } catch (err) {
+      mostrarError(caja, err, cargar);
+    }
+  }
+  cargar();
+  document.getElementById("escuchar")!.addEventListener("click", () => resumen && hablar(resumen));
+</script>
+
+<style>
+  .encabezado { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem; }
+  .acciones-cab { display: flex; gap: 0.5rem; }
+  .mini { width: auto; min-height: 44px; padding: 0.5rem 0.9rem; font-size: 0.95rem; }
+  :global(.resumen) { font-size: 1.12rem; font-weight: 600; margin: 0 0 1rem; }
+  :global(.ancha) { margin-top: 0.85rem; }
+  :global(.metodo) { margin: 1rem 0; }
+  :global(.siguiente) { margin: 0.5rem 0 1.5rem; }
+  @media (min-width: 900px) { :global(.siguiente) { max-width: 360px; } }
+</style>

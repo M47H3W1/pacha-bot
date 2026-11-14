@@ -21,7 +21,8 @@ from fastapi.responses import JSONResponse, Response  # noqa: E402
 from pydantic import BaseModel, Field  # noqa: E402
 
 from app import voz  # noqa: E402
-from web import openrouter, servicio  # noqa: E402
+from app.engine import FueraDeSierra  # noqa: E402
+from web import app_api, openrouter, servicio  # noqa: E402
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 log = logging.getLogger("pacha.api")
@@ -54,6 +55,43 @@ def _limpiar_estado(st: dict) -> dict:
     if "radio" in out:
         out["radio"] = min(max(out["radio"], 10), 3000)
     return out
+
+
+class Consulta(BaseModel):
+    estado: dict = {}
+
+
+@app.get("/api/parroquias")
+def parroquias():
+    return JSONResponse(app_api.parroquias(), headers={"Cache-Control": "public, max-age=86400"})
+
+
+@app.get("/api/fuentes")
+def fuentes():
+    return app_api.fuentes()
+
+
+@app.post("/api/app/{nombre}")
+def consulta(nombre: str, c: Consulta):
+    """Endpoints de la aplicación: parcela, recomendacion, cultivo, riego y probadas. Devuelven JSON."""
+    if nombre not in app_api.ACCIONES:
+        return JSONResponse({"error": "no existe"}, status_code=404)
+    st = _limpiar_estado(c.estado)
+    if "lat" not in st or "lon" not in st:
+        return JSONResponse({"error": "Falta la ubicación de la parcela."}, status_code=400)
+    if not (-5.1 <= st["lat"] <= 1.5 and -81.1 <= st["lon"] <= -75.1):
+        return JSONResponse({"error": "La ubicación está fuera del Ecuador continental."}, status_code=422)
+    if nombre in ("cultivo", "riego") and "crop" not in st:
+        return JSONResponse({"error": "Falta el cultivo."}, status_code=400)
+    log.info("app %s %s", nombre, {k: st[k] for k in st if k not in ("lat", "lon")})
+    try:
+        return app_api.ACCIONES[nombre](st)
+    except FueraDeSierra:
+        return JSONResponse({"error": "Ese lugar no es de la sierra. Elija una parcela sobre los 1.500 metros."},
+                            status_code=422)
+    except Exception:
+        log.exception("app %s", nombre)
+        return JSONResponse({"error": "No pudimos traer los datos. Intente otra vez."}, status_code=502)
 
 
 @app.get("/api/salud")
@@ -103,7 +141,9 @@ async def pregunta(p: Pregunta):
             [{"t": "📍 Enviar mi tierra", "accion": "mapa"}], "estado": {}}
 
 
-if not os.getenv("VERCEL"):  # en local, la misma app sirve la página
+if not os.getenv("VERCEL"):  # en local, la misma app sirve la página ya compilada (cd frontend && npm run build)
     from fastapi.staticfiles import StaticFiles
 
-    app.mount("/", StaticFiles(directory=RAIZ / "public", html=True), name="public")
+    _dist = RAIZ / "frontend" / "dist"
+    if _dist.exists():
+        app.mount("/", StaticFiles(directory=_dist, html=True), name="app")

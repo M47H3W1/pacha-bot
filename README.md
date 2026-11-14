@@ -65,7 +65,39 @@ python scripts/dry_run.py
 ## Equipo
 Lee [CONTRIBUTING.md](CONTRIBUTING.md) antes de tu primer commit: ramas, Pull Requests y manejo de credenciales.
 
-## Maqueta web estilo chat (Vercel)
+## Aplicación web y móvil (Astro, Vercel)
+
+App instalable en el celular (PWA) hecha con **Astro** a partir del mock (`Mocks/`). Es la entrada principal; el chat
+anterior sigue disponible en `/chat/` como "Preguntar a Pacha".
+
+| Pantalla | Ruta | Qué muestra |
+|---|---|---|
+| Bienvenida | `/` | "Planifique su próxima siembra": probar con el ejemplo de Calpi o consultar su parcela |
+| Ubicación | `/ubicacion` | Elegir parroquia (59 de la sierra), usar el GPS del teléfono y el tamaño de la parcela |
+| Mi parcela | `/parcela` | Altura, temperatura, suelo, lluvia contra evaporación por mes, humedad del suelo y tendencia |
+| Qué sembrar | `/sembrar` | Los 3 mejores cultivos para el mes, **en cuántos de cada 10 años gana cada uno**, semáforo mes a mes y rotaciones |
+| Riego | `/riego` | Cuántas veces y cuánta agua regar esta semana, con el pronóstico |
+| Datos | `/datos` | Fuentes NASA y de Ecuador, validación con el INAMHI, créditos y declaración de IA |
+
+Cada cifra lleva una chapita con su fuente. Botón 🔊 para escuchar (voz del teléfono). Funciona en celular y
+escritorio, y la interfaz queda guardada para usarla sin señal.
+
+**API JSON** (`api/index.py` → `web/app_api.py`): `GET /api/parroquias`, `GET /api/fuentes` y
+`POST /api/app/{parcela|recomendacion|cultivo|riego|probadas}` con `{"estado": {"lat", "lon", "radio", "mes", "crop", "dias"}}`.
+Calpi (el ejemplo del mock) trae datos guardados en `app/semillas/` para que la demo no dependa de la red.
+
+En local:
+
+```bash
+pip install -r requirements.txt uvicorn
+cd frontend && npm install && npm run build && cd ..
+uvicorn api.index:app --port 8765          # sirve la app compilada y la API en http://localhost:8765
+# o, para editar la interfaz con recarga: (cd frontend && npm run dev)  → http://localhost:4321 (usa la API del 8765)
+```
+
+Vercel compila `frontend/` (`vercel.json` → `frontend/dist`) y publica la API de Python en `/api`.
+
+## Chat "Preguntar a Pacha" (`/chat/`)
 
 Página para celular que simula una conversación de mensajería con Pacha. Pacha responde **solo con imágenes y
 notas de voz**, calculadas con los datos reales (NASA POWER corregido con ECMWF, FAO-56, balance de suelo).
@@ -79,7 +111,7 @@ notas de voz**, calculadas con los datos reales (NASA POWER corregido con ECMWF,
 
 | Archivo | Qué hace |
 |---|---|
-| `public/` | Página (HTML, CSS, JS sin compilación, mapa Leaflet) |
+| `frontend/public/chat/` | Página del chat (HTML, CSS, JS sin compilación, mapa Leaflet) |
 | `api/index.py` | API FastAPI (función Python de Vercel) |
 | `web/servicio.py` | Arma cada respuesta: imagen + guion de audio |
 | `web/openrouter.py` | Preguntas libres con OpenRouter |
