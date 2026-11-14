@@ -303,6 +303,40 @@
   }
 
   let grabador = null, trozos = [], inicioGrab = 0, reloj = null;
+
+  // Transcripción en el propio navegador (Chrome, Edge, Safari): gratis y al instante.
+  // Si el navegador no la trae, se usa la transcripción del servidor (OpenRouter) como respaldo.
+  const Reconocedor = window.SpeechRecognition || window.webkitSpeechRecognition;
+  let reconocedor = null, dicho = "", parcial = "", finReconocedor = null;
+  function empezarReconocimiento() {
+    dicho = ""; parcial = "";
+    if (!Reconocedor) return;
+    try {
+      reconocedor = new Reconocedor();
+      reconocedor.lang = "es-EC";
+      reconocedor.continuous = true;
+      reconocedor.interimResults = true;
+      reconocedor.onresult = (e) => {
+        parcial = "";
+        for (let i = e.resultIndex; i < e.results.length; i++) {
+          if (e.results[i].isFinal) dicho += e.results[i][0].transcript + " ";
+          else parcial += e.results[i][0].transcript;
+        }
+        $(".grab-ayuda").textContent = (dicho + parcial).trim().slice(-40) || "Toque ➤ para enviar";
+      };
+      finReconocedor = new Promise((ok) => { reconocedor.onend = ok; reconocedor.onerror = ok; });
+      reconocedor.start();
+    } catch { reconocedor = null; }
+  }
+  async function terminarReconocimiento() {
+    if (!reconocedor) return "";
+    try { reconocedor.stop(); } catch { /* ya terminó */ }
+    await Promise.race([finReconocedor, espera(1500)]);
+    reconocedor = null;
+    $(".grab-ayuda").textContent = "Toque ➤ para enviar";
+    return (dicho + parcial).trim();
+  }
+
   btnEnviar.onclick = async () => {
     if (btnEnviar.classList.contains("texto")) { enviarTexto(); return; }
     if (grabador) { terminarGrabacion(true); return; }
@@ -312,6 +346,7 @@
       trozos = [];
       grabador.ondataavailable = (e) => trozos.push(e.data);
       grabador.start();
+      empezarReconocimiento();
       inicioGrab = Date.now();
       $("#grabando").hidden = false;
       btnEnviar.classList.add("grabando");
@@ -328,21 +363,24 @@
     clearInterval(reloj);
     $("#grabando").hidden = true;
     btnEnviar.classList.remove("grabando");
+    const transcrito = terminarReconocimiento();
     g.onstop = async () => {
       g.stream.getTracks().forEach((t) => t.stop());
-      if (!enviar || Date.now() - inicioGrab < 700) return;
+      if (!enviar || Date.now() - inicioGrab < 700) { await transcrito; return; }
       const blob = new Blob(trozos, { type: g.mimeType });
       const nota = notaDeVoz("yo", "");
       nota.listo(URL.createObjectURL(blob));
       // 1) se transcribe la nota de voz, 2) el texto va al modelo como cualquier pregunta escrita
       nota.escribir("📝 Escuchando su audio…");
       lineaEstado.textContent = "escuchando audio…";
-      let texto = null;
-      try {
-        const r = await fetch("api/transcribir", { method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ audio: await aWav16k(blob) }) });
-        texto = (await r.json()).texto;
-      } catch { texto = null; }
+      let texto = await transcrito;
+      if (!texto) {
+        try {
+          const r = await fetch("api/transcribir", { method: "POST", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ audio: await aWav16k(blob) }) });
+          texto = (await r.json()).texto;
+        } catch { texto = null; }
+      }
       lineaEstado.textContent = "en línea";
       if (!texto) {
         nota.escribir("📝 No se entendió");
