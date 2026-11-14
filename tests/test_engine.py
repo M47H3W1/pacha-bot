@@ -55,3 +55,14 @@ def test_banco_y_rotaciones(chimborazo):
 def test_fuera_de_sierra():
     with pytest.raises(E.FueraDeSierra):
         E.crear_sitio(-2.19, -79.89)  # Guayaquil, costa
+
+
+@pytest.mark.red
+def test_veredicto_balance_suelo(chimborazo):
+    s, c = chimborazo
+    seco = E.banco_de_agua(c, CROPS["papa"], 6)     # junio: entra a la época seca
+    lluvia = E.banco_de_agua(c, CROPS["papa"], 11)  # noviembre: época de lluvias
+    assert seco["veredicto"] == "no" and lluvia["veredicto"] in ("si", "cuidado")
+    assert seco["total_falta"] > lluvia["total_falta"]
+    assert len(seco["estado_mes"]) == len(seco["meses"]) and "rojo" in seco["estado_mes"]
+    assert seco["total_falta_seco"] >= seco["total_falta"]

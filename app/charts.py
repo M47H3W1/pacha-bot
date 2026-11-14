@@ -201,9 +201,8 @@ def foto_cultivo(crop_id: str):
         if f.exists():
             from PIL import Image, ImageOps
             img = ImageOps.exif_transpose(Image.open(f)).convert("RGB")
-            lado = min(img.size)
-            x0, y0 = (img.width - lado) // 2, (img.height - lado) // 2
-            return np.asarray(img.crop((x0, y0, x0 + lado, y0 + lado)).resize((420, 420)))
+            # Sin recortar ni estirar: la foto entra completa y se rellena con un fondo suave.
+            return np.asarray(ImageOps.pad(img, (480, 480), color=(244, 239, 230), method=Image.LANCZOS))
     return None
 
 
@@ -212,10 +211,16 @@ def _panel(ax, c, x0, y0, ancho, alto, numero=None):
     img = foto_cultivo(c.id)
     alto_nombre = 0.45
     if img is not None:
-        ax.imshow(img, extent=(x0, x0 + ancho, y0 + alto_nombre, y0 + alto), zorder=2)
-        ax.add_patch(matplotlib.patches.Rectangle((x0, y0), ancho, alto_nombre, color="#3d2b1f", zorder=2))
-        ax.text(x0 + ancho / 2, y0 + alto_nombre / 2, c.nombre, ha="center", va="center", fontsize=19,
-                fontweight="bold", color="white", zorder=3)
+        lado = min(ancho, alto - alto_nombre)  # celda cuadrada: la foto nunca se deforma
+        xi = x0 + (ancho - lado) / 2
+        ax.imshow(img, extent=(xi, xi + lado, y0 + alto - lado, y0 + alto), zorder=2, aspect="equal",
+                  interpolation="lanczos")
+        ax.add_patch(matplotlib.patches.Rectangle((xi, y0 + alto - lado), lado, lado, fill=False,
+                                                  edgecolor="#d7ccc8", lw=1, zorder=3))
+        ax.add_patch(matplotlib.patches.Rectangle((xi, y0 + alto - lado - alto_nombre), lado, alto_nombre,
+                                                  color="#3d2b1f", zorder=2))
+        ax.text(xi + lado / 2, y0 + alto - lado - alto_nombre / 2, c.nombre, ha="center", va="center",
+                fontsize=19 if len(c.nombre) < 12 else 15, fontweight="bold", color="white", zorder=3)
     else:
         ax.add_patch(matplotlib.patches.FancyBboxPatch((x0, y0), ancho, alto, boxstyle="round,pad=0.05",
                                                        color=COLOR_CULTIVO.get(c.familia, VERDE), zorder=2))
@@ -231,10 +236,11 @@ def tarjeta_cultivos(crops: list, titulo: str, flechas: bool = True) -> bytes:
     """Fotos (o cajas) de cultivos; con flechas si es una rotación, con números si es una lista."""
     n = len(crops)
     ancho, paso = 2.7, 3.6
-    fig = plt.figure(figsize=(paso * n + 0.6, 4.4), facecolor="white")
+    fig = plt.figure(figsize=(paso * n + 0.6, 3.3 / 0.86), facecolor="white")
     ax = fig.add_axes([0, 0, 1, 0.86])
     ax.set_xlim(0, paso * n + 0.6)
     ax.set_ylim(0, 3.3)
+    ax.set_aspect("equal")
     ax.axis("off")
     for i, c in enumerate(crops):
         x0 = 0.4 + i * paso
@@ -252,13 +258,38 @@ def galeria(crops: list, titulo: str) -> bytes | None:
         return None
     cols = 4
     filas = (len(crops) + cols - 1) // cols
-    fig = plt.figure(figsize=(12, 3.2 * filas + 0.6), facecolor="white")
-    ax = fig.add_axes([0, 0, 1, 1 - 0.6 / (3.2 * filas + 0.6)])
+    fig = plt.figure(figsize=(12, 3.0 * filas + 0.6), facecolor="white")
+    ax = fig.add_axes([0, 0, 1, 1 - 0.6 / (3.0 * filas + 0.6)])
     ax.set_xlim(0, cols * 3.0)
     ax.set_ylim(0, filas * 3.0)
+    ax.set_aspect("equal")
     ax.axis("off")
     for k, c in enumerate(crops):
         f, col = divmod(k, cols)
         _panel(ax, c, col * 3.0 + 0.15, (filas - 1 - f) * 3.0 + 0.1, 2.7, 2.8)
     fig.suptitle(titulo, fontsize=21, fontweight="bold", y=0.995)
+    return _png(fig)
+
+
+SEMAFORO = {"verde": ("#2e7d32", "Hay agua"), "amarillo": ("#f9a825", "Justo"), "rojo": ("#c62828", "Falta agua")}
+
+
+def semaforo(crop, meses: list[str], estados: list[str], titulo: str) -> bytes:
+    """Foto del cultivo y, mes a mes, un círculo verde (hay agua), amarillo (justo) o rojo (falta agua)."""
+    n = len(meses)
+    ancho_total = 3.4 + 1.25 * n
+    fig = plt.figure(figsize=(ancho_total, 3.3 / 0.85), facecolor="white")
+    ax = fig.add_axes([0, 0, 1, 0.85])
+    ax.set_xlim(0, ancho_total)
+    ax.set_ylim(0, 3.3)
+    ax.set_aspect("equal")
+    ax.axis("off")
+    _panel(ax, crop, 0.2, 0.15, 2.8, 3.0)
+    for i, (m, e) in enumerate(zip(meses, estados)):
+        x = 3.6 + 1.25 * i + 0.55
+        color, txt = SEMAFORO[e]
+        ax.add_patch(Circle((x, 1.95), 0.5, color=color, zorder=3))
+        ax.text(x, 0.95, m.capitalize(), ha="center", fontsize=17, fontweight="bold", color="#333")
+        ax.text(x, 0.45, txt, ha="center", fontsize=10.5, color=color, fontweight="bold")
+    fig.suptitle(titulo, fontsize=20, fontweight="bold", y=0.98)
     return _png(fig)

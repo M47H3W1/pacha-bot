@@ -10,7 +10,7 @@ import logging
 from . import bot as B
 from . import charts, clients, voz
 from . import engine as E
-from .catalog import CROPS, MESES, MESES_LARGO, RIEGO
+from .catalog import CROPS, MESES, MESES_LARGO, RIEGO, ROTACIONES_REF
 from .kichwa import boton as kb_k
 from .kichwa import cultivo as nombre_k
 from .kichwa import PALABRAS
@@ -252,7 +252,9 @@ async def recomendar(update, ctx, mes: int):
         c = f["crop"]
         porque = ("alimenta la tierra" if c.fija_n else "pide poca agua" if f["comp"]["agua"] > 0.6
                   else "se da bien en su altura")
-        lineas.append(f"{i + 1}. {c.emoji} {nombre_k(c, st)}: {porque}.")
+        agua = {"si": "✅ la lluvia alcanza", "cuidado": "⚠️ a veces hay que regar",
+                "no": "❌ necesita riego"}[f["banco"]["veredicto"]]
+        lineas.append(f"{i + 1}. {c.emoji} {nombre_k(c, st)}: {agua}, {porque}.")
     lineas.append("Toque el que quiere sembrar.")
     filas = [[(f["crop"].etiqueta, f"n:p:{f['crop'].id}")] for f in recs] + [[("📋 Otros cultivos", "n:all")]]
     await decir(update, ctx, "\n".join(lineas), filas, foto=img, tecnico=f"n:t:{mes}")
@@ -436,3 +438,88 @@ async def elegir_idioma(update, ctx, idioma: str):
     st["idioma"] = idioma
     await B.guardar(update, ctx)
     await menu(update, ctx)
+
+
+def de_cada_10(n, total) -> str:
+    return f"{round(10 * n / total)} de cada 10"
+
+
+async def decision(update, ctx):
+    """¿Conviene sembrar este cultivo en este mes? Veredicto, semáforo mes a mes y confianza de los datos."""
+    st = await B.estado(update, ctx)
+    sitio = B.sitio_de(st)
+    if not sitio or not st.get("crop"):
+        await que_sembrar(update, ctx)
+        return
+    crop = CROPS[st["crop"]]
+    msg = await B.espera(update, "⏳ Revisando 24 años de lluvia…")
+    clima = await asyncio.to_thread(B.clima_de, sitio)
+    b, _, _ = await asyncio.to_thread(E.analisis_cultivo, clima, crop, st["mes"])
+    fuentes = await asyncio.to_thread(E.comparar_fuentes, sitio, clima)
+    nombre, mes = nombre_k(crop, st).lower(), MESES_LARGO[st["mes"] - 1]
+    img = await asyncio.to_thread(charts.semaforo, crop, b["meses"], b["estado_mes"], f"Su {nombre} mes a mes")
+    await B.borrar(msg)
+    veces = de_cada_10(b["n_bien"], b["anios"])
+    if b["veredicto"] == "si":
+        lineas = [f"✅ <b>Sí, es buen momento para sembrar {nombre} en {mes}.</b>",
+                  f"En {veces} años la lluvia alcanzó."]
+    elif b["veredicto"] == "cuidado":
+        lineas = [f"⚠️ <b>Sí, pero tenga agua para regar en {b['mes_critico']}.</b>",
+                  f"En {veces} años la lluvia alcanzó."]
+    else:
+        lineas = [f"❌ <b>Mejor no siembre {nombre} en {mes} sin riego.</b>",
+                  f"Solo en {veces} años la lluvia alcanzó."]
+    lineas.append(f"🌾 Cosecha más o menos en {MESES_LARGO[b['mes_ids'][-1] - 1]}.")
+    if fuentes:
+        lineas.append({"alta": "🔎 Dos fuentes de datos dicen lo mismo.",
+                       "media": "🔎 Las fuentes de datos se parecen. Confirme con su experiencia.",
+                       "baja": "🔎 Las fuentes de datos no coinciden. Pregunte a su técnico."}[fuentes["confianza"]])
+    await B.historial(update, "decision", f"{crop.nombre} en {mes}: {b['veredicto']} ({veces} años bien)")
+    filas = [[("🔁 Qué sembrar después", "rs")], [("💧 Cuánto regar", "cr")], [("📚 Rotaciones probadas", "rs:ref")]]
+    await decir(update, ctx, "\n".join(lineas), filas, foto=img, tecnico="b")
+
+
+def _agua_rotacion(e) -> str:
+    return "🟢 el agua alcanza" if e["falta_anual"] < 30 else "🟡 hay que regar a veces" if e["falta_anual"] < 100 \
+        else "🔴 necesita riego"
+
+
+async def rotaciones_probadas(update, ctx, arg: str = ""):
+    """Rotaciones de referencia del equipo (ensayo Illangama, INIAP) evaluadas con el clima de su chakra."""
+    st = await B.estado(update, ctx)
+    sitio = B.sitio_de(st)
+    if not sitio:
+        await chakra(update, ctx)
+        return
+    if arg.startswith("usa:"):
+        ref = ROTACIONES_REF[arg[4:]]
+        ctx.user_data["elegible"] = ref["secuencia"]
+        if not st.get("crop"):
+            st["crop"], st["mes"] = ref["secuencia"][0], dt.date.today().month % 12 + 1
+            st["fecha"] = dt.date(dt.date.today().year + (st["mes"] == 1), st["mes"], 1).isoformat()
+        await rotacion_ok(update, ctx)
+        return
+    clima = await asyncio.to_thread(B.clima_de, sitio)
+    mes = st.get("mes") or dt.date.today().month % 12 + 1
+    evals = {}
+    for rid, ref in ROTACIONES_REF.items():
+        ids = [i for i in ref["secuencia"] if i in CROPS]
+        evals[rid] = await asyncio.to_thread(E.evaluar_rotacion, sitio, clima, ids, mes)
+    if arg == "tec":
+        lineas = [f"📚 <b>Rotaciones de referencia</b> (desde {MESES_LARGO[mes - 1]})"]
+        for rid, ref in ROTACIONES_REF.items():
+            e = evals[rid]
+            lineas.append(f"\n<b>{rid} · {ref['titulo']}</b>: {' → '.join(c.nombre for c in e['crops'])}\n"
+                          f"Riego: {B.num(e['falta_anual'])} L/m² por año · suelo cubierto {B.num(e['cubierto'] * 100)} %\n"
+                          f"✅ {B.esc(ref['beneficio'])}\n🕳️ {B.esc(ref['por_confirmar'])}")
+        await B.mostrar(update, "\n".join(lineas), B.KB([[("⬅️ Volver", "rs:ref")], [B.MENU]]))
+        return
+    lineas = ["📚 <b>Rotaciones probadas en la sierra</b>"]
+    for rid in ("R1", "R2"):
+        ref, e = ROTACIONES_REF[rid], evals[rid]
+        lineas.append(f"\n<b>{ref['titulo']}</b>: {plan_linea(e, st)}\n💧 {_agua_rotacion(e)}")
+    lineas.append(f"\n❌ Papa → Papa → Descanso cansa la tierra.")
+    mejor = min(("R1", "R2"), key=lambda r: evals[r]["falta_anual"])
+    img = await asyncio.to_thread(charts.tarjeta_cultivos, evals[mejor]["crops"], ROTACIONES_REF[mejor]["titulo"])
+    filas = [[(f"✅ Usar {ROTACIONES_REF[r]['titulo']}", f"rs:usa:{r}")] for r in ("R1", "R2")]
+    await decir(update, ctx, "\n".join(lineas), filas, foto=img, tecnico="rs:tec")

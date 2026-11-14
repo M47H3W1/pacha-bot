@@ -86,7 +86,7 @@ async def main():
     ctx = SimpleNamespace(user_data={})
     pasos = ["id:ki", "m", "ch", "t:prov", "t:p:CHI", "ch", "v", "qs", "c:ya", "c:s:papa", "c:m:10",
              "rs:sig", "rs:plan", "r:1:papa", "r:2:descanso", "rs:ok", "cr", "cr:r:b", "cr:cambiar", "cr:r:g",
-             "vh", "v", "v", "mas", "mas:audio", "mas:audio", "mas:id:es", "qs", "c:new", "n:m:12", "n:t:12", "n:p:haba",
+             "vh", "v", "v", "mas", "mas:audio", "mas:audio", "mas:id:es", "qs", "c:new", "n:m:12", "n:t:12", "n:p:haba", "rs:ref", "rs:tec", "rs:usa:R2",
              "r:cmp", "r:k:1", "t:info", "b", "b:a:1000", "b:e:a", "b:w", "s", "s:go", "a", "x:bank",
              "mt", "g", "g:et", "i", "h", "q", "b:reset", "b:aw"]
     todos = set()
