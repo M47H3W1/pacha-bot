@@ -74,6 +74,7 @@ RIEGO = {
     "g": ("Por surcos o inundación", 0.50),
     "a": ("Aspersión", 0.75),
     "d": ("Goteo", 0.90),
+    "b": ("Con balde o regadera", 0.85),
     "n": ("Solo lluvia, sin riego", 1.00),
 }
 
