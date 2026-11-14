@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
 <meta name="theme-color" content="#008069">
 <title>Pacha</title>
-<meta name="description" content="Pacha: asistente para chakras de la sierra del Ecuador con datos de la NASA. Maqueta de presentación.">
+<meta name="description" content="Pacha: asistente para la tierra de la sierra del Ecuador con datos de la NASA. Maqueta de presentación.">
 <link rel="icon" href="img/pacha.svg" type="image/svg+xml">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <link rel="stylesheet" href="estilo.css">
@@ -17,7 +17,7 @@
   <section id="portada">
     <img src="img/pacha.svg" alt="" class="portada-avatar">
     <h1>Pacha</h1>
-    <p>Su chakra con datos de la NASA.<br>Le respondo con audios y dibujos.</p>
+    <p>Su tierra con datos de la NASA.<br>Le respondo con dibujos, mensajes y audios.</p>
     <button id="abrir" type="button">Abrir chat</button>
     <small>Maqueta de presentación · NASA Space Apps 2026</small>
   </section>
@@ -75,11 +75,11 @@
     </div>
   </div>
 
-  <!-- Mapa: un punto y un círculo con el área del terreno -->
+  <!-- Mapa: un punto y un círculo con el área de la tierra -->
   <section id="mapa-modal" hidden>
     <header class="cabecera">
       <button class="icono" id="cerrar-mapa" aria-label="Cerrar"><svg viewBox="0 0 24 24"><path d="M20 11H7.8l5.6-5.6L12 4l-8 8 8 8 1.4-1.4L7.8 13H20z"/></svg></button>
-      <div class="contacto"><strong>Enviar ubicación</strong><span>Mueva el mapa hasta su terreno</span></div>
+      <div class="contacto"><strong>Enviar ubicación</strong><span>Mueva el mapa hasta su tierra</span></div>
       <button class="icono" id="capa" aria-label="Cambiar mapa"><svg viewBox="0 0 24 24"><path d="m12 16.5-7.4-5.7L3 12l9 7 9-7-1.6-1.2zM12 14l7.4-5.7L21 7l-9-7-9 7 1.6 1.3z"/></svg></button>
     </header>
     <div class="mapa-caja"><div id="mapa"></div>
@@ -92,11 +92,11 @@
         <button id="gps">◎ Mi ubicación</button>
       </div>
       <label class="radio">
-        <span>Tamaño del terreno</span>
+        <span>Tamaño de la tierra</span>
         <input id="radio" type="range" min="20" max="600" step="5" value="80">
         <output id="area">2 hectáreas</output>
       </label>
-      <button id="enviar-ubicacion" class="fila-enviar"><span class="redondo chico"><svg viewBox="0 0 24 24"><path d="M2 21l21-9L2 3v7l15 2-15 2z"/></svg></span>Enviar este terreno</button>
+      <button id="enviar-ubicacion" class="fila-enviar"><span class="redondo chico"><svg viewBox="0 0 24 24"><path d="M2 21l21-9L2 3v7l15 2-15 2z"/></svg></span>Enviar esta tierra</button>
     </div>
   </section>
 

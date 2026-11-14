@@ -74,6 +74,12 @@
     historial.push({ role: "user", content: t });
   }
 
+  function textoPacha(t) {
+    const b = fila("pacha");
+    b.innerHTML = t.split(/\n/).map((l) => l.replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]))).join("<br>");
+    b.insertAdjacentHTML("beforeend", sello(false));
+  }
+
   function imagen(src) {
     const b = fila("pacha", "foto");
     const img = new Image();
@@ -106,7 +112,7 @@
           <div class="voz-meta"><span class="dur">0:00</span><span>${hora()}${yo ? " " + CHECK : ""}</span></div>
         </div>
       </div>
-      ${texto && !yo ? '<button class="transcribir">Ver transcripción</button>' : ""}`;
+`;
     if (yo) b.querySelector(".voz-avatar img").src = "data:image/svg+xml," + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><rect width="24" height="24" fill="#dfe5e7"/><path fill="#fff" d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm0 2c-3 0-8 1.5-8 4.5V22h16v-3.5c0-3-5-4.5-8-4.5z"/></svg>');
     const barras = [...b.querySelectorAll(".ondas i")];
     const boton = b.querySelector(".voz-play");
@@ -244,6 +250,7 @@
     Object.assign(estado, res.estado || {});
     for (const m of res.mensajes) {
       if (m.tipo === "imagen") { imagen(m.src); await espera(350); }
+      else if (m.tipo === "texto") textoPacha(m.texto);
       else if (m.tipo === "audio") await vozDePacha(m.texto);
     }
     lineaEstado.textContent = "en línea";
@@ -372,12 +379,10 @@
 
   let mapa = null, circulo = null, capaCalle = null, capaSat = null, satelite = true;
   const radioIn = $("#radio");
-  const CANCHA = 7000;
   function textoArea(r) {
     const m2 = Math.PI * r * r, ha = m2 / 10000;
     const area = ha < 0.5 ? `${Math.round(m2 / 10) * 10} m²` : `${ha < 10 ? ha.toFixed(1).replace(".", ",") : Math.round(ha)} ha`;
-    const canchas = m2 / CANCHA;
-    return `${area} · ${canchas < 1 ? "menos de 1 cancha" : `≈ ${canchas < 10 ? canchas.toFixed(1).replace(".", ",") : Math.round(canchas)} canchas`}`;
+    return area;
   }
   const centroCirculo = () => mapa.getCenter();   // la punta del pin está en el centro del mapa
   function actualizarCirculo() {
@@ -422,14 +427,14 @@
 
   function burbujaUbicacion(lat, lon, r) {
     const b = fila("yo", "ubic");
-    b.innerHTML = `<div class="mini-mapa"></div><div class="ubic-texto">📍 Mi terreno<small>${textoArea(r)} · radio ${r} m</small>${sello(true)}</div>`;
+    b.innerHTML = `<div class="mini-mapa"></div><div class="ubic-texto">📍 Mi tierra<small>${textoArea(r)} · radio ${r} m</small>${sello(true)}</div>`;
     const mm = L.map(b.querySelector(".mini-mapa"), { zoomControl: false, attributionControl: false, dragging: false,
       scrollWheelZoom: false, doubleClickZoom: false, touchZoom: false, boxZoom: false, keyboard: false });
     mm.fitBounds(L.latLng(lat, lon).toBounds(r * 2.4));   // primero la vista, luego las capas
     L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", { maxZoom: 19 }).addTo(mm);
     L.circle([lat, lon], { radius: r, color: "#ffeb3b", weight: 2, fillOpacity: 0.15 }).addTo(mm);
     L.circleMarker([lat, lon], { radius: 4, color: "#e53935", fillOpacity: 1 }).addTo(mm);
-    historial.push({ role: "user", content: `(envió su terreno: radio ${r} m)` });
+    historial.push({ role: "user", content: `(envió su tierra: radio ${r} m)` });
   }
 
   $("#visor").onclick = () => ($("#visor").hidden = true);
