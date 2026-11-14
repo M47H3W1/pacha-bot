@@ -16,6 +16,8 @@ def cuando(meses: list[int]) -> str:
     """[0,1,2,3,4] -> 'de enero a mayo'; [6,7] -> 'en julio y agosto'. Une meses seguidos, incluso dic-ene."""
     if not meses:
         return ""
+    if len(set(meses)) == 12:
+        return "todo el año"
     grupos = []
     for m in sorted(meses):
         if grupos and m == grupos[-1][-1] + 1:

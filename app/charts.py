@@ -379,3 +379,37 @@ def anio_tierra(tipos: list[str], lluvia_mm: list[float], titulo: str, subtitulo
     if subtitulo:
         fig.text(0.5, 0.835, subtitulo, ha="center", fontsize=14, color="#555")
     return _png(fig)
+
+
+HUMEDAD = [(0.6, "#2e7d32", "Húmedo"), (0.3, "#f9a825", "Medio"), (0.0, "#c62828", "Seco")]
+
+
+def ficha_tierra(tarjetas: list[tuple], humedad: list[float], titulo: str, subtitulo: str = "") -> bytes:
+    """Ficha de la parcela: 6 tarjetas (tema, valor grande, detalle, color) y la humedad del suelo de los 12 meses."""
+    fig = plt.figure(figsize=(10, 12.2), facecolor="white")
+    ax = fig.add_axes([0, 0, 1, 1])
+    ax.set_xlim(0, 10)
+    ax.set_ylim(0, 12.2)
+    ax.axis("off")
+    ax.text(5, 11.75, titulo, ha="center", fontsize=26, fontweight="bold", color="#3d2b1f")
+    if subtitulo:
+        ax.text(5, 11.3, subtitulo, ha="center", fontsize=15, color="#666")
+    for k, (tema, valor, detalle, color) in enumerate(tarjetas):
+        x0, y0 = 0.25 + (k % 2) * 4.85, 8.55 - (k // 2) * 2.4
+        ax.add_patch(plt.Rectangle((x0, y0), 4.65, 2.2, color="#f6f3ee", zorder=1))
+        ax.add_patch(plt.Rectangle((x0, y0), 0.16, 2.2, color=color, zorder=2))
+        ax.text(x0 + 0.4, y0 + 1.75, tema, fontsize=15, color="#666", va="center")
+        ax.text(x0 + 0.4, y0 + 1.05, valor, fontsize=27, fontweight="bold", color=color, va="center")
+        ax.text(x0 + 0.4, y0 + 0.4, detalle, fontsize=13.5, color="#444", va="center")
+    ax.text(5, 3.2, "Humedad del suelo mes a mes", ha="center", fontsize=18, fontweight="bold", color="#3d2b1f")
+    ancho = 9.5 / 12
+    for i, h in enumerate(humedad):
+        color = next(c for lim, c, _ in HUMEDAD if h >= lim)
+        x = 0.25 + i * ancho
+        ax.add_patch(plt.Rectangle((x + 0.04, 0.75), ancho - 0.08, 1.7, color="#eeeeee", zorder=1))
+        ax.add_patch(plt.Rectangle((x + 0.04, 0.75), ancho - 0.08, 1.7 * max(h, 0.04), color=color, zorder=2))
+        ax.text(x + ancho / 2, 0.45, MESES[i].capitalize(), ha="center", fontsize=14, fontweight="bold", color="#333")
+    for j, (_, c, palabra) in enumerate(HUMEDAD):
+        ax.add_patch(plt.Rectangle((2.3 + j * 2.1, 0.0), 0.3, 0.22, color=c))
+        ax.text(2.7 + j * 2.1, 0.11, palabra, fontsize=13, va="center", color="#444")
+    return _png(fig)
