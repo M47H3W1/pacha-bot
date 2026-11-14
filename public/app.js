@@ -270,7 +270,7 @@
       await mostrar(res);
     } catch {
       escribiendo(false);
-      await mostrar({ mensajes: [{ tipo: "audio", texto: "Perdón, se cortó la señal. Intente otra vez." }], botones: [] });
+      await mostrar({ mensajes: [{ tipo: "texto", texto: "Perdón, se cortó la señal. Intente otra vez." }], botones: [] });
     } finally { ocupado = false; }
   }
 
@@ -286,7 +286,7 @@
       await mostrar(res);
     } catch {
       escribiendo(false);
-      await mostrar({ mensajes: [{ tipo: "audio", texto: "Perdón, se cortó la señal. Intente otra vez." }], botones: [] });
+      await mostrar({ mensajes: [{ tipo: "texto", texto: "Perdón, se cortó la señal. Intente otra vez." }], botones: [] });
     } finally { ocupado = false; }
   }
 
@@ -319,7 +319,7 @@
       btnEnviar.classList.add("grabando");
       reloj = setInterval(() => ($("#grab-tiempo").textContent = mmss((Date.now() - inicioGrab) / 1000)), 250);
     } catch {
-      await mostrar({ mensajes: [{ tipo: "audio", texto: "No pude usar el micrófono. Puede escribirme o usar los botones." }], botones: [] });
+      await mostrar({ mensajes: [{ tipo: "texto", texto: "No pude usar el micrófono. Puede escribirme o usar los botones." }], botones: [] });
     }
   };
   $("#cancelar-grab").onclick = () => terminarGrabacion(false);
