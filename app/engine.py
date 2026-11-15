@@ -230,6 +230,8 @@ class Clima:
         return {
             "lluvia_anual": float(np.median(lluvia)),
             "lluvia_seca": float(np.percentile(lluvia, 20)),
+            "lluvia_humeda": float(np.percentile(lluvia, 80)),
+            "lluvia_min": float(lluvia.min()), "lluvia_max": float(lluvia.max()),
             "et0_anual": float(np.median(self.ET0_m.sum(axis=1))),
             "lluvia_mes": np.median(self.P_m, axis=0).tolist(),
             "et0_mes": np.median(self.ET0_m, axis=0).tolist(),
@@ -245,6 +247,18 @@ class Clima:
 # ---------------------------------------------------------------- banco de agua
 # Balance diario de agua en el suelo (modelo del equipo, notebook AgroBot v2), corrido sobre NASA POWER.
 AGUA_UTIL_TEXTURA = {"arenoso": 70, "franco arenoso": 110, "franco": 150, "franco arcilloso": 160, "arcilloso": 140}
+# Cómo se nombra cada textura en el campo de la sierra (el nombre técnico va entre paréntesis)
+NOMBRE_LOCAL = {"arenoso": "tierra arenosa, suelta", "franco arenoso": "tierra suelta con arena",
+                "franco": "tierra negra de chacra, ni suelta ni pegajosa", "franco arcilloso": "tierra pesada, un poco chocoto",
+                "arcilloso": "chocoto, tierra de barro pegajosa"}
+
+
+def nombre_suelo(textura: str) -> str:
+    """'franco' -> 'tierra negra de chacra, ni suelta ni pegajosa (franco)'."""
+    t = (textura or "franco").replace(" (supuesto)", "").strip()
+    return f"{NOMBRE_LOCAL[t]} ({t})" if t in NOMBRE_LOCAL else t
+
+
 AGUA_UTIL_DEFECTO = 110   # mm por metro de raíz cuando no hay dato de suelo
 RESERVA_INICIAL = 0.5     # suelo a la mitad de su reserva el día de siembra
 LLUVIA_EFECTIVA = 0.85    # parte de la lluvia que aprovecha el suelo

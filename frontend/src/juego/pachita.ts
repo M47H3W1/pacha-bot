@@ -6,9 +6,20 @@ const POSE: Record<Animo, string> = { feliz: "saluda", pensando: "piensa", preoc
 export const POSES = ["saluda", "piensa", "paraguas"];
 export const urlPose = (pose: string) => `/img/pachita/pachita-${pose}.webp`;
 
-/** Pachita con las tres poses del equipo (se cambia de pose con data-animo). */
-export const PACHITA_HTML = POSES.map((p) =>
-  `<img class="pose pose-${p}" src="${urlPose(p)}" alt="" draggable="false" ${p === "saluda" ? "" : 'loading="lazy"'}>`).join("");
+// Dónde está la boca en cada pose (% del ancho y alto de la imagen) para animarla cuando habla
+const BOCA: Record<string, { ancho: number; x: number; y: number; w: number }> = {
+  saluda: { ancho: 297, x: 54.2, y: 23.6, w: 15 },
+  piensa: { ancho: 264, x: 59.5, y: 22.5, w: 17 },
+  paraguas: { ancho: 381, x: 61.9, y: 29.1, w: 13 },
+};
+
+/** Pachita con las tres poses del equipo (se cambia de pose con data-animo) y una boca que se mueve al hablar. */
+export const PACHITA_HTML = POSES.map((p) => {
+  const b = BOCA[p];
+  return `<div class="pose pose-${p}" style="aspect-ratio:${b.ancho}/640">
+    <img src="${urlPose(p)}" alt="" draggable="false" ${p === "saluda" ? "" : 'loading="lazy"'}>
+    <span class="boca" style="left:${b.x}%;top:${b.y}%;width:${b.w}%"><i></i></span></div>`;
+}).join("");
 // compatibilidad: el resto del juego aún importa este nombre
 export const PACHITA_SVG = PACHITA_HTML;
 

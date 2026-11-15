@@ -67,10 +67,10 @@ export function colorSuelo(salud: number): string {
 }
 
 export const MEDALLAS: Record<string, { icono: string; nombre: string; texto: string }> = {
-  primera: { icono: "🥇", nombre: "Primera cosecha", texto: "Cosechaste tu primer cultivo." },
-  agua: { icono: "💧", nombre: "Buen regador", texto: "Cosecha con 3 estrellas de agua." },
-  rotacion: { icono: "🔄", nombre: "Rotación completa", texto: "Una franja con tres familias distintas seguidas." },
-  leguminosa: { icono: "🫘", nombre: "Amiga del suelo", texto: "Sembraste una leguminosa que alimenta la tierra." },
-  sana: { icono: "🌱", nombre: "Tierra sana", texto: "La salud de tu tierra llegó a 85." },
-  cosmico: { icono: "🚀", nombre: "Granjero cósmico", texto: "Terminaste la historia y ganaste tu certificado." },
+  primera: { icono: "medalla", nombre: "Primera cosecha", texto: "Cosechaste tu primer cultivo." },
+  agua: { icono: "gota", nombre: "Buen regador", texto: "Cosecha con 3 estrellas de agua." },
+  rotacion: { icono: "rotar", nombre: "Rotación completa", texto: "Una franja con tres familias distintas seguidas." },
+  leguminosa: { icono: "nitrogeno", nombre: "Amiga del suelo", texto: "Sembraste una leguminosa que alimenta la tierra." },
+  sana: { icono: "tierra", nombre: "Tierra sana", texto: "La salud de tu tierra llegó a 85." },
+  cosmico: { icono: "cohete", nombre: "Granjero cósmico", texto: "Terminaste la historia y ganaste tu certificado." },
 };

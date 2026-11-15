@@ -23,6 +23,8 @@ export interface VistaParcela {
 export interface Mundo {
   actualizar(parcelas: VistaParcela[], colorSuelo: string, lloviendo: boolean): void;
   alTocar(cb: (i: number) => void): void;
+  /** El cielo avanza: el sol cruza y llega la noche (se llama cuando pasan días en el juego). */
+  pasarTiempo(dias: number): void;
   parcelaEn(x: number, y: number): number | null;
   resaltar(i: number | null): void;
   cosechar(i: number): void;
