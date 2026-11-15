@@ -89,28 +89,32 @@ export function callar() {
 }
 let ocultar: number | undefined;
 let alTerminar: (() => void) | null = null;
+/** Número de la frase que se está diciendo: sirve para saber si otra frase la interrumpió. */
+export const turnoActual = () => turno;
 
-/** El globo se esconde unos segundos después de hablar, para no tapar la chacra. Tocarlo también lo esconde. */
-function terminar(mio: number) {
+/** El globo se esconde unos segundos después de hablar, para no tapar la chacra (salvo si la frase pide una acción). */
+function terminar(mio: number, fijo = false) {
   if (mio !== turno) return;
   document.querySelector("#pachita")?.classList.remove("habla");
   const fin = alTerminar; alTerminar = null; fin?.();
   clearTimeout(ocultar);
+  if (fijo) return;
   ocultar = window.setTimeout(() => { if (mio === turno) document.querySelector<HTMLElement>("#globo")!.hidden = true; }, 4000);
 }
 
-/** Pachita dice algo: globo de diálogo (1–2 frases) y voz. La promesa se cumple cuando termina de hablar. */
-export function decir(texto: string, animo: Animo = "feliz"): Promise<void> {
+/** Pachita dice algo: globo de diálogo y voz. El globo muestra tres puntitos mientras llega la voz y las palabras aparecen
+ *  justo cuando empieza a sonar, al ritmo del audio. `fijo`: el globo se queda hasta que el jugador haga lo que ella pide.
+ *  La promesa se cumple cuando termina de hablar (o cuando otra frase la interrumpe). */
+export function decir(texto: string, animo: Animo = "feliz", op: { fijo?: boolean } = {}): Promise<void> {
   const caja = document.querySelector<HTMLElement>("#pachita");
   const globo = document.querySelector<HTMLElement>("#globo");
   if (!caja || !globo) return Promise.resolve();
   const anterior = alTerminar; alTerminar = null; anterior?.();
   const mio = ++turno;
-  // el globo tiene la cinta con el nombre y las palabras aparecen una tras otra, al ritmo de la voz
   const palabras = texto.split(/\s+/).filter(Boolean);
-  const ritmo = Math.min(70, Math.max(18, 4200 / Math.max(palabras.length, 1)));
-  globo.style.setProperty("--ritmo", `${Math.round(ritmo)}ms`);
-  globo.innerHTML = `<span class="globo-nombre">Pachita</span><span class="globo-texto">${palabras.map((w, k) => `<span style="--i:${k}">${esc(w)}</span>`).join(" ")}</span>`;
+  const leer = (ms: number) => { globo.style.setProperty("--ritmo", `${Math.round(Math.min(400, Math.max(18, ms)))}ms`); globo.classList.add("lee"); };
+  globo.classList.remove("lee");
+  globo.innerHTML = `<span class="globo-nombre">Pachita</span><span class="globo-puntos" aria-hidden="true"><i></i><i></i><i></i></span><span class="globo-texto">${palabras.map((w, k) => `<span style="--i:${k}">${esc(w)}</span>`).join(" ")}</span>`;
   globo.hidden = false;
   globo.classList.remove("aparece");
   void globo.offsetWidth;
@@ -121,20 +125,26 @@ export function decir(texto: string, animo: Animo = "feliz"): Promise<void> {
   clearTimeout(ocultar);
   globo.onclick = () => (globo.hidden = true);
   const espera = 1500 + texto.length * 55;  // si no hay voz, el tiempo de leer el globo
+  const sinVoz = (limpio: string, usarTelefono: boolean) => {
+    if (usarTelefono) vozDelTelefono(limpio);
+    leer(Math.min(70, 4200 / Math.max(palabras.length, 1)));
+    setTimeout(() => terminar(mio, op.fijo), espera);
+  };
   return new Promise<void>((resolver) => {
     alTerminar = resolver;
-    if (silencio) { setTimeout(() => terminar(mio), espera); return; }
+    if (silencio) { sinVoz("", false); return; }
     const limpio = limpiarParaVoz(texto);
     urlVoz(limpio).then((url) => {
       if (mio !== turno) return;
       if (url && reproductor) {
         reproductor.src = url;
-        reproductor.onended = () => terminar(mio);
-        reproductor.play().catch(() => { vozDelTelefono(limpio); setTimeout(() => terminar(mio), espera); });
-      } else {
-        vozDelTelefono(limpio);
-        setTimeout(() => terminar(mio), espera);
-      }
+        reproductor.onended = () => terminar(mio, op.fijo);
+        reproductor.play().then(() => {
+          if (mio !== turno) return;
+          const dur = reproductor!.duration;
+          leer(Number.isFinite(dur) && dur > 0 ? (dur * 880) / Math.max(palabras.length, 1) : 45);
+        }).catch(() => sinVoz(limpio, true));
+      } else sinVoz(limpio, true);
     });
   });
 }

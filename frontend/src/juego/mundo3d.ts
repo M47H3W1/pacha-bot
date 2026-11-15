@@ -503,6 +503,9 @@ export function crearMundo3D(cont: HTMLElement, t: Terreno, elev: number): Mundo
     camara.aspect = cont.clientWidth / cont.clientHeight;
     camara.updateProjectionMatrix();
   };
+  // el mundo ocupa solo el hueco bajo la barra de arriba: se redibuja cuando esa caja cambia de tamaño
+  const vigia = new ResizeObserver(alRedimensionar);
+  vigia.observe(cont);
   window.addEventListener("resize", alRedimensionar);
 
   return {
@@ -555,6 +558,7 @@ export function crearMundo3D(cont: HTMLElement, t: Terreno, elev: number): Mundo
     destruir() {
       renderer.setAnimationLoop(null);
       window.removeEventListener("resize", alRedimensionar);
+      vigia.disconnect();
       ctrl.dispose();
       escena.traverse((o) => {
         const m = o as THREE.Mesh;
