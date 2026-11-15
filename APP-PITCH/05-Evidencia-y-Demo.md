@@ -10,7 +10,7 @@
 | 1:10 | Semillas por familia; tocar una con candado y una "solo información" (trébol) | "No toda semilla sirve a esta altura y no toda planta es cosecha." |
 | 1:30 | Calendario de 12 meses → Sembrar todo → el tiempo corre | "El tiempo del juego es un año real de la NASA." |
 | 1:50 | Sequía: el botón de regar late, Pachita habla, el tanque baja | "El banco de agua se vacía: regar cuesta litros." |
-| 2:15 | Cosechar todo con azada y canasta | "El puntaje sale del servidor, no del juego." |
+| 2:15 | Cosechar todo con la hoz y la canasta | "El puntaje sale del servidor, no del juego." |
 | 2:30 | Rotación: tres opciones calculadas y la elegida en la barra | "Arveja, papa, mixtura: la app la sigue paso a paso." |
 | 2:50 | Certificado a pantalla completa; botón ES/EN | "Un certificado para la casa. Y todo en inglés con voz propia." |
 

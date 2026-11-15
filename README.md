@@ -99,7 +99,7 @@ Los sitios de demostración traen datos guardados en `app/semillas/` para que el
 
 ## Juego Astro Granja (niños de 8 a 12 años)
 
-**Jugar:** https://pacha-chat.vercel.app (en el celular; `?sin3d=1` fuerza el modo sin 3D). **Español e inglés:** el botón ES/EN está en el menú, el mapa y la barra de arriba; la voz de Pachita cambia con el idioma.
+**Jugar:** https://pacha-chat.vercel.app (en el celular; `?sin3d=1` fuerza el modo 2D, que se usa solo si el equipo no tiene WebGL). **Español e inglés:** el botón ES/EN está en el menú, el mapa y la barra de arriba; la voz de Pachita cambia con el idioma.
 
 Aplicación de granja casual, original, para aprender a sembrar y cuidar la tierra de la sierra con datos reales.
 La guía **Pachita**, una granjera de la sierra (sombrero, poncho y anaco), con globos cortos y voz. La historia:
@@ -124,8 +124,8 @@ La guía **Pachita**, una granjera de la sierra (sombrero, poncho y anaco), con 
    da la lluvia y lo que hay que regar en un año normal y en uno seco, con el semáforo mes a mes (`/api/app/ciclo`).
 8. **Crecer:** el tiempo avanza con el clima real de un año de NASA POWER. Una **cronología** muestra las etapas del
    cultivo y los días que faltan para cosechar. Estrés por sequía y por calor (¡Arrarray!), y aguaceros (¡Achachay!);
-   regar descuenta litros del tanque y el servidor recalcula el ciclo. **Cuando Pachita habla, el tiempo espera**: si pide regar o cosechar, el botón late hasta que lo hagas; si solo cuenta algo, el play sigue solo al terminar. Una pantalla de carga con consejos aparece si algo tarda, y los datos de la parcela se piden a la vez para esperar menos.
-9. **Cosecha:** «Cosechar todo» con una azada animada; una sola tarjeta por semilla (promedio de sus parcelas), con el
+   regar descuenta litros del tanque y el servidor recalcula el ciclo. **Cuando Pachita pide algo, el tiempo espera**: si pide regar o cosechar, el botón late hasta que lo hagas; los avisos que solo cuentan algo no detienen el tiempo. Los avisos repetidos usan frases fijas cuya voz se precarga al sembrar, así suenan al instante. Una pantalla de carga con consejos aparece si algo tarda, y los datos de la parcela se piden a la vez para esperar menos.
+9. **Cosecha:** «Cosechar todo» con una hoz animada (guadaña) y una canasta que cuenta lo recogido; una sola tarjeta por semilla (promedio de sus parcelas), con el
    puntaje calculado en el servidor según el agua que faltó y la época.
 10. **Rotar:** Pachita explica por qué rotar evita la degradación del suelo y recomienda **3 rotaciones** calculadas
     para la parcela (`/api/app/cultivo`). **La app sigue la rotación elegida paso a paso** (por ejemplo arveja → papa →
@@ -138,7 +138,7 @@ Los 18 íconos 3D de cultivos (`frontend/public/img/cultivos3d/`) se recortaron 
 | Archivo | Qué hace |
 |---|---|
 | `frontend/src/pages/index.astro` | Página del juego (portada del sitio) |
-| `frontend/src/juego/` | Controlador, mundo 3D y 2D, mapa, Pachita, sonidos (Web Audio), idioma ES/EN y estado |
+| `frontend/src/juego/` | Controlador, mundo 3D (`mundo3d.ts`) y su versión 2D sin WebGL (`mundo2d.ts`, igual de completa: cielo día/noche, volcanes, parcelas en perspectiva), mapa, Pachita, sonidos (Web Audio), idioma ES/EN y estado |
 | `web/app_api.py` | `parcela`, `terreno`, `semillas`, `cultivo` y `ciclo` (todo número sale de aquí) |
 | `tests/test_juego.py` | Pruebas de `/api/app/terreno` sin red |
 

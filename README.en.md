@@ -98,7 +98,7 @@ Demo sites ship with stored data in `app/semillas/` so the game does not depend 
 
 ## Astro Granja game (kids aged 8 to 12)
 
-**Play:** https://pacha-chat.vercel.app (on a phone; `?sin3d=1` forces the non-3D mode). **Spanish and English:** the ES/EN button is in the menu, on the map and in the top bar; Pachita's voice changes with the language.
+**Play:** https://pacha-chat.vercel.app (on a phone; `?sin3d=1` forces the 2D mode, which also kicks in by itself if the device cannot draw in 3D). **Spanish and English:** the ES/EN button is in the menu, on the map and in the top bar; Pachita's voice changes with the language.
 
 An original casual farming app to learn how to plant and care for highland soil with real data, in Spanish. It is guided
 by **Pachita**, a farmer from the Andes (felt hat, poncho and anaco skirt), with short speech bubbles and voice. The story:
@@ -123,8 +123,8 @@ by **Pachita**, a farmer from the Andes (felt hat, poncho and anaco skirt), with
    provides and what must be irrigated in a normal and a dry year, with the monthly traffic light (`/api/app/ciclo`).
 8. **Growing:** time advances with the real weather of one NASA POWER year. A **timeline** shows the crop's stages and
    the days left until harvest. Drought and heat stress (Arrarray!), and heavy rain (Achachay!); watering uses liters from
-   the tank and the server recomputes the cycle. **While Pachita talks, time waits**: if she asks you to water or harvest, the button pulses until you do; if she only tells something, play resumes by itself when she finishes. A loading screen with tips appears when something takes a while, and the plot's data is requested all at once to wait less.
-9. **Harvest:** "Harvest all" with an animated hoe; a single card per seed (average of its plots), with the score computed
+   the tank and the server recomputes the cycle. **When Pachita asks for something, time waits**: if she asks you to water or harvest, the button pulses until you do; notices that only tell you something don't stop time. Recurring notices use fixed phrases whose voice is preloaded at sowing, so they play instantly. A loading screen with tips appears when something takes a while, and the plot's data is requested all at once to wait less.
+9. **Harvest:** "Harvest all" with an animated sickle and a basket that counts the harvest; a single card per seed (average of its plots), with the score computed
    on the server from the water deficit and the season.
 10. **Rotate:** Pachita explains why rotation prevents soil degradation and recommends **3 rotations** computed for the
     plot (`/api/app/cultivo`). **The app follows the chosen rotation step by step** (for example pea → potato → mixed

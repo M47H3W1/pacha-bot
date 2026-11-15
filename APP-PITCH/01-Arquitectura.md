@@ -98,6 +98,6 @@ flowchart TD
 | `POST /api/app/semillas` | Los 13 cultivos: ¿se pueden sembrar aquí y ahora?, época, razón | Cartas de semillas con candado |
 | `POST /api/app/ciclo` | Un ciclo día a día con clima real, riegos del jugador, humedad, estrés y puntaje | Cronología, sequía, tanque, estrellas |
 | `POST /api/app/cultivo` | Veredicto de agua por mes y 3 rotaciones calculadas | Calendario de agua y rotación |
-| `POST /api/voz` | mp3 de Pachita (`lang` es/en) | Voz del globo |
+| `GET/POST /api/voz` | mp3 de Pachita (`lang` es/en); el GET es cacheable para frases fijas precargadas al sembrar | Voz del globo y avisos |
 
 Regla de diseño: **todo número sale del servidor**; el juego no inventa datos.
