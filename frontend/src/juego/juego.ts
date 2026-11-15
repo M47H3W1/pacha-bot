@@ -126,7 +126,6 @@ function menuPrincipal() {
       <div class="menu-fila">
         <button class="btn-redondo" data-sonido aria-label="Sonido">${ic(estaSilenciado() ? "mudo" : "sonido")}</button>
         <button class="btn-redondo" data-medallas aria-label="Medallas">${ic("medalla")}</button>
-        <a class="btn-redondo" href="/" aria-label="Volver a Pacha">${ic("casa")}</a>
       </div>
     </div>
     <p class="menu-creditos">NASA Space Apps 2026 · Datos: NASA POWER, FAO-56, INIAP · Relieve: Open-Meteo<br>Ilustraciones de Pachita y cultivos con asistencia de IA (marcadas «IA»)</p>`);
