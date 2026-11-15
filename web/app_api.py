@@ -103,9 +103,30 @@ def parcela(st: dict) -> dict:
                   "meses_secos": [MESES[i] for i, t in enumerate(tipos) if t == "seco"]},
         "tendencia": {"cambio_lluvia_pct": round(c["cambio_lluvia"]), "cambio_temp_c": round(c["cambio_temp"], 1),
                       "decadas": c["decadas"], "calor_dias": round(c["calor"]), "aguaceros": round(c["aguaceros"])},
+        "nasa": _nasa(st["lat"], st["lon"]),
         "periodo": res["anios"], "metodo": clima.metodo,
         "fuentes": ["power", "fao56", "ecmwf"] + (["soilgrids"] if not suelo.get("textura", "").endswith("(supuesto)") else []),
     }
+
+
+def _nasa(lat: float, lon: float) -> dict:
+    """Solo datos de NASA POWER para la ficha del juego: sol, humedad del aire, viento y humedad del suelo (GWETROOT)."""
+    from app import clients
+    par = clients.power_daily(lat, lon)["param"]
+    claves = sorted(par["T2M_MAX"].keys())
+
+    def mensual(nombre):
+        v = np.array([par[nombre][k] for k in claves], dtype=float)
+        mes = np.array([int(k[4:6]) for k in claves])
+        v[v <= -998] = np.nan
+        return [round(float(np.nanmean(v[mes == m])), 2) for m in range(1, 13)]
+
+    rad, rh, ws = mensual("ALLSKY_SFC_SW_DWN"), mensual("RH2M"), mensual("WS2M")
+    suelo = clients.power_clima(lat, lon)
+    return {"radiacion_kwh": round(float(np.mean(rad)) / 3.6, 1), "radiacion_mes": [round(x / 3.6, 1) for x in rad],
+            "humedad_aire": round(float(np.mean(rh))), "viento": round(float(np.mean(ws)), 1),
+            "suelo_raiz_mes": suelo["GWETROOT"] if suelo else None, "suelo_sup_mes": suelo["GWETTOP"] if suelo else None,
+            "fuente": "NASA POWER (MERRA-2, CERES) 2001–2024; GWETROOT climatología POWER"}
 
 
 def _en_temporada(c, mes: int, provincia: str) -> bool:

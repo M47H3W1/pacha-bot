@@ -9,7 +9,7 @@ import { icono } from "./iconos";
 import { crearMapa, RADIO_DEMO } from "./mapa";
 import { crearMundo2D } from "./mundo2d";
 import { ETAPAS, type Mundo, type Terreno, type VistaParcela } from "./mundo";
-import { decir, decirVarias, desbloquearAudio, estaSilenciado, PACHITA_SVG, silenciar } from "./pachita";
+import { decir, decirVarias, desbloquearAudio, estaSilenciado, PACHITA_SVG, silenciar, urlPose } from "./pachita";
 
 type Cultivo = { id: string; nombre: string; emoji: string; foto: string | null; familia: string; fija_n: boolean;
   ciclo_dias: number; uso?: string; aporte?: string; riesgo?: string; apto?: boolean; en_epoca?: boolean; se_puede?: boolean;
@@ -198,37 +198,34 @@ async function fichaTierra() {
     return;
   }
   pintarHud();
-  const p = parcelaInfo, c = p.clima, t = p.tendencia, s = p.suelo, pend = terreno;
-  const barras = c.humedad_mes.map((h: number, i: number) =>
-    `<span class="barra-h" style="--h:${Math.max(6, h * 100)}%;--c:${h >= 0.6 ? "#2e7d32" : h >= 0.3 ? "#f9a825" : "#c62828"}" title="${MESES[i]}"><i></i><b>${MESES_CORTOS[i][0].toUpperCase()}</b></span>`).join("");
+  const p = parcelaInfo, c = p.clima, t = p.tendencia, n = p.nasa || {};
+  const humedad: number[] = n.suelo_raiz_mes || [];
+  const barras = humedad.map((h: number, i: number) =>
+    `<span class="barra-h" style="--h:${Math.max(6, h * 100)}%;--c:${h >= 0.75 ? "#2e7d32" : h >= 0.6 ? "#f9a825" : "#c62828"}" title="${MESES[i]}: ${Math.round(h * 100)} %"><i></i><b>${MESES_CORTOS[i][0].toUpperCase()}</b></span>`).join("");
   const carta = (ic: string, titulo: string, valor: string, detalle: string, color: string) =>
     `<article class="carta" style="--color:${color}"><div class="carta-icono">${ic}</div><h3>${titulo}</h3>
       <p class="carta-valor">${valor}</p><p class="carta-detalle">${detalle}</p></article>`;
-  const clasePend = pend?.pendiente_clase ?? p.pendiente?.clase ?? "plano";
-  abrirPanel("Así es tu tierra", `<p class="ficha-sub">Granja <b>${esc(J.granja)}</b> · ${esc(p.lugar.area_texto)}</p>
+  const secos = humedad.map((h, i) => (h < 0.7 ? MESES[i] : "")).filter(Boolean);
+  abrirPanel("Así es tu tierra", `<p class="ficha-sub">Granja <b>${esc(J.granja)}</b> · ${esc(p.lugar.area_texto)} · datos de la NASA</p>
   <div class="cartas">
-    ${carta("🏔️", "Altitud", `${num(p.lugar.elev)} m`, `Provincia de ${esc(p.lugar.provincia)}`, "#6d4c41")}
-    ${carta("📐", "Pendiente", pend && !pend.sin_relieve && pend.pendiente_pct !== undefined ? `${num(pend.pendiente_pct, 0)} %` : "sin dato", `Terreno ${clasePend}${pend ? ` · desnivel ${num(pend.desnivel_m)} m` : ""}`, "#795548")}
-    ${carta("🟫", "Textura del suelo", esc(cap(s.textura)), s.supuesto ? "Valor supuesto" : "Fuente: SoilGrids", "#8d6e63")}
-    ${carta("🍂", "Materia orgánica", s.mo ? `${num(s.mo, 1)} %` : "sin dato", s.mo && s.mo >= 4 ? "Suelo rico" : "Hay que alimentarlo", "#5d4037")}
-    ${carta("🫙", "Agua que guarda", `${num(s.agua_util_mm)} mm`, `Guarda ${s.guarda} agua para las raíces`, "#1565c0")}
     ${carta("🌧️", "Lluvia al año", `${num(c.lluvia_anual)} mm`, `Año seco: ${num(c.lluvia_seca)} mm`, "#1e6fb8")}
     ${carta("☀️", "Evaporación", `${num(c.et0_anual)} mm`, c.et0_anual > c.lluvia_anual ? "Más de lo que llueve" : "Menos de lo que llueve", "#e65100")}
     ${carta("🌡️", "Temperatura", `${num(c.tmin)} a ${num(c.tmax)} °C`, `Días de calor fuerte: ${t.calor_dias}`, "#d84315")}
+    ${n.radiacion_kwh ? carta("🔆", "Sol", `${num(n.radiacion_kwh, 1)} kWh/m²`, "Energía del sol por día", "#f2a900") : ""}
+    ${n.humedad_aire ? carta("☁️", "Humedad del aire", `${n.humedad_aire} %`, `Viento: ${num(n.viento, 1)} m/s`, "#5c7da8") : ""}
     ${carta("📈", "Última década", `Lluvia ${t.cambio_lluvia_pct > 0 ? "+" : ""}${t.cambio_lluvia_pct} %`, `Temperatura ${t.cambio_temp_c > 0 ? "+" : ""}${num(t.cambio_temp_c, 1)} °C`, "#6a1b9a")}
-    <article class="carta ancha" style="--color:#2e7d32"><div class="carta-icono">💧</div><h3>Humedad del suelo mes a mes</h3>
-      <div class="barras-h">${barras}</div></article>
+    ${humedad.length ? `<article class="carta ancha" style="--color:#2e7d32"><div class="carta-icono">💧</div><h3>Humedad del suelo en las raíces, mes a mes</h3>
+      <div class="barras-h">${barras}</div><p class="carta-detalle">Satélites de la NASA (GWETROOT): 100 % es suelo empapado.</p></article>` : ""}
   </div>
-  <p class="fuente">NASA POWER ${esc(p.periodo)} · FAO-56 · SoilGrids · relieve: Open-Meteo.</p>
+  <p class="fuente">NASA POWER ${esc(p.periodo)} (MERRA-2, CERES) · FAO-56.</p>
   <button class="btn-juego grande" data-sig>🌱 Conocer las semillas</button>`, "cartas-panel");
   $("[data-sig]").addEventListener("click", () => { paso("semillas"); abrirFamilias(); });
-  const secos = c.meses_secos as string[];
   const frases = [
-    `Tu granja está a ${num(p.lugar.elev)} metros, ¡muy cerca del cielo!`,
-    `El suelo es ${s.textura} y guarda ${s.guarda} agua.${s.mo ? ` Tiene ${num(s.mo, 1)} % de materia orgánica.` : ""}`,
-    `Llueve ${num(c.lluvia_anual)} milímetros al año${secos.length ? `; los meses secos son ${secos.slice(0, 3).join(", ")}` : ""}.`,
+    `Los satélites de la NASA miraron tu granja durante ${(() => { const [a0, a1] = String(p.periodo).split("–").map(Number); return a1 && a0 ? a1 - a0 + 1 : "muchos"; })()} años.`,
+    `Llueve ${num(c.lluvia_anual)} milímetros al año y el sol evapora ${num(c.et0_anual)}.`,
+    secos.length ? `El suelo se seca más en ${secos.slice(0, 3).join(", ")}: esos meses hay que regar.` : "El suelo guarda humedad casi todo el año.",
+    `La temperatura va de ${num(c.tmin)} a ${num(c.tmax)} grados.`,
   ];
-  if (clasePend === "fuerte" || clasePend === "moderada") frases.push("Tu tierra tiene pendiente: hay que sembrar en curvas y cubrirla para que no se lave.");
   decirVarias(frases);
 }
 
@@ -511,7 +508,7 @@ function eventos(antes: VistaParcela[]): boolean {
       decir(`¡Estrés por calor! Hoy hizo ${num(hoy.tmax)} °C. El suelo pierde agua más rápido.`, "preocupada");
     } else if (hoy.lluvia >= 15 && !avisos.has(hoy.fecha)) {
       avisos.add(hoy.fecha);
-      decir(`¡Aguacero de ${num(hoy.lluvia)} mm! La tierra cubierta con plantas no se lava.`);
+      decir(`¡Aguacero de ${num(hoy.lluvia)} mm! La tierra cubierta con plantas no se lava.`, "lluvia");
     }
   }
   return parar;
@@ -539,6 +536,7 @@ async function regar() {
     if (litros > J.tanque) { litros = J.tanque; mm = Math.round((litros / c.litros_por_mm) * 10) / 10; }
     if (mm <= 0) continue;
     p.riegos.push([d, mm]);
+    mundo?.regar(i);
     J.tanque -= litros;
     gastado += litros;
     regadas.push(nombreCorto(p.crop));
@@ -632,12 +630,21 @@ async function leccionRotacion() {
 }
 
 // ---------------------------------------------------------------- 11. certificado de Granjero Cósmico
+let pachitaDatos = "";
+async function cargarPachitaDatos() {
+  if (pachitaDatos) return;
+  try {
+    const b = await (await fetch(urlPose("saluda"))).blob();
+    pachitaDatos = await new Promise<string>((ok) => { const r = new FileReader(); r.onload = () => ok(String(r.result)); r.readAsDataURL(b); });
+  } catch { /* sin imagen */ }
+}
+
 function svgCertificado(): string {
   const prom = J.puntajes.length ? Math.round(J.puntajes.reduce((a, b) => a + b, 0) / J.puntajes.length) : 0;
   const hoy = new Date();
   const rot = (J.rotacion || []).map((id) => cultivos.get(id)?.nombre || id);
   const estrellas = Array.from({ length: 26 }, (_, k) => `<circle cx="${(k * 97) % 800}" cy="${(k * 53) % 90 + 30}" r="${1 + (k % 3)}" fill="#fff" opacity=".8"/>`).join("");
-  const pachita = PACHITA_SVG.replace(/<title>.*?<\/title>/, "").replace(/class="pachita-svg"[^>]*>/, 'width="120" height="160">');
+  const pachita = pachitaDatos ? `<image href="${pachitaDatos}" width="104" height="224"/>` : "";
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 560" class="certificado-svg" font-family="Nunito, Arial, sans-serif">
     <rect width="800" height="560" rx="28" fill="#fffaf0"/>
     <path d="M24 40 Q24 24 40 24 H760 Q776 24 776 40 V124 H24 Z" fill="#1d3b6a"/>${estrellas}
@@ -652,7 +659,7 @@ function svgCertificado(): string {
     <text x="400" y="306" text-anchor="middle" font-size="19" fill="#3b2a1a">Cosechas: <tspan font-weight="900">${J.cosechas}</tspan>  ·  Puntaje promedio: <tspan font-weight="900">${prom}</tspan>  ·  Salud de la tierra: <tspan font-weight="900">${J.salud}</tspan></text>
     ${rot.length ? `<text x="400" y="346" text-anchor="middle" font-size="17" fill="#5b4a3a">Rotación elegida: <tspan font-weight="800" fill="#2e7d4f">${esc(rot.join(" → "))}</tspan></text>` : ""}
     <text x="400" y="388" text-anchor="middle" font-size="26">${J.medallas.map((m) => MEDALLAS[m]?.icono || "").join(" ")}</text>
-    <g transform="translate(70 384)">${pachita}</g>
+    <g transform="translate(60 316)">${pachita}</g>
     <line x1="520" y1="482" x2="720" y2="482" stroke="#3b2a1a" stroke-width="1.5"/>
     <text x="620" y="474" text-anchor="middle" font-size="26" font-style="italic" fill="#2b4a7a">Pachita</text>
     <text x="620" y="502" text-anchor="middle" font-size="14" fill="#5b4a3a">Granjera de la sierra</text>
@@ -660,8 +667,9 @@ function svgCertificado(): string {
   </svg>`;
 }
 
-function certificado() {
+async function certificado() {
   ganar("cosmico");
+  await cargarPachitaDatos();
   const p = abrirPanel("¡Eres Granjero Cósmico!", `<div class="certificado">${svgCertificado()}</div>
     <div class="fila-botones"><button class="btn-juego" data-bajar>📥 Descargar</button>
       <button class="btn-juego borde" data-seguir>🌱 Sembrar la rotación</button>
@@ -760,7 +768,7 @@ function abrirLogros() {
 function pintarHud() {
   const lugarTxt = document.querySelector<HTMLElement>("#hud-lugar");
   if (!lugarTxt) return;
-  lugarTxt.textContent = `${J.granja || "Mi granja"}${parcelaInfo ? ` · ${num(parcelaInfo.lugar.elev)} m` : ""}`;
+  lugarTxt.textContent = J.granja || "Mi granja";
   const hoy = diaActual();
   $("#hud-fecha").textContent = hoy ? fecha(hoy.fecha) : J.mes ? `Siembra en ${MESES[J.mes - 1]}` : lugar().nombre || "";
   $("#hud-tanque").style.width = `${J.tanqueMax ? (J.tanque / J.tanqueMax) * 100 : 0}%`;

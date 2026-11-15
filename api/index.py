@@ -36,6 +36,7 @@ class Accion(BaseModel):
 
 class Texto(BaseModel):
     texto: str = Field(max_length=1500)
+    estilo: str = Field(default="normal", pattern="^(normal|nina)$")  # "nina": voz de Pachita en el juego
 
 
 class Pregunta(BaseModel):
@@ -114,7 +115,7 @@ def accion(a: Accion):
 
 @app.post("/api/voz")
 async def hablar(t: Texto):
-    datos = await voz.audio(t.texto)
+    datos = await voz.audio(t.texto, t.estilo)
     if not datos:
         return JSONResponse({"error": "sin voz"}, status_code=503)
     return Response(datos, media_type="audio/mpeg", headers={"Cache-Control": "public, max-age=86400"})

@@ -39,6 +39,7 @@ export function crearMundo2D(cont: HTMLElement, desnivel: number): Mundo {
       return el ? Number(el.dataset.i) : null;
     },
     resaltar(i) { botones.forEach((b, k) => b.classList.toggle("resaltada", k === i)); },
+    regar(i) { botones[i].classList.add("regando"); setTimeout(() => botones[i].classList.remove("regando"), 1200); },
     cosechar(i) { botones[i].classList.add("cosechando"); setTimeout(() => botones[i].classList.remove("cosechando"), 800); },
     destruir() { caja.remove(); },
   };

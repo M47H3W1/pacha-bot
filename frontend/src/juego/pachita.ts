@@ -1,40 +1,16 @@
 // Pachita: granjera de la sierra que guía al jugador con globos cortos y voz (/api/voz).
-// Ilustración SVG propia, hecha con asistencia de IA (marcada con "IA" en la esquina).
+// Ilustraciones del equipo (generadas con asistencia de IA y marcadas con "IA").
 
-export const PACHITA_SVG = `
-<svg viewBox="0 0 120 160" class="pachita-svg" role="img" aria-label="Pachita, granjera de la sierra">
-  <title>Pachita</title>
-  <ellipse cx="60" cy="154" rx="34" ry="5" fill="#000" opacity=".15"/>
-  <!-- anaco (falda) -->
-  <path d="M34 112 L86 112 L92 150 L28 150 Z" fill="#26324a"/>
-  <path d="M30 138 L90 138 L91 144 L29 144 Z" fill="#d94f3d"/>
-  <rect x="44" y="148" width="10" height="6" rx="3" fill="#5b3a24"/>
-  <rect x="66" y="148" width="10" height="6" rx="3" fill="#5b3a24"/>
-  <!-- poncho -->
-  <path d="M60 62 L98 116 Q60 124 22 116 Z" fill="#c8372d"/>
-  <path d="M60 62 L98 116 Q60 124 22 116 Z" fill="none" stroke="#f2b134" stroke-width="3" stroke-dasharray="6 4"/>
-  <path d="M30 108 Q60 115 90 108" stroke="#2e7d4f" stroke-width="4" fill="none"/>
-  <!-- manos -->
-  <circle cx="27" cy="114" r="6" fill="#b5764a"/>
-  <circle cx="93" cy="114" r="6" fill="#b5764a"/>
-  <!-- trenzas -->
-  <path d="M41 58 Q36 80 40 100" stroke="#1d1410" stroke-width="7" fill="none" stroke-linecap="round"/>
-  <path d="M79 58 Q84 80 80 100" stroke="#1d1410" stroke-width="7" fill="none" stroke-linecap="round"/>
-  <circle cx="40" cy="101" r="4" fill="#d94f3d"/><circle cx="80" cy="101" r="4" fill="#d94f3d"/>
-  <!-- cara -->
-  <ellipse cx="60" cy="56" rx="20" ry="22" fill="#c58457"/>
-  <path d="M40 50 Q60 34 80 50 L80 44 Q60 30 40 44 Z" fill="#1d1410"/>
-  <circle class="ojo" cx="52" cy="57" r="2.6" fill="#1d1410"/>
-  <circle class="ojo" cx="68" cy="57" r="2.6" fill="#1d1410"/>
-  <circle cx="47" cy="64" r="3.5" fill="#e0715a" opacity=".55"/>
-  <circle cx="73" cy="64" r="3.5" fill="#e0715a" opacity=".55"/>
-  <path class="boca" d="M53 67 Q60 73 67 67" stroke="#7a2e22" stroke-width="2.4" fill="none" stroke-linecap="round"/>
-  <!-- sombrero de paño -->
-  <ellipse cx="60" cy="38" rx="36" ry="8" fill="#f1ece0"/>
-  <path d="M42 37 Q44 14 60 13 Q76 14 78 37 Z" fill="#f6f2e8"/>
-  <path d="M43 31 Q60 35 77 31 L78 36 Q60 40 42 36 Z" fill="#2b2b2b"/>
-  <text x="114" y="157" font-size="7" text-anchor="end" fill="#6b5b4b" opacity=".7" font-family="sans-serif">IA</text>
-</svg>`;
+export type Animo = "feliz" | "pensando" | "preocupada" | "lluvia";
+const POSE: Record<Animo, string> = { feliz: "saluda", pensando: "piensa", preocupada: "piensa", lluvia: "paraguas" };
+export const POSES = ["saluda", "piensa", "paraguas"];
+export const urlPose = (pose: string) => `/img/pachita/pachita-${pose}.webp`;
+
+/** Pachita con las tres poses del equipo (se cambia de pose con data-animo). */
+export const PACHITA_HTML = POSES.map((p) =>
+  `<img class="pose pose-${p}" src="${urlPose(p)}" alt="" draggable="false" ${p === "saluda" ? "" : 'loading="lazy"'}>`).join("");
+// compatibilidad: el resto del juego aún importa este nombre
+export const PACHITA_SVG = PACHITA_HTML;
 
 let silencio = false;
 let reproductor: HTMLAudioElement | null = null;
@@ -58,10 +34,13 @@ function limpiarParaVoz(t: string) {
   return t.replace(/[\u{1F000}-\u{1FAFF}☀-➿️]/gu, "").trim();
 }
 
+/** Pide el audio antes de que haga falta: así una frase sigue a la otra sin pausas. */
+export function precargar(textos: string[]) { textos.forEach((t) => void urlVoz(limpiarParaVoz(t))); }
+
 async function urlVoz(texto: string): Promise<string | null> {
   if (!audios.has(texto)) {
     audios.set(texto, fetch("/api/voz", {
-      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ texto }),
+      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ texto, estilo: "nina" }),
     }).then(async (r) => (r.ok ? URL.createObjectURL(await r.blob()) : null)).catch(() => null));
   }
   return audios.get(texto)!;
@@ -74,6 +53,8 @@ function vozDelTelefono(texto: string) {
   u.lang = "es-EC";
   const v = speechSynthesis.getVoices().find((x) => x.lang.startsWith("es"));
   if (v) u.voice = v;
+  u.pitch = 1.5;  // respaldo sin red: voz del teléfono más aguda, como de niña
+  u.rate = 1.05;
   speechSynthesis.speak(u);
 }
 
@@ -91,7 +72,7 @@ function terminar(mio: number) {
 }
 
 /** Pachita dice algo: globo de diálogo (1–2 frases) y voz. La promesa se cumple cuando termina de hablar. */
-export function decir(texto: string, animo: "feliz" | "pensando" | "preocupada" = "feliz"): Promise<void> {
+export function decir(texto: string, animo: Animo = "feliz"): Promise<void> {
   const caja = document.querySelector<HTMLElement>("#pachita");
   const globo = document.querySelector<HTMLElement>("#globo");
   if (!caja || !globo) return Promise.resolve();
@@ -103,6 +84,7 @@ export function decir(texto: string, animo: "feliz" | "pensando" | "preocupada" 
   void globo.offsetWidth;
   globo.classList.add("aparece");
   caja.dataset.animo = animo;
+  caja.dataset.pose = POSE[animo];
   caja.classList.add("habla");
   clearTimeout(ocultar);
   globo.onclick = () => (globo.hidden = true);
@@ -126,7 +108,8 @@ export function decir(texto: string, animo: "feliz" | "pensando" | "preocupada" 
 }
 
 /** Varias frases seguidas (cada una espera a que termine la anterior). */
-export async function decirVarias(frases: string[], animo: "feliz" | "pensando" | "preocupada" = "feliz") {
+export async function decirVarias(frases: string[], animo: Animo = "feliz") {
+  precargar(frases);
   for (const f of frases) {
     const promesa = decir(f, animo);
     const mio = turno;

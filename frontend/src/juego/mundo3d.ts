@@ -1,23 +1,25 @@
-// Mundo 3D low-poly con three.js (se carga solo cuando hace falta). Escala real en metros.
+// Mundo 3D estilo "casual cute" con identidad andina: sombreado toon, sombras suaves, chacras en franjas,
+// casa de adobe con teja, cerco de madera, árboles redondos, nubes y volcán nevado. Escala real en metros.
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
+import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeometry.js";
 import type { Mundo, Terreno, VistaParcela } from "./mundo";
 import { N_PARCELAS } from "./estado";
 
-const EXAGERACION = 1.6; // relieve un poco más marcado para que se lea en pantalla
+const EXAG_MAX = 1.6; // relieve un poco más marcado en terrenos planos para que se lea en pantalla
+const POR_FRANJA = 12;
+const ESCALA = [0, 0.32, 0.62, 1, 0.96];
 
 const FAMILIA: Record<string, { hoja: number; flor: number; fruto: number; forma: "mata" | "espiga" | "rastrera" }> = {
-  solanacea: { hoja: 0x3f8f3a, flor: 0xf3e9ff, fruto: 0x9b6b3d, forma: "mata" },
-  poacea: { hoja: 0x8fbf4a, flor: 0xe8c547, fruto: 0xe2b33a, forma: "espiga" },
-  fabacea: { hoja: 0x3d9b4f, flor: 0xffffff, fruto: 0x6fbf5a, forma: "mata" },
-  amarantacea: { hoja: 0x5b9b3a, flor: 0xe8573a, fruto: 0xd8442b, forma: "espiga" },
-  basellacea: { hoja: 0x4aa04a, flor: 0xf7d54a, fruto: 0xf2c230, forma: "rastrera" },
-  oxalidacea: { hoja: 0x4f9a3d, flor: 0xf7e05a, fruto: 0xef7d2c, forma: "rastrera" },
-  pasto: { hoja: 0x58b04f, flor: 0xffffff, fruto: 0x58b04f, forma: "rastrera" },
-  ninguna: { hoja: 0x7fb85a, flor: 0xffffff, fruto: 0x7fb85a, forma: "rastrera" },
+  solanacea: { hoja: 0x4caf50, flor: 0xf3e9ff, fruto: 0xb7804a, forma: "mata" },
+  poacea: { hoja: 0x9ccc65, flor: 0xf2c94c, fruto: 0xf2c94c, forma: "espiga" },
+  fabacea: { hoja: 0x43a047, flor: 0xffffff, fruto: 0x8bc34a, forma: "mata" },
+  amarantacea: { hoja: 0x66bb6a, flor: 0xec407a, fruto: 0xe53935, forma: "espiga" },
+  basellacea: { hoja: 0x5cb85c, flor: 0xffd54f, fruto: 0xf06292, forma: "rastrera" },
+  oxalidacea: { hoja: 0x5aa84a, flor: 0xffe082, fruto: 0xff8a65, forma: "rastrera" },
+  pasto: { hoja: 0x66bb6a, flor: 0xffffff, fruto: 0x66bb6a, forma: "rastrera" },
+  ninguna: { hoja: 0x8bc34a, flor: 0xffffff, fruto: 0x8bc34a, forma: "rastrera" },
 };
-const ESCALA = [0, 0.28, 0.6, 1, 0.95];
-const POR_FRANJA = 12;
 
 export function hayWebGL(): boolean {
   try {
@@ -28,223 +30,376 @@ export function hayWebGL(): boolean {
   }
 }
 
+/** Rampa de 3 tonos para el sombreado toon (luz, media, sombra). */
+function rampaToon(): THREE.DataTexture {
+  const d = new Uint8Array([110, 110, 110, 255, 185, 185, 185, 255, 255, 255, 255, 255]);
+  const t = new THREE.DataTexture(d, 3, 1, THREE.RGBAFormat);
+  t.minFilter = t.magFilter = THREE.NearestFilter;
+  t.generateMipmaps = false;
+  t.needsUpdate = true;
+  return t;
+}
+
+const suave = (k: number) => 1 - Math.pow(1 - Math.min(1, Math.max(0, k)), 3);              // ease-out cúbico
+const rebote = (k: number) => { k = Math.min(1, k); return 1 + 2.2 * Math.pow(k - 1, 3) + 1.2 * Math.pow(k - 1, 2); }; // ease-out back
+
 export function crearMundo3D(cont: HTMLElement, t: Terreno, elev: number): Mundo {
-  const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "low-power" });
+  const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   renderer.setSize(cont.clientWidth, cont.clientHeight);
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.05;
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   cont.appendChild(renderer.domElement);
   renderer.domElement.classList.add("lienzo3d");
 
   const escena = new THREE.Scene();
   const alto = Math.max(0, Math.min(1, (elev - 2400) / 1400));
-  const cielo = new THREE.Color().lerpColors(new THREE.Color(0x9fd0ee), new THREE.Color(0x3f7fc8), alto);
+  const cielo = new THREE.Color().lerpColors(new THREE.Color(0xa8dcf5), new THREE.Color(0x6ab4ea), alto);
   escena.background = cielo;
   const L = t.lado_m;
-  escena.fog = new THREE.Fog(cielo, L * 1.4, L * 5);
+  const S = Math.max(14, Math.min(48, L * 0.34));   // tamaño de la zona de chacras
+  escena.fog = new THREE.Fog(cielo, S * 4, S * 14);
+
+  const gradiente = rampaToon();
+  const cache = new Map<number, THREE.MeshToonMaterial>();
+  const toon = (color: number) => {
+    if (!cache.has(color)) cache.set(color, new THREE.MeshToonMaterial({ color, gradientMap: gradiente }));
+    return cache.get(color)!;
+  };
 
   // --- altura del terreno (bilineal sobre la grilla real) ---
+  // la exageración solo ayuda en terrenos planos; en laderas fuertes se usa la altura real
+  const EXAGERACION = Math.min(EXAG_MAX, Math.max(1, (S * 0.6) / Math.max(t.desnivel_m, 1)));
   const n = t.n, paso = L / (n - 1);
   const H = (x: number, z: number) => {
     const fx = Math.max(0, Math.min(n - 1.0001, (x + L / 2) / paso));
     const fz = Math.max(0, Math.min(n - 1.0001, (z + L / 2) / paso));
     const j = Math.floor(fx), i = Math.floor(fz), dx = fx - j, dz = fz - i;
     const a = t.alturas[i][j], b = t.alturas[i][j + 1], c = t.alturas[i + 1][j], d = t.alturas[i + 1][j + 1];
-    const h = a * (1 - dx) * (1 - dz) + b * dx * (1 - dz) + c * (1 - dx) * dz + d * dx * dz;
-    return (h - t.centro) * EXAGERACION;
+    return ((a * (1 - dx) + b * dx) * (1 - dz) + (c * (1 - dx) + d * dx) * dz - t.centro) * EXAGERACION;
   };
 
-  // --- terreno: chacras en franjas dentro del círculo, páramo afuera ---
-  const seg = 72;
-  const geo = new THREE.PlaneGeometry(L * 1.6, L * 1.6, seg, seg);
+  // --- terreno con chacras en franjas (colores cálidos andinos) ---
+  const ancho = L * 1.7, seg = 96;
+  const geo = new THREE.PlaneGeometry(ancho, ancho, seg, seg);
   geo.rotateX(-Math.PI / 2);
   const pos = geo.attributes.position as THREE.BufferAttribute;
   const colores = new Float32Array(pos.count * 3);
-  const franjas = [0x7fae4a, 0xa9c45a, 0xc9b257, 0x6f9a3e, 0xb08a52, 0x8fbf5c].map((c) => new THREE.Color(c));
-  const paramo = new THREE.Color(0x8d9f6a), tmp = new THREE.Color();
+  const franjas = [0x8bc34a, 0xc5d86d, 0xe9c46a, 0x6aa84f, 0xd4a373, 0xa7c957].map((c) => new THREE.Color(c));
+  const pasto = new THREE.Color(0x7cb342), tmp = new THREE.Color();
   for (let k = 0; k < pos.count; k++) {
     const x = pos.getX(k), z = pos.getZ(k);
     pos.setY(k, H(x, z));
     const r = Math.hypot(x, z);
-    if (r <= L / 2) tmp.copy(franjas[Math.abs(Math.floor((z + x * 0.25) / (L / 9))) % franjas.length]);
-    else tmp.copy(paramo).offsetHSL(0, 0, ((Math.sin(x * 0.07) + Math.cos(z * 0.05)) * 0.03));
+    if (r <= L / 2) tmp.copy(franjas[Math.abs(Math.floor((z + x * 0.3) / (L / 8))) % franjas.length]);
+    else tmp.copy(pasto).offsetHSL(0.01 * Math.sin(x * 0.05), 0, 0.04 * Math.sin(x * 0.03 + z * 0.04));
     colores.set([tmp.r, tmp.g, tmp.b], k * 3);
   }
   geo.setAttribute("color", new THREE.BufferAttribute(colores, 3));
   geo.computeVertexNormals();
-  escena.add(new THREE.Mesh(geo, new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true })));
+  const suelo = new THREE.Mesh(geo, new THREE.MeshToonMaterial({ vertexColors: true, gradientMap: gradiente }));
+  suelo.receiveShadow = true;
+  escena.add(suelo);
 
-  // borde de su tierra
+  // borde de su tierra: cinta blanca punteada
   const borde: THREE.Vector3[] = [];
-  for (let a = 0; a <= 64; a++) {
-    const x = Math.cos((a / 64) * Math.PI * 2) * L / 2, z = Math.sin((a / 64) * Math.PI * 2) * L / 2;
-    borde.push(new THREE.Vector3(x, H(x, z) + 0.4, z));
+  for (let a = 0; a <= 96; a++) {
+    const x = Math.cos((a / 96) * Math.PI * 2) * L / 2, z = Math.sin((a / 96) * Math.PI * 2) * L / 2;
+    borde.push(new THREE.Vector3(x, H(x, z) + 0.3, z));
   }
-  escena.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(borde),
-    new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.8 })));
+  const linea = new THREE.Line(new THREE.BufferGeometry().setFromPoints(borde),
+    new THREE.LineDashedMaterial({ color: 0xffffff, dashSize: L / 60, gapSize: L / 90 }));
+  linea.computeLineDistances();
+  escena.add(linea);
 
-  // suelo lejano y volcán nevado (decorativos)
-  const lejos = new THREE.Mesh(new THREE.CircleGeometry(L * 6, 24), new THREE.MeshLambertMaterial({ color: 0x7f9a5e }));
+  // --- fondo: llanura lejana, volcán nevado y montañas ---
+  const base = Math.min(H(-L * 0.8, -L * 0.8), H(L * 0.8, L * 0.8), H(0, 0)) - 1;
+  const lejos = new THREE.Mesh(new THREE.CircleGeometry(S * 16, 32), toon(0x8fbf5a));
   lejos.rotation.x = -Math.PI / 2;
-  lejos.position.y = Math.min(...[H(-L * 0.8, -L * 0.8), H(L * 0.8, L * 0.8), H(0, 0)]) - 2;
+  lejos.position.y = base - 1;
+  lejos.receiveShadow = true;
   escena.add(lejos);
-  const volcan = new THREE.Mesh(new THREE.ConeGeometry(L * 1.1, L * 1.0, 9), new THREE.MeshLambertMaterial({ color: 0x7d8a9a, flatShading: true }));
-  volcan.position.set(L * 0.6, lejos.position.y + L * 0.5, -L * 3);
-  const nieve = new THREE.Mesh(new THREE.ConeGeometry(L * 0.38, L * 0.35, 9), new THREE.MeshLambertMaterial({ color: 0xf6f8fb, flatShading: true }));
-  nieve.position.set(L * 0.6, lejos.position.y + L * 0.83, -L * 3);
-  escena.add(volcan, nieve);
+  const montana = (x: number, z: number, r: number, h: number, nieve: boolean, color = 0x8d9aa8) => {
+    const m = new THREE.Mesh(new THREE.ConeGeometry(r, h, 10, 1), toon(color));
+    m.position.set(x, base + h / 2 - 1, z);
+    escena.add(m);
+    if (nieve) {
+      const c = new THREE.Mesh(new THREE.ConeGeometry(r * 0.36, h * 0.34, 10, 1), toon(0xffffff));
+      c.position.set(x, base + h * 0.84 - 1, z);
+      escena.add(c);
+    }
+  };
+  montana(S * 2, -S * 9, S * 3.4, S * 3.2, true);
+  montana(-S * 5, -S * 10, S * 2.6, S * 2.2, true, 0x95a3b0);
+  montana(S * 7, -S * 8, S * 2.2, S * 1.6, false, 0x7f9f6a);
+  montana(-S * 9, -S * 6, S * 2.4, S * 1.5, false, 0x8aa66f);
 
-  // luces (más intensas a mayor altura)
-  escena.add(new THREE.HemisphereLight(0xdff1ff, 0x5b4a2f, 1.1 + alto * 0.3));
-  const sol = new THREE.DirectionalLight(0xfff2d6, 1.6 + alto * 0.6);
-  sol.position.set(L, L * 1.4, L * 0.6);
+  // --- luces: cielo + sol con sombras suaves (más intensas a mayor altura) ---
+  escena.add(new THREE.HemisphereLight(0xeaf6ff, 0x6b8f3a, 1.4 + alto * 0.3));
+  const sol = new THREE.DirectionalLight(0xfff1d0, 2.4 + alto * 0.6);
+  sol.position.set(S * 1.2, S * 2, S * 0.9);
+  sol.castShadow = true;
+  sol.shadow.mapSize.set(1024, 1024);
+  const cam = sol.shadow.camera as THREE.OrthographicCamera;
+  cam.left = cam.bottom = -S * 1.3; cam.right = cam.top = S * 1.3; cam.near = 1; cam.far = S * 6;
+  sol.shadow.bias = -0.0005;
   escena.add(sol);
 
-  // --- franjas de cultivo (parcelas del juego) ---
-  const S = Math.max(14, Math.min(48, L * 0.34));
-  const ancho = (S / N_PARCELAS) * 0.78;
+  // --- camas de cultivo con surcos ---
+  const anchoF = (S / N_PARCELAS) * 0.78;
   const parcelas: THREE.Mesh[] = [];
-  const materialesSuelo: THREE.MeshLambertMaterial[] = [];
+  const matSuelo: THREE.MeshToonMaterial[] = [];
   const plantas: THREE.Group[][] = [];
-  const resalte: THREE.Mesh[] = [];
-  const geoTallo = new THREE.CylinderGeometry(0.05, 0.07, 1, 5);
-  const geoMata = new THREE.IcosahedronGeometry(0.55, 0);
-  const geoEspiga = new THREE.ConeGeometry(0.28, 1.4, 5);
-  const geoRastrera = new THREE.SphereGeometry(0.5, 6, 4);
-  const geoFlor = new THREE.SphereGeometry(0.13, 5, 4);
-  const tam = S / 14;
+  const anillos: THREE.Mesh[] = [];
+  const tam = S / 13;
   for (let i = 0; i < N_PARCELAS; i++) {
     const zc = -S / 2 + (i + 0.5) * (S / N_PARCELAS);
-    const g = new THREE.PlaneGeometry(S, ancho, 24, 2);
+    const g = new THREE.PlaneGeometry(S, anchoF, 40, 12);
     g.rotateX(-Math.PI / 2);
     const p = g.attributes.position as THREE.BufferAttribute;
-    for (let k = 0; k < p.count; k++) p.setY(k, H(p.getX(k), p.getZ(k) + zc) + 0.12);
+    for (let k = 0; k < p.count; k++) {
+      const z = p.getZ(k);
+      const surco = Math.cos((z / anchoF) * Math.PI * 4) * 0.12 * tam;            // tres lomos de tierra
+      const orilla = 1 - Math.pow(Math.abs(z) / (anchoF / 2), 6);                 // bordes redondeados
+      p.setY(k, H(p.getX(k), z + zc) + (0.25 * tam + surco) * Math.max(0, orilla));
+    }
     g.computeVertexNormals();
-    const m = new THREE.MeshLambertMaterial({ color: 0x8a5a33, flatShading: true });
+    const m = new THREE.MeshToonMaterial({ color: 0x8a5a33, gradientMap: gradiente });
     const malla = new THREE.Mesh(g, m);
     malla.position.z = zc;
     malla.userData.i = i;
+    malla.receiveShadow = true;
     escena.add(malla);
     parcelas.push(malla);
-    materialesSuelo.push(m);
-    // anillo que indica dónde sembrar o cosechar
-    const anillo = new THREE.Mesh(new THREE.TorusGeometry(ancho * 0.35, ancho * 0.06, 6, 20),
-      new THREE.MeshBasicMaterial({ color: 0xffd34d }));
+    matSuelo.push(m);
+    // anillo dorado que marca cosecha o franja elegida
+    const anillo = new THREE.Mesh(new THREE.TorusGeometry(anchoF * 0.32, anchoF * 0.07, 8, 24), new THREE.MeshBasicMaterial({ color: 0xffd34d }));
     anillo.rotation.x = -Math.PI / 2;
-    anillo.position.set(S / 2 + ancho * 0.6, H(S / 2 + ancho * 0.6, zc) + 0.6, zc);
+    anillo.position.set(S / 2 + anchoF * 0.7, 0, zc);
     anillo.visible = false;
     escena.add(anillo);
-    resalte.push(anillo);
+    anillos.push(anillo);
     const fila: THREE.Group[] = [];
     for (let k = 0; k < POR_FRANJA; k++) {
-      const x = -S / 2 + (k % 6 + 0.5) * (S / 6), z = zc + (k < 6 ? -ancho * 0.22 : ancho * 0.22);
+      const x = -S / 2 + (k % 6 + 0.5) * (S / 6), z = zc + (k < 6 ? -anchoF * 0.24 : anchoF * 0.24);
       const planta = new THREE.Group();
-      planta.position.set(x, H(x, z) + 0.12, z);
+      planta.position.set(x, H(x, z) + 0.3 * tam, z);
       planta.rotation.y = k * 1.7;
       planta.visible = false;
+      planta.userData = { k, nace: -1, fase: k * 0.7, i };
       escena.add(planta);
       fila.push(planta);
     }
     plantas.push(fila);
   }
 
-  const mats = new Map<number, THREE.MeshLambertMaterial>();
-  const mat = (c: number) => {
-    if (!mats.has(c)) mats.set(c, new THREE.MeshLambertMaterial({ color: c, flatShading: true }));
-    return mats.get(c)!;
-  };
-  const SECA = 0x9b7a45, MADURA = 0xc9b04a;
+  // --- cerco de madera alrededor de las chacras ---
+  const poste = new THREE.CylinderGeometry(tam * 0.09, tam * 0.11, tam * 0.9, 6);
+  const madera = toon(0x8d5a2b);
+  const borde2 = S / 2 + anchoF * 1.2;
+  const puntos: [number, number][] = [];
+  for (let k = -6; k <= 6; k++) { puntos.push([k * borde2 / 6, -borde2 * 0.62], [k * borde2 / 6, borde2 * 0.62]); }
+  for (let k = -3; k <= 3; k++) { puntos.push([-borde2, k * borde2 * 0.62 / 3], [borde2, k * borde2 * 0.62 / 3]); }
+  const postes = new THREE.InstancedMesh(poste, madera, puntos.length);
+  const mtx = new THREE.Matrix4();
+  puntos.forEach(([x, z], k) => { mtx.makeTranslation(x, H(x, z) + tam * 0.45, z); postes.setMatrixAt(k, mtx); });
+  postes.castShadow = true;
+  escena.add(postes);
 
+  // --- casa de adobe con techo de teja ---
+  const casa = new THREE.Group();
+  const paredes = new THREE.Mesh(new RoundedBoxGeometry(tam * 3, tam * 1.8, tam * 2.2, 3, tam * 0.15), toon(0xf1d9b5));
+  paredes.position.y = tam * 0.9;
+  const techo = new THREE.Mesh(new THREE.ConeGeometry(tam * 2.3, tam * 1.3, 4, 1), toon(0xc0533a));
+  techo.rotation.y = Math.PI / 4;
+  techo.scale.set(1.15, 1, 0.85);
+  techo.position.y = tam * 2.4;
+  const puerta = new THREE.Mesh(new RoundedBoxGeometry(tam * 0.7, tam * 1.1, tam * 0.1, 2, tam * 0.05), toon(0x6d4c2f));
+  puerta.position.set(0, tam * 0.55, tam * 1.11);
+  const ventana = new THREE.Mesh(new THREE.BoxGeometry(tam * 0.55, tam * 0.5, tam * 0.08), toon(0x5aa9d6));
+  ventana.position.set(tam * 0.9, tam * 1.05, tam * 1.11);
+  casa.add(paredes, techo, puerta, ventana);
+  casa.traverse((o) => { if ((o as THREE.Mesh).isMesh) { o.castShadow = true; o.receiveShadow = true; } });
+  const cx = -borde2 - tam * 3.2, cz = -borde2 * 0.2;
+  casa.position.set(cx, H(cx, cz), cz);
+  casa.rotation.y = Math.PI / 5;
+  escena.add(casa);
+
+  // --- árboles redondos ---
+  const tronco = new THREE.CylinderGeometry(tam * 0.12, tam * 0.18, tam * 1.2, 6);
+  const copa = new THREE.IcosahedronGeometry(tam * 0.8, 1);
+  const verdes = [0x4caf50, 0x66bb6a, 0x388e3c];
+  for (let k = 0; k < 16; k++) {
+    const a = (k / 16) * Math.PI * 2 + 0.3 * Math.sin(k * 3), r = borde2 * (1.6 + 0.5 * ((k * 37) % 7) / 7);
+    const x = Math.cos(a) * r, z = Math.sin(a) * r * 0.9;
+    if (Math.hypot(x - cx, z - cz) < tam * 4) continue;
+    const arbol = new THREE.Group();
+    const tr = new THREE.Mesh(tronco, madera); tr.position.y = tam * 0.6;
+    const cp = new THREE.Mesh(copa, toon(verdes[k % 3])); cp.position.y = tam * 1.6; cp.scale.setScalar(0.85 + (k % 4) * 0.12);
+    arbol.add(tr, cp);
+    arbol.traverse((o) => { if ((o as THREE.Mesh).isMesh) o.castShadow = true; });
+    arbol.position.set(x, H(x, z), z);
+    escena.add(arbol);
+  }
+
+  // --- nubes esponjosas ---
+  const nubes: THREE.Group[] = [];
+  const bola = new THREE.SphereGeometry(1, 12, 10);
+  for (let k = 0; k < 6; k++) {
+    const nube = new THREE.Group();
+    for (let b = 0; b < 4; b++) {
+      const m = new THREE.Mesh(bola, toon(0xffffff));
+      m.position.set((b - 1.5) * S * 0.18, Math.sin(b * 2) * S * 0.05, (b % 2) * S * 0.06);
+      m.scale.setScalar(S * (0.16 + (b % 2) * 0.06));
+      nube.add(m);
+    }
+    nube.position.set(-S * 6 + k * S * 2.4, S * (1.6 + (k % 3) * 0.35), -S * (2 + (k % 3) * 1.5));
+    nubes.push(nube);
+    escena.add(nube);
+  }
+
+  // --- plantas: geometrías compartidas ---
+  const geoTallo = new THREE.CylinderGeometry(0.05, 0.08, 1, 6);
+  const geoMata = new THREE.IcosahedronGeometry(0.55, 1);
+  const geoEspiga = new THREE.CapsuleGeometry(0.16, 0.9, 4, 8);
+  const geoRastrera = new THREE.SphereGeometry(0.5, 12, 8);
+  const geoFlor = new THREE.SphereGeometry(0.13, 8, 6);
   function armarPlanta(g: THREE.Group, v: VistaParcela) {
     g.clear();
     const f = FAMILIA[v.familia || "ninguna"] || FAMILIA.ninguna;
-    const hoja = v.marchita ? SECA : v.etapa >= 4 ? MADURA : f.hoja;
-    const tallo = new THREE.Mesh(geoTallo, mat(v.marchita ? SECA : 0x4f7f2f));
+    const hoja = v.marchita ? 0xb08a4a : v.etapa >= 4 ? 0xd4c25a : f.hoja;
+    const tallo = new THREE.Mesh(geoTallo, toon(v.marchita ? 0xa0804a : 0x4f8f2f));
     tallo.position.y = 0.5;
     g.add(tallo);
-    const copa = new THREE.Mesh(f.forma === "espiga" ? geoEspiga : f.forma === "mata" ? geoMata : geoRastrera, mat(hoja));
-    copa.position.y = f.forma === "rastrera" ? 0.3 : 1.05;
-    if (f.forma === "rastrera") copa.scale.set(1.3, 0.55, 1.3);
-    g.add(copa);
-    if (v.etapa === 3 && !v.marchita) {
+    if (f.forma === "espiga") {
       for (let k = 0; k < 3; k++) {
-        const flor = new THREE.Mesh(geoFlor, mat(f.flor));
-        flor.position.set(Math.cos(k * 2.1) * 0.4, 1.3, Math.sin(k * 2.1) * 0.4);
+        const e = new THREE.Mesh(geoEspiga, toon(v.etapa >= 3 ? f.fruto : hoja));
+        e.position.set(Math.cos(k * 2.1) * 0.18, 1.05, Math.sin(k * 2.1) * 0.18);
+        e.rotation.z = (k - 1) * 0.25;
+        g.add(e);
+      }
+    } else {
+      const copaP = new THREE.Mesh(f.forma === "mata" ? geoMata : geoRastrera, toon(hoja));
+      copaP.position.y = f.forma === "rastrera" ? 0.32 : 1.0;
+      if (f.forma === "rastrera") copaP.scale.set(1.35, 0.6, 1.35);
+      g.add(copaP);
+    }
+    if (v.etapa === 3 && !v.marchita && f.forma !== "espiga") {
+      for (let k = 0; k < 4; k++) {
+        const flor = new THREE.Mesh(geoFlor, toon(f.flor));
+        flor.position.set(Math.cos(k * 1.6) * 0.42, 1.3, Math.sin(k * 1.6) * 0.42);
         g.add(flor);
       }
     }
-    if (v.etapa >= 4 && !v.marchita) {
-      const fruto = new THREE.Mesh(geoFlor, mat(f.fruto));
-      fruto.scale.setScalar(2.2);
-      fruto.position.set(0.35, f.forma === "espiga" ? 1.6 : 0.35, 0);
+    if (v.etapa >= 4 && !v.marchita && f.forma !== "espiga") {
+      const fruto = new THREE.Mesh(geoFlor, toon(f.fruto));
+      fruto.scale.setScalar(2.4);
+      fruto.position.set(0.4, f.forma === "rastrera" ? 0.55 : 0.4, 0);
       g.add(fruto);
     }
-    g.rotation.z = v.marchita ? 0.5 : 0;
+    g.traverse((o) => { if ((o as THREE.Mesh).isMesh) o.castShadow = true; });
+    g.userData.marchita = v.marchita;
   }
 
-  // --- lluvia ---
+  // --- lluvia y gotas de riego ---
+  const nG = 600, pg = new Float32Array(nG * 3);
+  for (let k = 0; k < nG; k++) pg.set([(Math.random() - 0.5) * S * 2, Math.random() * S * 1.2, (Math.random() - 0.5) * S * 2], k * 3);
   const gotas = new THREE.BufferGeometry();
-  const nG = 500, pg = new Float32Array(nG * 3);
-  for (let k = 0; k < nG; k++) pg.set([(Math.random() - 0.5) * S * 1.6, Math.random() * S, (Math.random() - 0.5) * S * 1.6], k * 3);
   gotas.setAttribute("position", new THREE.BufferAttribute(pg, 3));
-  const lluvia = new THREE.Points(gotas, new THREE.PointsMaterial({ color: 0xcfe6ff, size: S / 160, transparent: true, opacity: 0.8 }));
+  const lluvia = new THREE.Points(gotas, new THREE.PointsMaterial({ color: 0xd6ecff, size: S / 140, transparent: true, opacity: 0.85 }));
   lluvia.visible = false;
   escena.add(lluvia);
+  const chorros: { p: THREE.Points; t0: number }[] = [];
+  const geoChorro = new THREE.BufferGeometry();
+  const pc = new Float32Array(120 * 3);
+  for (let k = 0; k < 120; k++) pc.set([(Math.random() - 0.5) * S, Math.random() * tam * 3, (Math.random() - 0.5) * anchoF], k * 3);
+  geoChorro.setAttribute("position", new THREE.BufferAttribute(pc, 3));
+  const matChorro = new THREE.PointsMaterial({ color: 0x4fc3f7, size: tam * 0.18, transparent: true, opacity: 0.9 });
 
-  // --- cámara ---
-  const camara = new THREE.PerspectiveCamera(45, cont.clientWidth / cont.clientHeight, 0.5, L * 12);
-  const lejania = cont.clientWidth < cont.clientHeight ? 1.7 : 1; // en vertical se ve menos ancho
-  camara.position.set(S * 1.25 * lejania, S * 1.15 * lejania, S * 1.9 * lejania);
+  // --- cámara con vuelo de entrada ---
+  const vertical = cont.clientWidth < cont.clientHeight ? 1.6 : 1;
+  const camara = new THREE.PerspectiveCamera(42, cont.clientWidth / cont.clientHeight, 0.5, S * 40);
+  const destino = new THREE.Vector3(S * 1.15 * vertical, S * 1.1 * vertical, S * 1.75 * vertical);
+  const inicio = destino.clone().multiplyScalar(2.6).add(new THREE.Vector3(0, S * 2, 0));
+  camara.position.copy(inicio);
   const ctrl = new OrbitControls(camara, renderer.domElement);
   ctrl.target.set(0, H(0, 0), 0);
   ctrl.enableDamping = true;
-  ctrl.maxPolarAngle = Math.PI * 0.44;
-  ctrl.minDistance = S * 0.5;
-  ctrl.maxDistance = Math.max(S * 3, L * 1.3);
+  ctrl.dampingFactor = 0.08;
+  ctrl.maxPolarAngle = Math.PI * 0.43;
+  ctrl.minDistance = S * 0.6;
+  ctrl.maxDistance = S * 5;
   ctrl.enablePan = false;
+  ctrl.enabled = false;
 
   // --- toques ---
   const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
   let alTocar: (i: number) => void = () => {};
-  let inicio: [number, number] | null = null;
-  function parcelaEn(cx: number, cy: number): number | null {
+  let inicioToque: [number, number] | null = null;
+  function parcelaEn(px: number, py: number): number | null {
     const r = renderer.domElement.getBoundingClientRect();
-    if (cx < r.left || cx > r.right || cy < r.top || cy > r.bottom) return null;
-    ndc.set(((cx - r.left) / r.width) * 2 - 1, -((cy - r.top) / r.height) * 2 + 1);
+    if (px < r.left || px > r.right || py < r.top || py > r.bottom) return null;
+    ndc.set(((px - r.left) / r.width) * 2 - 1, -((py - r.top) / r.height) * 2 + 1);
     ray.setFromCamera(ndc, camara);
     const hit = ray.intersectObjects([...parcelas, ...plantas.flat()], true)[0];
     if (!hit) return null;
     let o: THREE.Object3D | null = hit.object;
-    while (o && o.userData.i === undefined && !parcelas.includes(o as THREE.Mesh)) o = o.parent;
-    if (o && o.userData.i !== undefined) return o.userData.i;
-    // planta: buscar su franja
-    for (let i = 0; i < plantas.length; i++) if (plantas[i].some((g) => g === hit.object.parent || g === hit.object)) return i;
-    return null;
+    while (o && o.userData.i === undefined) o = o.parent;
+    return o ? o.userData.i : null;
   }
-  renderer.domElement.addEventListener("pointerdown", (e) => { inicio = [e.clientX, e.clientY]; });
+  renderer.domElement.addEventListener("pointerdown", (e) => { inicioToque = [e.clientX, e.clientY]; });
   renderer.domElement.addEventListener("pointerup", (e) => {
-    if (inicio && Math.hypot(e.clientX - inicio[0], e.clientY - inicio[1]) < 10) {
+    if (inicioToque && Math.hypot(e.clientX - inicioToque[0], e.clientY - inicioToque[1]) < 10) {
       const i = parcelaEn(e.clientX, e.clientY);
       if (i !== null) alTocar(i);
     }
-    inicio = null;
+    inicioToque = null;
   });
 
-  // --- animación ---
+  // --- bucle de animación ---
   const cosechando = new Map<number, number>();
+  const listas: boolean[] = Array(N_PARCELAS).fill(false);
+  let resaltada: number | null = null;
   const reloj = new THREE.Clock();
   renderer.setAnimationLoop(() => {
     const dt = Math.min(reloj.getDelta(), 0.05), ahora = reloj.elapsedTime;
+    if (!ctrl.enabled) {  // vuelo de entrada (2,2 s)
+      const k = suave(ahora / 2.2);
+      camara.position.lerpVectors(inicio, destino, k);
+      camara.lookAt(ctrl.target);
+      if (k >= 1) ctrl.enabled = true;
+    }
     ctrl.update();
-    resalte.forEach((a, i) => { if (a.visible) { a.rotation.z += dt * 2; a.position.y = H(a.position.x, a.position.z) + 0.6 + Math.sin(ahora * 4 + i) * 0.15; } });
+    anillos.forEach((a, i) => {
+      if (!a.visible) return;
+      a.rotation.z += dt * 2;
+      a.position.y = H(a.position.x, a.position.z) + tam * 1.1 + Math.sin(ahora * 4 + i) * tam * 0.15;
+    });
+    for (const fila of plantas) for (const g of fila) {
+      if (!g.visible || cosechando.has(g.userData.i)) continue;
+      const u = g.userData;
+      const crecer = u.nace >= 0 ? rebote(Math.max(0, ahora - u.nace) / 0.7) : 1;
+      g.scale.setScalar((u.objetivo ?? 1) * crecer);
+      g.rotation.z = u.marchita ? 0.45 : Math.sin(ahora * 1.6 + u.fase) * 0.06;  // brisa
+    }
+    nubes.forEach((nube, k) => { nube.position.x += dt * S * 0.03 * (1 + k * 0.1); if (nube.position.x > S * 8) nube.position.x = -S * 8; });
     if (lluvia.visible) {
       const p = gotas.attributes.position as THREE.BufferAttribute;
-      for (let k = 0; k < nG; k++) { let y = p.getY(k) - dt * S * 0.9; if (y < 0) y = S; p.setY(k, y); }
+      for (let k = 0; k < nG; k++) { let y = p.getY(k) - dt * S * 1.1; if (y < 0) y = S * 1.2; p.setY(k, y); }
       p.needsUpdate = true;
     }
+    for (let c = chorros.length - 1; c >= 0; c--) {
+      const ch = chorros[c], k = (ahora - ch.t0) / 1.4;
+      ch.p.position.y -= dt * tam * 2;
+      (ch.p.material as THREE.PointsMaterial).opacity = 0.9 * (1 - k);
+      if (k >= 1) { escena.remove(ch.p); (ch.p.material as THREE.Material).dispose(); chorros.splice(c, 1); }
+    }
     for (const [i, t0] of cosechando) {
-      const k = (ahora - t0) / 0.8;
-      plantas[i].forEach((g, j) => { g.position.y += dt * tam * 3; g.scale.multiplyScalar(0.9 + j * 0.001); });
-      if (k >= 1) { plantas[i].forEach((g) => (g.visible = false)); cosechando.delete(i); }
+      const k = (ahora - t0) / 0.9;
+      plantas[i].forEach((g, j) => { g.position.y += dt * tam * (2 + (j % 3)); g.scale.multiplyScalar(0.93); });
+      if (k >= 1) { plantas[i].forEach((g) => { g.visible = false; g.position.y = H(g.position.x, g.position.z) + 0.3 * tam; }); cosechando.delete(i); }
     }
     renderer.render(escena, camara);
   });
@@ -254,41 +409,56 @@ export function crearMundo3D(cont: HTMLElement, t: Terreno, elev: number): Mundo
     camara.updateProjectionMatrix();
   };
   window.addEventListener("resize", alRedimensionar);
-  let resaltada: number | null = null;
-  const listas: boolean[] = Array(N_PARCELAS).fill(false);
 
   return {
     actualizar(vista, colorSuelo, lloviendo) {
-      const suelo = new THREE.Color(colorSuelo);
-      materialesSuelo.forEach((m) => m.color.copy(suelo));
+      const c = new THREE.Color(colorSuelo);
+      matSuelo.forEach((m) => m.color.copy(c));
       lluvia.visible = lloviendo;
       vista.forEach((v, i) => {
         plantas[i].forEach((g, k) => {
           if (cosechando.has(i)) return;
           const ver = !!v.crop && v.etapa > 0;
           g.visible = ver;
-          if (!ver) return;
+          if (!ver) { g.userData.clave = ""; g.userData.etapa = 0; return; }
           const clave = `${v.familia}|${v.etapa}|${v.marchita}`;
-          if (g.userData.clave !== clave) { armarPlanta(g, v); g.userData.clave = clave; }
-          const base = H(g.position.x, g.position.z) + 0.12;
-          g.position.y = base;
-          g.scale.setScalar(tam * ESCALA[v.etapa] * (0.85 + (k % 3) * 0.08));
+          if (g.userData.clave !== clave) {
+            const cambioEtapa = g.userData.etapa !== v.etapa;
+            armarPlanta(g, v);
+            g.userData.clave = clave;
+            g.userData.etapa = v.etapa;
+            if (cambioEtapa) g.userData.nace = reloj.elapsedTime + k * 0.04;  // aparecen con un saltito, una tras otra
+          }
+          g.userData.objetivo = tam * ESCALA[v.etapa] * (0.85 + (k % 3) * 0.08);
         });
         listas[i] = v.lista;
-        resalte[i].visible = v.lista || resaltada === i;
+        anillos[i].visible = v.lista || resaltada === i;
       });
     },
     alTocar(cb) { alTocar = cb; },
     parcelaEn,
     resaltar(i) {
       resaltada = i;
-      resalte.forEach((a, k) => (a.visible = k === i || listas[k]));
+      anillos.forEach((a, k) => (a.visible = k === i || listas[k]));
     },
-    cosechar(i) { cosechando.set(i, reloj.elapsedTime); resalte[i].visible = false; },
+    cosechar(i) { cosechando.set(i, reloj.elapsedTime); anillos[i].visible = false; },
+    regar(i) {
+      const p = new THREE.Points(geoChorro, matChorro.clone());
+      p.position.set(0, H(0, parcelas[i].position.z) + tam * 2, parcelas[i].position.z);
+      escena.add(p);
+      chorros.push({ p, t0: reloj.elapsedTime });
+    },
     destruir() {
       renderer.setAnimationLoop(null);
       window.removeEventListener("resize", alRedimensionar);
       ctrl.dispose();
+      escena.traverse((o) => {
+        const m = o as THREE.Mesh;
+        if (m.geometry) m.geometry.dispose();
+        const mats = Array.isArray(m.material) ? m.material : m.material ? [m.material] : [];
+        mats.forEach((x) => x.dispose());
+      });
+      gradiente.dispose();
       renderer.dispose();
       renderer.domElement.remove();
     },

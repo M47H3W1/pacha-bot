@@ -26,6 +26,7 @@ export interface Mundo {
   parcelaEn(x: number, y: number): number | null;
   resaltar(i: number | null): void;
   cosechar(i: number): void;
+  regar(i: number): void;
   destruir(): void;
 }
 
