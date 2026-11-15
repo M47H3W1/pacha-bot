@@ -26,3 +26,9 @@ __pycache__/
 .idea/
 .DS_Store
 Thumbs.db
+.claude/
+
+# Node local (CLI de Vercel)
+node_modules/
+/package.json
+/package-lock.json

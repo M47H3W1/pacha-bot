@@ -1,0 +1,74 @@
+---
+// Astro Granja: la historia de Pachita, juego de granja para niños de 8 a 12 años con datos reales de la NASA. Todo corre en el navegador;
+// los números vienen de la API de Pacha (/api/app/*, /api/accion, /api/voz).
+import "../styles/global.css";
+import "../juego/juego.css";
+import { ic } from "../juego/ui";
+---
+<!doctype html>
+<html lang="es" data-theme="light">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+  <meta name="theme-color" content="#2b6cb0" />
+  <meta name="description" content="Astro Granja: aprende a sembrar y cuidar la tierra de la sierra del Ecuador con Pachita y datos reales de la NASA." />
+  <title>Astro Granja</title>
+  <link rel="manifest" href="/manifest.webmanifest" />
+  <link rel="apple-touch-icon" href="/icono-192.png" />
+  <link rel="icon" href="/icono.svg" type="image/svg+xml" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@700;800;900&family=Nunito+Sans:wght@400;600;700;800&display=swap" rel="stylesheet" />
+</head>
+<body class="juego">
+  <div id="intro" class="intro" hidden></div>
+  <div id="mapa" class="pantalla-mapa" hidden></div>
+
+  <div id="escena" class="escena" hidden>
+    <div id="mundo" class="mundo"></div>
+    <header id="hud" class="hud" hidden>
+      <div class="hud-fila">
+        <a href="/" class="hud-casa" aria-label="Volver al menú" data-aria-es="Volver al menú" data-aria-en="Back to the menu"><Fragment set:html={ic("casa")} /></a>
+        <div class="hud-textos"><b id="hud-lugar">Mi chacra</b><span id="hud-fecha"></span></div>
+        <button id="idioma" class="hud-boton btn-idioma" type="button" aria-label="Cambiar a inglés"><b>EN</b></button>
+        <button id="silencio" class="hud-boton" type="button" aria-label="Silenciar la voz" data-aria-es="Silenciar la voz" data-aria-en="Mute the voice"><Fragment set:html={ic("sonido")} /></button>
+      </div>
+      <div class="hud-fila medidores">
+        <div class="medidor-mini" title="Agua guardada en el tanque para regar" data-title-es="Agua guardada en el tanque para regar" data-title-en="Water stored in the tank for irrigation"><Fragment set:html={ic("tanque", "ic-mini")} /><div class="medidor-cuerpo"><span class="medidor-nombre" data-es="Tanque" data-en="Tank">Tanque</span><div class="barra"><i id="hud-tanque"></i></div></div><small id="hud-tanque-txt">—</small></div>
+        <div class="medidor-mini" title="Salud de la tierra: sube al rotar y sembrar leguminosas (puntos del juego)" data-title-es="Salud de la tierra: sube al rotar y sembrar leguminosas (puntos del juego)" data-title-en="Soil health: it rises when you rotate and plant legumes (game points)"><Fragment set:html={ic("tierra", "ic-mini")} /><div class="medidor-cuerpo"><span class="medidor-nombre" data-es="Salud del suelo" data-en="Soil health">Salud del suelo</span><div class="barra"><i id="hud-salud"></i></div></div><small id="hud-salud-txt">60</small></div>
+      </div>
+      <div id="semaforo" class="semaforo" hidden aria-label="Agua mes a mes del cultivo" data-aria-es="Agua mes a mes del cultivo" data-aria-en="Water month by month for the crop"></div>
+      <div id="cronologia" class="cronologia" hidden></div>
+      <div id="rot-hud" class="rot-hud" hidden></div>
+    </header>
+    <nav class="acciones" aria-label="Acciones del juego" data-aria-es="Acciones del juego" data-aria-en="Game actions">
+      <button id="btn-tierra" type="button"><Fragment set:html={ic("ficha", "ic-accion")} /><small data-es="Mi tierra" data-en="My land">Mi tierra</small></button>
+      <button id="btn-semillas" type="button"><Fragment set:html={ic("semilla", "ic-accion")} /><small data-es="Semillas" data-en="Seeds">Semillas</small></button>
+      <button id="btn-calendario" type="button"><Fragment set:html={ic("calendario", "ic-accion")} /><small data-es="Mes" data-en="Month">Mes</small></button>
+      <button id="btn-regar" type="button"><Fragment set:html={ic("gota", "ic-accion")} /><small data-es="Regar" data-en="Water">Regar</small></button>
+      <button id="btn-logros" type="button"><Fragment set:html={ic("medalla", "ic-accion")} /><small data-es="Logros" data-en="Medals">Logros</small></button>
+    </nav>
+    <div id="tiempo" class="tiempo"></div>
+    <p id="aviso2d" class="aviso2d" hidden data-es="Modo sin 3D" data-en="Non-3D mode">Modo sin 3D</p>
+  </div>
+
+  <div class="pachita-caja">
+    <div id="globo" class="globo" role="status" aria-live="polite" hidden></div>
+    <div id="pachita" class="pachita" aria-hidden="true"></div>
+  </div>
+
+  <section id="panel" class="panel" hidden aria-live="polite"></section>
+  <div id="carga" class="carga" hidden></div>
+  <div id="medalla" class="toast-medalla" hidden role="status"></div>
+  <div id="aviso" class="toast-aviso" hidden role="status"></div>
+  <p class="creditos" data-es="Datos: NASA POWER · FAO-56 · INIAP · Relieve: Open-Meteo · Ilustraciones de Pachita y cultivos con asistencia de IA (marcadas «IA») · Nombres del mapa: Esri" data-en="Data: NASA POWER · FAO-56 · INIAP · Relief: Open-Meteo · Illustrations of Pachita and crops made with AI assistance (marked “IA”) · Map names: Esri">Datos: NASA POWER · FAO-56 · INIAP · Relieve: Open-Meteo · Ilustraciones de Pachita y cultivos con asistencia de IA (marcadas «IA») · Nombres del mapa: Esri</p>
+
+  <script>
+    import { arrancar } from "../juego/juego";
+    arrancar();
+    if ("serviceWorker" in navigator && location.hostname !== "localhost") {
+      navigator.serviceWorker.register("/sw.js").catch(() => {});
+    }
+  </script>
+</body>
+</html>

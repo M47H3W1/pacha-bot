@@ -149,14 +149,13 @@ async def cmd_start(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     await estado(update, ctx)
     await guardar(update, ctx)
     nombre = esc(update.effective_user.first_name or "vecino")
-    texto = (f"🌄 <b>¡Allillanchu, {nombre}!</b> Soy <b>Pacha</b>.\n\n"
-             "Te ayudo a decidir qué sembrar, cómo rotar tus cultivos y cuánta agua darles, "
-             "con datos de los satélites de la NASA para la sierra del Ecuador.\n\n"
-             "Todo se hace con botones. No necesitas escribir nada.\n\n"
-             f"<i>{AVISO}</i>")
+    texto = (f"🌄 <b>¡Imanalla, {nombre}!</b> Soy <b>Pacha</b>.\n\n"
+             "Le ayudo a saber qué sembrar y cuánto regar, con los satélites de la NASA.\n"
+             "Todo es con botones. También puede escuchar 🔊.\n\n"
+             "¿En qué idioma prefiere los botones?")
     img = await asyncio.to_thread(charts.banner)
-    await update.effective_chat.send_photo(img, caption=texto, parse_mode=HTML,
-                                           reply_markup=KB([[("▶️ Empezar", "m")]]))
+    await update.effective_chat.send_photo(img, caption=texto, parse_mode=HTML, reply_markup=KB(
+        [[("Español", "id:es")], [("Kichwa · Español", "id:ki")]]))
 
 
 def texto_menu(st, nombre) -> str:
@@ -192,7 +191,7 @@ async def terreno(update: Update, ctx, arg: str):
         kb = ReplyKeyboardMarkup([[KeyboardButton("📍 Enviar mi ubicación", request_location=True)],
                                   ["↩️ Cancelar"]], resize_keyboard=True, one_time_keyboard=True)
         await update.effective_chat.send_message(
-            "📍 Párate en tu terreno y toca el botón de abajo 👇\n\n"
+            "📍 Párese en su terreno y toca el botón de abajo 👇\n\n"
             "Si estás en una computadora, ese botón no funciona: mejor elige tu provincia.", reply_markup=kb)
         return
     if arg == "prov":
@@ -268,11 +267,15 @@ async def fijar_terreno(update: Update, ctx, lat, lon, provincia=None, solo_ver=
         except Exception as e:
             log.warning("No se pudo guardar el terreno: %s", e)
         await historial(update, "terreno", f"Terreno en {sitio.provincia}, {num(sitio.elev)} m")
+        from . import campo
+        await campo.mostrar_chakra(update, ctx, sitio, res)
+        return
     await mostrar(update, texto_ficha(sitio, res), KB([[("2️⃣ Seguir: mi cultivo", "c")], [MENU]]), foto=img)
 
 
 async def ubicacion(update: Update, ctx):
     loc = update.message.location
+    log.info("usuario %s → ubicación %.2f, %.2f", update.effective_user.id, loc.latitude, loc.longitude)
     await fijar_terreno(update, ctx, loc.latitude, loc.longitude)
 
 
@@ -282,7 +285,7 @@ def kb_cultivos(z, prefijo, descanso=False, extra=None):
     rows = filas(botones)
     if extra:
         rows.append(extra)
-    return KB(rows + [[("⬅️ Volver", "c"), MENU]])
+    return KB(rows + [[("⬅️ Volver", "qs"), MENU]])
 
 
 def kb_meses(prefijo, desde=None):
@@ -298,11 +301,12 @@ async def cultivo(update: Update, ctx, arg: str):
                       KB([[("1️⃣ Mi terreno", "t")], [MENU]]))
         return
     if arg == "ya":
-        await mostrar(update, "🌱 <b>¿Qué tienes sembrado ahora?</b>\n"
-                      f"Te muestro los cultivos que se dan a {num(sitio.elev)} m.", kb_cultivos(sitio.elev, "c:s:"))
+        img = await asyncio.to_thread(charts.galeria, E.cultivos_aptos(sitio.elev), "¿Cuál tiene sembrado?")
+        await mostrar(update, "🌱 <b>¿Qué tiene sembrado ahora?</b>\n"
+                      f"Estos cultivos se dan a {num(sitio.elev)} metros.", kb_cultivos(sitio.elev, "c:s:"), foto=img)
     elif arg.startswith("s:"):
         ctx.user_data["nuevo_cultivo"] = arg[2:]
-        await mostrar(update, f"📅 <b>¿En qué mes sembraste tu {CROPS[arg[2:]].nombre.lower()}?</b>",
+        await mostrar(update, f"📅 <b>¿En qué mes sembró su {CROPS[arg[2:]].nombre.lower()}?</b>",
                       KB(kb_meses("c:m:") + [[("⬅️ Volver", "c:ya"), MENU]]))
     elif arg.startswith("m:"):
         m, hoy = int(arg[2:]), dt.date.today()
@@ -317,13 +321,12 @@ async def cultivo(update: Update, ctx, arg: str):
             st.pop(k, None)
         await guardar(update, ctx)
         await historial(update, "cultivo", f"Tiene {CROPS[st['crop']].nombre} sembrado en {MESES_LARGO[m - 1]}")
-        await mostrar(update, f"🔁 <b>¿Qué piensas sembrar después de la {CROPS[st['crop']].nombre.lower()}?</b>\n"
-                      "Así comparo tu plan con otras opciones.",
-                      kb_cultivos(sitio.elev, "r:1:", descanso=True, extra=[("🤷 Todavía no sé", "r:1:-")]))
+        from . import campo
+        await campo.rotacion_simple(update, ctx, "")
     elif arg == "new":
         hoy = dt.date.today()
-        await mostrar(update, "🆕 <b>¿En qué mes quieres sembrar?</b>\n"
-                      "Te diré qué cultivos se dan mejor en tu terreno para ese mes.",
+        await mostrar(update, "🆕 <b>¿En qué mes quiere sembrar?</b>\n"
+                      "Le diré qué cultivos le convienen.",
                       KB(kb_meses("n:m:", desde=hoy.month) + [[("⬅️ Volver", "c"), MENU]]))
     else:
         texto = ("🌱 <b>¿Cómo está tu terreno ahora?</b>\n\n"
@@ -331,7 +334,7 @@ async def cultivo(update: Update, ctx, arg: str):
                  "• Si está libre, te digo qué conviene sembrar y en qué orden.")
         rows = [[("🌱 Ya tengo un cultivo sembrado", "c:ya")], [("🆕 Quiero empezar un cultivo", "c:new")]]
         if st.get("crop"):
-            texto += f"\n\nAhora tienes: <b>{CROPS[st['crop']].etiqueta}</b>"
+            texto += f"\n\nAhora tiene: <b>{CROPS[st['crop']].etiqueta}</b>"
             rows.append([("🔁 Ver comparación de rotaciones", "r:cmp")])
         await mostrar(update, texto, KB(rows + [[MENU]]))
 
@@ -361,7 +364,9 @@ async def empezar(update: Update, ctx, arg: str):
         rows = [[(f["crop"].etiqueta, f"n:p:{f['crop'].id}")] for f in recs]
         await mostrar(update, texto, KB(rows + [[("📋 Ver todos los cultivos", "n:all")], [MENU]]), foto=img)
     elif arg == "all":
-        await mostrar(update, "🌱 <b>Elige el cultivo que quieres sembrar</b>", kb_cultivos(sitio.elev, "n:p:"))
+        img = await asyncio.to_thread(charts.galeria, E.cultivos_aptos(sitio.elev), "¿Qué quiere sembrar?")
+        await mostrar(update, "🌱 <b>Elija el cultivo que quiere sembrar</b>", kb_cultivos(sitio.elev, "n:p:"),
+                      foto=img)
     elif arg.startswith("p:"):
         hoy = dt.date.today()
         mes = ctx.user_data.get("mes_nuevo", hoy.month % 12 + 1)
@@ -371,7 +376,8 @@ async def empezar(update: Update, ctx, arg: str):
             st.pop(k, None)
         await guardar(update, ctx)
         await historial(update, "cultivo", f"Quiere sembrar {CROPS[st['crop']].nombre} en {MESES_LARGO[mes - 1]}")
-        await rotacion(update, ctx, "cmp")
+        from . import campo
+        await campo.decision(update, ctx)
 
 
 async def rotacion(update: Update, ctx, arg: str):
@@ -386,7 +392,8 @@ async def rotacion(update: Update, ctx, arg: str):
         if arg[2:] == "-":
             st["rot"] = None
             await guardar(update, ctx)
-            await rotacion(update, ctx, "cmp")
+            from . import campo
+            await campo.rotacion_simple(update, ctx, "")
             return
         await mostrar(update, f"🔁 <b>¿Y después de {CROPS[arg[2:]].nombre.lower()}?</b>",
                       kb_cultivos(sitio.elev, "r:2:", descanso=True, extra=[("🤷 Todavía no sé", "r:2:-")]))
@@ -395,7 +402,13 @@ async def rotacion(update: Update, ctx, arg: str):
         sig2 = arg[2:]
         st["rot"] = None if sig2 == "-" else [st["crop"], st.get("sig1"), sig2]
         await guardar(update, ctx)
-        await rotacion(update, ctx, "cmp")
+        ctx.user_data.pop("comp", None)
+        from . import campo
+        await campo.rotacion_simple(update, ctx, "")
+        return
+    if arg == "plan":
+        await mostrar(update, f"📝 <b>¿Qué pensaba sembrar después de la {crop.nombre.lower()}?</b>",
+                      kb_cultivos(sitio.elev, "r:1:", descanso=True, extra=[("🤷 Todavía no sé", "r:1:-")]))
         return
     if arg == "pr":
         rows = [[(v, f"r:pp:{k}")] for k, v in PRIORIDADES.items()] + [[("⚖️ Todo por igual", "r:pp:-")]]
@@ -554,8 +567,15 @@ async def banco(update: Update, ctx, arg: str):
              f"🟢 Entra (lluvia útil): {num(b['total_lluvia_util'])} L por m²\n"
              f"🟤 Sale (gasto del cultivo): {num(b['total_gasto'])} L por m²\n"
              f"⚖️ Saldo: {'+' if saldo >= 0 else '−'}{num(abs(saldo))} L por m²\n\n{cuerpo}\n\n"
-             f"<i>1 mm = 1 litro por m². Año normal = mitad de los {b['anios']} años; año seco = 8 de cada 10 "
-             f"años necesitan menos. Clima: {esc(clima.metodo)}.</i>")
+             f"{['✅ La lluvia alcanza', '⚠️ A veces hay que regar', '❌ Necesita riego'][['si', 'cuidado', 'no'].index(b['veredicto'])]}: "
+             f"bien en {b['n_bien']} de {b['anios']} años, mal en {b['n_mal']}. "
+             f"Lluvia del ciclo: {num(b['lluvia_ciclo'])} mm (entre {num(b['lluvia_min'])} y {num(b['lluvia_max'])}).\n"
+             + (f"📖 Guías INIAP/FAO: {crop.nombre.lower()} necesita {' a '.join(num(x) for x in crop.lluvia_ref)} mm "
+                f"de lluvia en el ciclo.\n" if crop.lluvia_ref else "")
+             + (f"⚠️ {esc(crop.riesgo)}\n" if crop.riesgo else "")
+             + f"\n<i>Balance diario de agua en el suelo (raíz {num(crop.zr, 1)} m, suelo guarda {num(clima.agua_util)} mm "
+             f"por metro). Año normal = mitad de los {b['anios']} años; año seco = 20 % menos lluvia. "
+             f"Clima: {esc(clima.metodo)}.</i>")
     st["banco_resumen"] = {"cultivo": crop.nombre, "mes_siembra": MESES_LARGO[st["mes"] - 1],
                            "lluvia_util_L_m2": round(b["total_lluvia_util"]), "gasto_L_m2": round(b["total_gasto"]),
                            "riego_L_m2": round(L["por_m2"]), "riego_total_L": round(L["total"]),
@@ -780,12 +800,34 @@ async def responder(update: Update, ctx, pregunta: str, st: dict, registrar=True
         except Exception as e:
             log.warning("No se pudo guardar la conversación: %s", e)
         await historial(update, "pregunta", pregunta[:90])
-    await update.effective_chat.send_message(texto, reply_markup=KB([[("🗣️ Otra pregunta", "q")], [MENU]]))
+    ctx.user_data.update(voz=texto, voz_clave=None, voz_turno=ctx.user_data.get("voz_turno", 0) + 1)
+    await update.effective_chat.send_message(texto, reply_markup=KB([[("🔊 Escuchar", "v"), ("🗣️ Otra pregunta", "q")],
+                                                                     [MENU]]))
+
+
+async def nota_de_voz(update: Update, ctx):
+    st = await estado(update, ctx)
+    log.info("usuario %s → nota de voz (%s s)", update.effective_user.id, update.message.voice.duration)
+    if not LLM.activo:
+        await update.effective_chat.send_message("🎙️ Todavía no entiendo audios. Use los botones, por favor 👇",
+                                                 reply_markup=KB([[MENU]]))
+        return
+    f = await update.message.voice.get_file()
+    datos = bytes(await f.download_as_bytearray())
+    await update.effective_chat.send_action(ChatAction.TYPING)
+    texto = await asyncio.to_thread(LLM.responder, "El agricultor envió esta nota de voz. Escúchala y respóndele.",
+                                    contexto_llm(st), None, datos)
+    texto = texto or "🙏 No entendí bien el audio. ¿Puede repetirlo o usar los botones?"
+    ctx.user_data.update(voz=texto, voz_clave=None, voz_turno=ctx.user_data.get("voz_turno", 0) + 1)
+    await historial(update, "pregunta", "Nota de voz")
+    await update.effective_chat.send_message(texto, reply_markup=KB([[("🔊 Escuchar", "v")], [MENU]]))
 
 
 async def texto_libre(update: Update, ctx):
     st = await estado(update, ctx)
     t = (update.message.text or "").strip()
+    log.info("usuario %s → escribió %d letras (esperando: %s)", update.effective_user.id, len(t),
+             ctx.user_data.get("esperando"))
     if t == "↩️ Cancelar":
         await update.message.reply_text("Listo 👍", reply_markup=ReplyKeyboardRemove())
         await menu(update, ctx)
@@ -822,12 +864,46 @@ async def cmd_borrar(update: Update, ctx):
 
 
 async def boton(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    from . import campo
     q = update.callback_query
     await q.answer()
     d = q.data or "m"
+    log.info("usuario %s → botón %s", update.effective_user.id, d)
     sec, _, arg = d.partition(":")
     if sec == "m":
+        await campo.menu(update, ctx)
+    elif sec == "mt":
         await menu(update, ctx)
+    elif sec == "id":
+        await campo.elegir_idioma(update, ctx, arg)
+    elif sec == "ch":
+        await campo.chakra(update, ctx)
+    elif sec == "qs":
+        await campo.que_sembrar(update, ctx)
+    elif sec == "cr":
+        if arg == "cambiar":
+            (await estado(update, ctx)).pop("riego", None)
+            arg = ""
+        await campo.regar(update, ctx, arg)
+    elif sec == "vh":
+        await campo.helada(update, ctx)
+    elif sec == "mas":
+        await campo.mas(update, ctx, arg)
+    elif sec == "v":
+        await campo.escuchar(update, ctx)
+    elif sec == "rs":
+        if arg == "ok":
+            await campo.rotacion_ok(update, ctx)
+        elif arg == "plan":
+            await rotacion(update, ctx, "plan")
+        elif arg in ("ref", "tec") or arg.startswith("usa:"):
+            await campo.rotaciones_probadas(update, ctx, "" if arg == "ref" else arg)
+        else:
+            await campo.rotacion_simple(update, ctx, arg)
+    elif sec == "n" and arg.startswith("m:"):
+        await campo.recomendar(update, ctx, int(arg[2:]))
+    elif sec == "n" and arg.startswith("t:"):
+        await empezar(update, ctx, "m:" + arg[2:])
     elif sec == "t":
         await terreno(update, ctx, arg)
     elif sec == "c":
@@ -913,6 +989,7 @@ def main():
     app.add_handler(CommandHandler("borrar", cmd_borrar))
     app.add_handler(CallbackQueryHandler(boton))
     app.add_handler(MessageHandler(filters.LOCATION, ubicacion))
+    app.add_handler(MessageHandler(filters.VOICE, nota_de_voz))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, texto_libre))
     app.add_error_handler(error)
     app.run_polling(allowed_updates=Update.ALL_TYPES, drop_pending_updates=True)

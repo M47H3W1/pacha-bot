@@ -1,0 +1,107 @@
+/* Pacha · sistema visual tomado del mock (Mocks/WhatsApp Image 2026-11-14 at 6.07.27 PM.jpeg)
+   Crema de fondo, verde oscuro para la acción principal, azul para la secundaria, acento naranja. */
+:root {
+  --crema: #f7f2e7;
+  --crema-2: #efe7d6;
+  --tarjeta: #fffdf8;
+  --verde: #17533a;
+  --verde-2: #236b4a;
+  --verde-claro: #dfe9cf;
+  --salvia: #a9bd92;
+  --azul: #1f5f88;
+  --azul-claro: #e3eef5;
+  --naranja: #d9812b;
+  --arena: #e6c78b;
+  --texto: #1c2a22;
+  --texto-2: #4f5d54;
+  --borde: #ded5c2;
+  --rojo: #b63a2b;
+  --ambar: #c27a12;
+  --ok: #2e7d4f;
+  --sombra: 0 1px 2px rgb(40 35 20 / 0.06), 0 6px 18px rgb(40 35 20 / 0.07);
+  --radio: 18px;
+  --fuente-titulo: "Nunito", system-ui, sans-serif;
+  --fuente: "Nunito Sans", "Nunito", system-ui, sans-serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --crema: #141a16; --crema-2: #1b231e; --tarjeta: #1f2823; --verde: #6fbf8e; --verde-2: #8ad0a5;
+    --verde-claro: #24382b; --salvia: #3d5a45; --azul: #7db7dd; --azul-claro: #1c2a33; --naranja: #e7a05a;
+    --arena: #6b5833; --texto: #eef2ec; --texto-2: #b5c0b8; --borde: #33403a; --rojo: #ef8a7c; --ambar: #f0b45e;
+    --ok: #7fd09f; --sombra: 0 1px 2px rgb(0 0 0 / 0.3); color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --crema: #141a16; --crema-2: #1b231e; --tarjeta: #1f2823; --verde: #6fbf8e; --verde-2: #8ad0a5;
+  --verde-claro: #24382b; --salvia: #3d5a45; --azul: #7db7dd; --azul-claro: #1c2a33; --naranja: #e7a05a;
+  --arena: #6b5833; --texto: #eef2ec; --texto-2: #b5c0b8; --borde: #33403a; --rojo: #ef8a7c; --ambar: #f0b45e;
+  --ok: #7fd09f; --sombra: 0 1px 2px rgb(0 0 0 / 0.3); color-scheme: dark;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0; background: var(--crema); color: var(--texto); font-family: var(--fuente);
+  font-size: 17px; line-height: 1.45; min-height: 100dvh;
+}
+img, svg { display: block; max-width: 100%; }
+a { color: var(--azul); }
+h1, h2, h3 { font-family: var(--fuente-titulo); color: var(--verde); line-height: 1.15; margin: 0; }
+h1 { font-size: clamp(1.9rem, 6vw, 2.6rem); font-weight: 900; letter-spacing: -0.01em; }
+h2 { font-size: 1.45rem; font-weight: 800; }
+h3 { font-size: 1.1rem; font-weight: 800; }
+.raya { width: 56px; height: 4px; border-radius: 4px; background: var(--naranja); margin: 0.6rem 0 1rem; }
+.sub { color: var(--texto-2); font-size: 1.05rem; margin: 0; }
+.peque { font-size: 0.85rem; color: var(--texto-2); }
+.oculto { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+:focus-visible { outline: 3px solid var(--naranja); outline-offset: 2px; border-radius: 8px; }
+
+/* Botones del mock: grandes, redondeados, para el pulgar */
+.btn {
+  display: flex; align-items: center; justify-content: center; gap: 0.6rem; width: 100%;
+  min-height: 56px; padding: 0.8rem 1.2rem; border-radius: 14px; border: 2px solid transparent;
+  font: 800 1.12rem/1.1 var(--fuente-titulo); text-decoration: none; cursor: pointer;
+  transition: transform 0.08s ease, filter 0.15s ease;
+}
+.btn:active { transform: scale(0.98); }
+.btn svg { width: 24px; height: 24px; flex: none; }
+.btn-primario { background: var(--verde); color: #fff; }
+.btn-azul { background: var(--azul); color: #fff; }
+.btn-borde { background: transparent; color: var(--azul); border-color: var(--azul); }
+.btn-suave { background: var(--verde-claro); color: var(--verde); }
+.btn:hover { filter: brightness(1.06); }
+.btn[disabled] { opacity: 0.5; cursor: not-allowed; }
+:root[data-theme="dark"] .btn-primario, :root[data-theme="dark"] .btn-azul { color: #0f1612; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .btn-primario, :root:not([data-theme="light"]) .btn-azul { color: #0f1612; } }
+.pila { display: grid; gap: 0.85rem; }
+
+/* Tarjetas */
+.tarjeta { background: var(--tarjeta); border: 1px solid var(--borde); border-radius: var(--radio); padding: 1rem 1.1rem; box-shadow: var(--sombra); }
+.tarjeta h3 { margin-bottom: 0.35rem; }
+.cifra { font: 900 1.7rem/1.1 var(--fuente-titulo); color: var(--texto); }
+.cifra small { font-size: 0.95rem; font-weight: 700; color: var(--texto-2); }
+.rejilla { display: grid; gap: 0.85rem; grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr)); }
+
+/* Chapita de fuente de datos: cada cifra dice de dónde sale */
+.fuente { display: inline-flex; align-items: center; gap: 0.3rem; margin-top: 0.55rem; padding: 0.15rem 0.55rem;
+  border-radius: 999px; background: var(--azul-claro); color: var(--azul); font-size: 0.75rem; font-weight: 800; text-decoration: none; }
+.fuente::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.fuente.ec { background: var(--verde-claro); color: var(--verde); }
+
+.pastilla { display: inline-block; padding: 0.2rem 0.65rem; border-radius: 999px; font-weight: 800; font-size: 0.85rem; }
+.p-si { background: color-mix(in srgb, var(--ok) 16%, transparent); color: var(--ok); }
+.p-cuidado { background: color-mix(in srgb, var(--ambar) 18%, transparent); color: var(--ambar); }
+.p-no { background: color-mix(in srgb, var(--rojo) 15%, transparent); color: var(--rojo); }
+
+.chips { display: flex; gap: 0.5rem; overflow-x: auto; padding: 0.2rem 0 0.4rem; scrollbar-width: none; }
+.chip { flex: none; min-height: 44px; padding: 0.5rem 1rem; border-radius: 999px; border: 2px solid var(--borde);
+  background: var(--tarjeta); color: var(--texto); font: 700 0.95rem var(--fuente); cursor: pointer; }
+.chip[aria-pressed="true"] { background: var(--verde); border-color: var(--verde); color: #fff; }
+:root[data-theme="dark"] .chip[aria-pressed="true"] { color: #0f1612; }
+
+.cargando { display: grid; place-items: center; gap: 0.8rem; padding: 3rem 1rem; color: var(--texto-2); text-align: center; }
+.girar { width: 42px; height: 42px; border-radius: 50%; border: 4px solid var(--verde-claro); border-top-color: var(--verde); animation: giro 0.9s linear infinite; }
+@keyframes giro { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .girar { animation-duration: 3s; } .btn { transition: none; } }
+.error { background: color-mix(in srgb, var(--rojo) 10%, var(--tarjeta)); border-color: color-mix(in srgb, var(--rojo) 35%, transparent); }

@@ -1,5 +1,6 @@
 """Imágenes PNG grandes y legibles en celular."""
 import io
+from pathlib import Path
 
 import matplotlib
 
@@ -38,7 +39,7 @@ def banner() -> bytes:
         ax.add_patch(Polygon([[0, 2.2 - i * 0.37], [10, 2.2 - i * 0.37 + 0.15],
                               [10, 2.2 - (i + 1) * 0.37 + 0.15], [0, 2.2 - (i + 1) * 0.37]], color=c))
     ax.text(0.4, 4.25, "Pacha", fontsize=54, fontweight="bold", color="#3d2b1f")
-    ax.text(0.45, 3.65, "Tu chacra con datos de la NASA", fontsize=20, color="#3d2b1f")
+    ax.text(0.45, 3.65, "Su tierra con datos de la NASA", fontsize=20, color="#3d2b1f")
     ax.text(0.45, 3.25, "Sierra del Ecuador", fontsize=16, color="#5b4636", style="italic")
     return _png(fig)
 
@@ -110,4 +111,305 @@ def recomendados(filas: list[dict], mes: str) -> bytes:
     ax.set_yticks(y, [f["crop"].nombre for f in filas], fontsize=16)
     ax.set_xlim(0, 110)
     ax.set_title(f"Mejores cultivos para sembrar en {mes}")
+    return _png(fig)
+
+
+# ---------------------------------------------------------------- pictogramas para el modo campo
+def _gota(ax, x, y, s=1.0, color=AZUL):
+    t = np.linspace(0, 2 * np.pi, 60)
+    xs = x + 0.36 * s * np.sin(t) * np.sin(t / 2)  # gota clásica: punta arriba, base redonda
+    ys = y + 0.38 * s * np.cos(t)
+    ax.fill(xs, ys, color=color, zorder=3)
+
+
+def _sol(ax, x, y, s=1.0):
+    for a in np.linspace(0, 2 * np.pi, 9)[:-1]:
+        ax.plot([x + 0.28 * s * np.cos(a), x + 0.42 * s * np.cos(a)],
+                [y + 0.28 * s * np.sin(a), y + 0.42 * s * np.sin(a)], color="#f6b93b", lw=3, zorder=3)
+    ax.add_patch(Circle((x, y), 0.22 * s, color="#f6b93b", zorder=4))
+
+
+def _nube(ax, x, y, s=1.0, color="#b0bec5"):
+    for dx, dy, r in ((-0.18, 0, 0.16), (0.0, 0.08, 0.2), (0.2, 0, 0.15)):
+        ax.add_patch(Circle((x + dx * s, y + dy * s), r * s, color=color, zorder=3))
+
+
+def _copo(ax, x, y, s=1.0):
+    ax.text(x, y, "❄", ha="center", va="center", fontsize=30 * s, color="#4fa3e0", zorder=5,
+            fontfamily="DejaVu Sans")
+
+
+def tira_meses(tipos: list[str], heladas: list[int], titulo: str) -> bytes:
+    """12 meses con un dibujo cada uno: gota (llueve), sol (seco), nube (medio) y copo (helada)."""
+    fig = plt.figure(figsize=(12, 3.6), facecolor="white")
+    ax = fig.add_axes([0, 0, 1, 0.84])
+    ax.set_xlim(-0.6, 11.6)
+    ax.set_ylim(-0.9, 1.5)
+    ax.axis("off")
+    for i, t in enumerate(tipos):
+        ax.add_patch(plt.Rectangle((i - 0.46, -0.85), 0.92, 2.25, color="#f4f8fb" if t != "seco" else "#fff7e6",
+                                   zorder=1))
+        if t == "lluvia":
+            _gota(ax, i, 0.45)
+        elif t == "seco":
+            _sol(ax, i, 0.45)
+        else:
+            _nube(ax, i, 0.45)
+        if i in heladas:
+            _copo(ax, i, 1.15, 0.8)
+        ax.text(i, -0.55, MESES[i].capitalize(), ha="center", fontsize=17, fontweight="bold", color="#333")
+    fig.suptitle(titulo, fontsize=20, fontweight="bold", y=0.98)
+    return _png(fig)
+
+
+def tira_semana(dias: list[dict], titulo: str, nota: str = "") -> bytes:
+    """7 días: gota grande = regar, nube = lluvia, con los milímetros de lluvia del pronóstico.
+    dias: {fecha, regar, lluvia}. nota: cuánta agua por riego (se escribe debajo de cada gota)."""
+    nombres = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"]
+    fig = plt.figure(figsize=(11, 4.3), facecolor="white")
+    ax = fig.add_axes([0, 0, 1, 0.84])
+    ax.set_xlim(-0.6, len(dias) - 0.4)
+    ax.set_ylim(-1.35, 1.6)
+    ax.axis("off")
+    for i, d in enumerate(dias):
+        ax.add_patch(plt.Rectangle((i - 0.46, -1.3), 0.92, 2.8, color="#e3f2fd" if d["regar"] else "#f5f5f5", zorder=1))
+        if d["regar"]:
+            _gota(ax, i, 0.5, 1.25)
+            ax.text(i, -0.2, "Regar", ha="center", fontsize=15, fontweight="bold", color=AZUL)
+            if nota:
+                ax.text(i, -0.5, nota, ha="center", fontsize=10.5, color=AZUL)
+        elif d["lluvia"] >= 5:
+            _nube(ax, i, 0.55)
+            ax.text(i, -0.2, "Llueve", ha="center", fontsize=14, color="#607d8b")
+        else:
+            _sol(ax, i, 0.55, 0.8)
+        ax.text(i, 1.28, f"{d['lluvia']:.0f} mm", ha="center", fontsize=12, color="#607d8b")
+        f = d["fecha"]
+        ax.text(i, -1.05, f"{nombres[f.weekday()]} {f.day}", ha="center", fontsize=16, fontweight="bold", color="#333")
+    fig.suptitle(titulo, fontsize=20, fontweight="bold", y=0.98)
+    return _png(fig)
+
+
+COLOR_CULTIVO = {"solanacea": "#8d6e63", "poacea": "#d4a017", "fabacea": "#43a047", "amarantacea": "#e65100",
+                 "basellacea": "#f9a825", "oxalidacea": "#ef6c00", "pasto": "#2e7d32", "ninguna": "#a1887f"}
+
+
+FOTOS = Path(__file__).with_name("imagenes") / "cultivos"
+
+
+def foto_cultivo(crop_id: str):
+    """Foto cuadrada (array) de app/imagenes/cultivos/<id>.(jpg|jpeg|png|webp), o None si no hay."""
+    for ext in ("jpg", "jpeg", "png", "webp"):
+        f = FOTOS / f"{crop_id}.{ext}"
+        if f.exists():
+            from PIL import Image, ImageOps
+            img = ImageOps.exif_transpose(Image.open(f)).convert("RGB")
+            # Sin recortar ni estirar: la foto entra completa y se rellena con un fondo suave.
+            return np.asarray(ImageOps.pad(img, (480, 480), color=(244, 239, 230), method=Image.LANCZOS))
+    return _foto_commons(crop_id)
+
+
+# Si la foto no está en la carpeta (por ejemplo, en un despliegue sin imágenes), se baja la misma de
+# Wikimedia Commons (créditos en app/imagenes/cultivos/README.md) y se guarda en la caché.
+COMMONS = {
+    "papa": "Potato_harvest_-_geograph.org.uk_-_1507081.jpg",
+    "haba": "Dicke_Bohne_(Vicia_faba)_erntereife_Hülsen,_Josef_Schlaghecken.jpg",
+    "arveja": "-2022-06-13_Forming_garden_pea_pods_(Pisum_sativum),_Trimingham,_Norfolk.JPG",
+    "frejol": "Pinto_Beans_Seeds.jpg",
+    "cebada": "Hordeum_vulgare_MHNT.BOT.2015.2.39.jpg",
+    "trigo": "Ears_of_wheat.jpg",
+    "avena": "Field_with_mixed_intercropping_of_oat_and_rye.jpg",
+    "quinua": "Chenopodium_quinoa_-red_faro-_MHNT.BOT.2007.43.66.jpg",
+    "chocho": "Peruvian_Field_Lupines.jpg",
+}
+
+
+def _foto_commons(crop_id: str):
+    nombre = COMMONS.get(crop_id)
+    if not nombre:
+        return None
+    from PIL import Image, ImageOps
+    from .clients import CACHE, UA
+    f = CACHE / "fotos" / f"{crop_id}.jpg"
+    try:
+        if not f.exists():
+            import httpx
+            r = httpx.get(f"https://commons.wikimedia.org/wiki/Special:FilePath/{nombre}", params={"width": 480},
+                          headers=UA, follow_redirects=True, timeout=15)
+            r.raise_for_status()
+            f.parent.mkdir(parents=True, exist_ok=True)
+            f.write_bytes(r.content)
+        img = ImageOps.exif_transpose(Image.open(f)).convert("RGB")
+        return np.asarray(ImageOps.pad(img, (480, 480), color=(244, 239, 230), method=Image.LANCZOS))
+    except Exception:
+        return None
+
+
+def _panel(ax, c, x0, y0, ancho, alto, numero=None):
+    """Foto de la planta con su nombre abajo; si no hay foto, caja de color con el nombre."""
+    img = foto_cultivo(c.id)
+    alto_nombre = 0.45
+    if img is not None:
+        lado = min(ancho, alto - alto_nombre)  # celda cuadrada: la foto nunca se deforma
+        xi = x0 + (ancho - lado) / 2
+        ax.imshow(img, extent=(xi, xi + lado, y0 + alto - lado, y0 + alto), zorder=2, aspect="equal",
+                  interpolation="lanczos")
+        ax.add_patch(matplotlib.patches.Rectangle((xi, y0 + alto - lado), lado, lado, fill=False,
+                                                  edgecolor="#d7ccc8", lw=1, zorder=3))
+        ax.add_patch(matplotlib.patches.Rectangle((xi, y0 + alto - lado - alto_nombre), lado, alto_nombre,
+                                                  color="#3d2b1f", zorder=2))
+        ax.text(xi + lado / 2, y0 + alto - lado - alto_nombre / 2, c.nombre, ha="center", va="center",
+                fontsize=19 if len(c.nombre) < 12 else 15, fontweight="bold", color="white", zorder=3)
+    else:
+        ax.add_patch(matplotlib.patches.FancyBboxPatch((x0, y0), ancho, alto, boxstyle="round,pad=0.05",
+                                                       color=COLOR_CULTIVO.get(c.familia, VERDE), zorder=2))
+        ax.text(x0 + ancho / 2, y0 + alto / 2, c.nombre, ha="center", va="center",
+                fontsize=24 if len(c.nombre) < 9 else 19, fontweight="bold", color="white", zorder=3)
+    if numero is not None:
+        ax.add_patch(Circle((x0 + 0.28, y0 + alto - 0.28), 0.22, color="white", zorder=4))
+        ax.text(x0 + 0.28, y0 + alto - 0.28, str(numero), ha="center", va="center", fontsize=17,
+                fontweight="bold", color="#3d2b1f", zorder=5)
+
+
+def tarjeta_cultivos(crops: list, titulo: str, flechas: bool = True, notas: list | None = None) -> bytes:
+    """Fotos de cultivos; con flechas si es una rotación, con números si es una lista.
+    notas: por cultivo, lista de (texto, color) que se escribe debajo de la foto."""
+    n = len(crops)
+    ancho, paso = 2.7, 3.6
+    filas = max((len(x) for x in notas), default=0) if notas else 0
+    bajo = 0.48 * filas + (0.15 if filas else 0)
+    alto = 3.3 + bajo
+    fig = plt.figure(figsize=(paso * n + 0.6, alto / 0.86), facecolor="white")
+    ax = fig.add_axes([0, 0, 1, 0.86])
+    ax.set_xlim(0, paso * n + 0.6)
+    ax.set_ylim(-bajo, 3.3)
+    ax.set_aspect("equal")
+    ax.axis("off")
+    for i, c in enumerate(crops):
+        x0 = 0.4 + i * paso
+        _panel(ax, c, x0, 0.1, ancho, 3.15, numero=None if flechas else i + 1)
+        if flechas and i < n - 1:
+            ax.annotate("", xy=(x0 + paso - 0.1, 1.7), xytext=(x0 + ancho + 0.12, 1.7),
+                        arrowprops=dict(arrowstyle="-|>", lw=4, color="#555", mutation_scale=28))
+        for k, (texto, color) in enumerate((notas or [[]] * n)[i]):
+            ax.text(x0 + ancho / 2, -0.22 - 0.48 * k, texto, ha="center", va="center", fontsize=16 if k == 0 else 14,
+                    fontweight="bold" if k == 0 else "normal", color=color)
+    fig.suptitle(titulo, fontsize=21, fontweight="bold", y=0.98)
+    return _png(fig)
+
+
+def galeria(crops: list, titulo: str) -> bytes | None:
+    """Cuadrícula de cultivos para elegir viendo la planta. None si no hay ninguna foto."""
+    if not any(foto_cultivo(c.id) is not None for c in crops):
+        return None
+    cols = 4
+    filas = (len(crops) + cols - 1) // cols
+    fig = plt.figure(figsize=(12, 3.0 * filas + 0.6), facecolor="white")
+    ax = fig.add_axes([0, 0, 1, 1 - 0.6 / (3.0 * filas + 0.6)])
+    ax.set_xlim(0, cols * 3.0)
+    ax.set_ylim(0, filas * 3.0)
+    ax.set_aspect("equal")
+    ax.axis("off")
+    for k, c in enumerate(crops):
+        f, col = divmod(k, cols)
+        _panel(ax, c, col * 3.0 + 0.15, (filas - 1 - f) * 3.0 + 0.1, 2.7, 2.8)
+    fig.suptitle(titulo, fontsize=21, fontweight="bold", y=0.995)
+    return _png(fig)
+
+
+SEMAFORO = {"verde": ("#2e7d32", "Hay agua"), "amarillo": ("#f9a825", "Justo"), "rojo": ("#c62828", "Falta agua")}
+
+
+def semaforo(crop, meses: list[str], estados: list[str], titulo: str, riego: list[str] | None = None) -> bytes:
+    """Foto del cultivo y, mes a mes, un círculo verde (hay agua), amarillo (justo) o rojo (falta agua).
+    Marca el mes de siembra y de cosecha. riego: por mes, cuánta agua poner (texto corto) o ""."""
+    n = len(meses)
+    ancho_total = 3.4 + 1.25 * n
+    fig = plt.figure(figsize=(ancho_total, 3.85 / 0.85), facecolor="white")
+    ax = fig.add_axes([0, 0, 1, 0.85])
+    ax.set_xlim(0, ancho_total)
+    ax.set_ylim(-0.55, 3.3)
+    ax.set_aspect("equal")
+    ax.axis("off")
+    _panel(ax, crop, 0.2, 0.15, 2.8, 3.0)
+    for i, (m, e) in enumerate(zip(meses, estados)):
+        x = 3.6 + 1.25 * i + 0.55
+        color, txt = SEMAFORO[e]
+        ax.add_patch(Circle((x, 1.95), 0.5, color=color, zorder=3))
+        if i in (0, n - 1):
+            ax.text(x, 2.75, "Siembra" if i == 0 else "Cosecha", ha="center", fontsize=13, fontweight="bold",
+                    color="#3d2b1f")
+        ax.text(x, 0.95, m.capitalize(), ha="center", fontsize=17, fontweight="bold", color="#333")
+        ax.text(x, 0.45, txt, ha="center", fontsize=10.5, color=color, fontweight="bold")
+        if riego and riego[i]:
+            ax.text(x, -0.1, riego[i], ha="center", fontsize=10, color=AZUL, fontweight="bold")
+    if riego and any(riego):
+        ax.text(3.6, -0.45, "Agua a poner por mes en toda su tierra", fontsize=10, color="#607d8b")
+    fig.suptitle(titulo, fontsize=20, fontweight="bold", y=0.98)
+    return _png(fig)
+
+
+
+
+TIPO_MES = {"lluvia": ("#e3f2fd", "Llueve"), "medio": ("#f4f8fb", "Poca"), "seco": ("#fff3e0", "Seco")}
+
+
+def anio_tierra(tipos: list[str], lluvia_mm: list[float], titulo: str, subtitulo: str = "") -> bytes:
+    """12 meses: dibujo (gota, nube o sol), los milímetros de lluvia del mes y "Regar" en los meses secos."""
+    fig = plt.figure(figsize=(12, 4.1), facecolor="white")
+    ax = fig.add_axes([0, 0, 1, 0.8])
+    ax.set_xlim(-0.6, 11.6)
+    ax.set_ylim(-1.3, 1.5)
+    ax.axis("off")
+    for i, t in enumerate(tipos):
+        fondo, palabra = TIPO_MES[t]
+        ax.add_patch(plt.Rectangle((i - 0.46, -1.25), 0.92, 2.7, color=fondo, zorder=1))
+        if t == "lluvia":
+            _gota(ax, i, 0.75)
+        elif t == "seco":
+            _sol(ax, i, 0.75)
+        else:
+            _nube(ax, i, 0.75)
+        ax.text(i, 0.1, f"{lluvia_mm[i]:.0f} mm", ha="center", fontsize=13, color="#455a64")
+        ax.text(i, -0.3, palabra, ha="center", fontsize=12, color="#607d8b")
+        if t == "seco":
+            ax.text(i, -0.7, "Regar", ha="center", fontsize=12, fontweight="bold", color="#e65100")
+        ax.text(i, -1.05, MESES[i].capitalize(), ha="center", fontsize=16, fontweight="bold", color="#333")
+    fig.suptitle(titulo, fontsize=20, fontweight="bold", y=0.985)
+    if subtitulo:
+        fig.text(0.5, 0.835, subtitulo, ha="center", fontsize=14, color="#555")
+    return _png(fig)
+
+
+HUMEDAD = [(0.6, "#2e7d32", "Húmedo"), (0.3, "#f9a825", "Medio"), (0.0, "#c62828", "Seco")]
+
+
+def ficha_tierra(tarjetas: list[tuple], humedad: list[float], titulo: str, subtitulo: str = "") -> bytes:
+    """Ficha de la parcela: 6 tarjetas (tema, valor grande, detalle, color) y la humedad del suelo de los 12 meses."""
+    fig = plt.figure(figsize=(10, 12.2), facecolor="white")
+    ax = fig.add_axes([0, 0, 1, 1])
+    ax.set_xlim(0, 10)
+    ax.set_ylim(0, 12.2)
+    ax.axis("off")
+    ax.text(5, 11.75, titulo, ha="center", fontsize=26, fontweight="bold", color="#3d2b1f")
+    if subtitulo:
+        ax.text(5, 11.3, subtitulo, ha="center", fontsize=15, color="#666")
+    for k, (tema, valor, detalle, color) in enumerate(tarjetas):
+        x0, y0 = 0.25 + (k % 2) * 4.85, 8.55 - (k // 2) * 2.4
+        ax.add_patch(plt.Rectangle((x0, y0), 4.65, 2.2, color="#f6f3ee", zorder=1))
+        ax.add_patch(plt.Rectangle((x0, y0), 0.16, 2.2, color=color, zorder=2))
+        ax.text(x0 + 0.4, y0 + 1.75, tema, fontsize=15, color="#666", va="center")
+        ax.text(x0 + 0.4, y0 + 1.05, valor, fontsize=27, fontweight="bold", color=color, va="center")
+        ax.text(x0 + 0.4, y0 + 0.4, detalle, fontsize=13.5, color="#444", va="center")
+    ax.text(5, 3.2, "Humedad del suelo mes a mes", ha="center", fontsize=18, fontweight="bold", color="#3d2b1f")
+    ancho = 9.5 / 12
+    for i, h in enumerate(humedad):
+        color = next(c for lim, c, _ in HUMEDAD if h >= lim)
+        x = 0.25 + i * ancho
+        ax.add_patch(plt.Rectangle((x + 0.04, 0.75), ancho - 0.08, 1.7, color="#eeeeee", zorder=1))
+        ax.add_patch(plt.Rectangle((x + 0.04, 0.75), ancho - 0.08, 1.7 * max(h, 0.04), color=color, zorder=2))
+        ax.text(x + ancho / 2, 0.45, MESES[i].capitalize(), ha="center", fontsize=14, fontweight="bold", color="#333")
+    for j, (_, c, palabra) in enumerate(HUMEDAD):
+        ax.add_patch(plt.Rectangle((2.3 + j * 2.1, 0.0), 0.3, 0.22, color=c))
+        ax.text(2.7 + j * 2.1, 0.11, palabra, fontsize=13, va="center", color="#444")
     return _png(fig)

@@ -1,0 +1,280 @@
+[
+ {
+  "url": "http://geoportal.agricultura.gob.ec/descargar/zip/shp_unidad_geopedologica_2019.zip",
+  "estado": 206,
+  "archivos": [
+   "02-Ecuador\\02-MAG-Geoportal-y-SIPA.md"
+  ]
+ },
+ {
+  "url": "https://aireambiente.quito.gob.ec",
+  "estado": 200,
+  "archivos": [
+   "06-Gases-y-Crecimiento\\01-gases-y-aerosoles.md"
+  ]
+ },
+ {
+  "url": "https://balcon.mag.gob.ec/mag01/magapaldia/Quinua/pdf%20publicaciones/27-MANUAL_AGRICOLA_GRANOS_ANDINOS_2012.pdf",
+  "estado": 206,
+  "archivos": [
+   "02-Ecuador\\03-INEC-INIAP-y-otras-fuentes.md",
+   "README.md"
+  ]
+ },
+ {
+  "url": "https://cmr.earthdata.nasa.gov/search/",
+  "estado": "base de API (no es página)",
+  "archivos": [
+   "README.md"
+  ]
+ },
+ {
+  "url": "https://dialnet.unirioja.es/descarga/articulo/8234817.pdf",
+  "estado": "200 (certificado SSL inválido)",
+  "archivos": [
+   "02-Ecuador\\04-estudios-de-suelos.md"
+  ]
+ },
+ {
+  "url": "https://gmao.gsfc.nasa.gov/gmao-products/geos-cf/data-access_geos-cf",
+  "estado": 200,
+  "archivos": [
+   "06-Gases-y-Crecimiento\\01-gases-y-aerosoles.md"
+  ]
+ },
+ {
+  "url": "https://gmao.gsfc.nasa.gov/gmao-products/geos-cf/faq_geos-cf/",
+  "estado": 200,
+  "archivos": [
+   "06-Gases-y-Crecimiento\\01-gases-y-aerosoles.md"
+  ]
+ },
+ {
+  "url": "https://horizon.documentation.ird.fr/exl-doc/pleins_textes/pleins_textes_7/b_fdi_57-58/010024449.pdf",
+  "estado": 403,
+  "archivos": [
+   "02-Ecuador\\04-estudios-de-suelos.md"
+  ]
+ },
+ {
+  "url": "https://inamhi.geoglows.org/",
+  "estado": 206,
+  "archivos": [
+   "02-Ecuador\\01-INAMHI.md",
+   "README.md"
+  ]
+ },
+ {
+  "url": "https://modis.ornl.gov/rst/api/v1/",
+  "estado": "base de API (no es página)",
+  "archivos": [
+   "README.md"
+  ]
+ },
+ {
+  "url": "https://open-meteo.com/",
+  "estado": 200,
+  "archivos": [
+   "README.md"
+  ]
+ },
+ {
+  "url": "https://power.larc.nasa.gov/api/",
+  "estado": "base de API (no es página)",
+  "archivos": [
+   "README.md"
+  ]
+ },
+ {
+  "url": "https://power.larc.nasa.gov/api/system/manager/parameters?community=AG&temporal=<nivel",
+  "estado": 400,
+  "archivos": [
+   "01-NASA\\02-NASA-POWER-catalogo-completo.md"
+  ]
+ },
+ {
+  "url": "https://primicias.ec/noticias/sociedad/sangay-caida-ceniza-guamote",
+  "estado": 200,
+  "archivos": [
+   "06-Gases-y-Crecimiento\\01-gases-y-aerosoles.md"
+  ]
+ },
+ {
+  "url": "https://primicias.ec/noticias/sociedad/volcan-sangay-nube-ceniza-chimborazo",
+  "estado": 200,
+  "archivos": [
+   "06-Gases-y-Crecimiento\\01-gases-y-aerosoles.md"
+  ]
+ },
+ {
+  "url": "https://rest.isric.org/soilgrids/v2.0/",
+  "estado": "base de API (no es página)",
+  "archivos": [
+   "README.md"
+  ]
+ },
+ {
+  "url": "https://revistadigital.uce.edu.ec/index.php/SIEMBRA/article/download/9603/11811/52541",
+  "estado": 200,
+  "archivos": [
+   "02-Ecuador\\04-estudios-de-suelos.md"
+  ]
+ },
+ {
+  "url": "https://servicios.inamhi.gob.ec/aplicaciones-web/",
+  "estado": 200,
+  "archivos": [
+   "README.md"
+  ]
+ },
+ {
+  "url": "https://sipa.agricultura.gob.ec/",
+  "estado": 200,
+  "archivos": [
+   "README.md"
+  ]
+ },
+ {
+  "url": "https://www.agricultura.gob.ec/wp-content/uploads/2026/02/Poli%CC%81tica-pu%CC%81blica-agropecuaria-9-2-26-compressed.pdf",
+  "estado": 206,
+  "archivos": [
+   "02-Ecuador\\02-MAG-Geoportal-y-SIPA.md",
+   "README.md"
+  ]
+ },
+ {
+  "url": "https://www.datosabiertos.gob.ec/",
+  "estado": 200,
+  "archivos": [
+   "README.md"
+  ]
+ },
+ {
+  "url": "https://www.datosabiertos.gob.ec/api/3/action/package_search?fq=organization:instituto-nacional-de-meteorologia-e-hidrologia-inamhi",
+  "estado": 200,
+  "archivos": [
+   "02-Ecuador\\01-INAMHI.md"
+  ]
+ },
+ {
+  "url": "https://www.datosabiertos.gob.ec/api/3/action/package_search?fq=organization:mag&rows=100",
+  "estado": 200,
+  "archivos": [
+   "02-Ecuador\\02-MAG-Geoportal-y-SIPA.md"
+  ]
+ },
+ {
+  "url": "https://www.datosabiertos.gob.ec/dataset/40c970c4-be1d-446d-b2c2-1ae9b8a2dde5/resource/47a37abc-a8cd-4d2a-a913-f25a7297dd2a/download/inamhi-temperaturaminima-2019diciembre.csv",
+  "estado": 200,
+  "archivos": [
+   "03-Verificacion-Endpoints\\scripts\\README.md"
+  ]
+ },
+ {
+  "url": "https://www.datosabiertos.gob.ec/dataset/eaa8894f-68d1-4a15-80f8-1a6f528f946c/resource/98c77d18-e863-4e00-8a22-eb47f2981d9c/download/inamhi-precipitacion-2019diciembre.csv",
+  "estado": 200,
+  "archivos": [
+   "02-Ecuador\\01-INAMHI.md",
+   "03-Verificacion-Endpoints\\scripts\\README.md"
+  ]
+ },
+ {
+  "url": "https://www.ecuadorencifras.gob.ec/category/estadisticas-agropecuarias/",
+  "estado": 206,
+  "archivos": [
+   "02-Ecuador\\03-INEC-INIAP-y-otras-fuentes.md",
+   "README.md"
+  ]
+ },
+ {
+  "url": "https://www.ecuadorencifras.gob.ec/documentos/web-inec/Estadisticas_agropecuarias/espac/2025/Manual_ESPAC_2025.pdf",
+  "estado": 206,
+  "archivos": [
+   "02-Ecuador\\03-INEC-INIAP-y-otras-fuentes.md"
+  ]
+ },
+ {
+  "url": "https://www.ecuadorencifras.gob.ec/informacion-de-anos-anteriores-espac/",
+  "estado": 206,
+  "archivos": [
+   "02-Ecuador\\03-INEC-INIAP-y-otras-fuentes.md"
+  ]
+ },
+ {
+  "url": "https://www.expreso.ec/actualidad/inamhi-alerta-madrugadas-heladas-afectaran-la-sierra-ecuatoriana-266435.html",
+  "estado": 200,
+  "archivos": [
+   "02-Ecuador\\01-INAMHI.md",
+   "README.md"
+  ]
+ },
+ {
+  "url": "https://www.extra.ec/noticia/ecuador/temperaturas-cero-sacuden-sierra-ecuatoriana-productores-agricolas-alerta-149496.html",
+  "estado": 200,
+  "archivos": [
+   "02-Ecuador\\01-INAMHI.md",
+   "README.md"
+  ]
+ },
+ {
+  "url": "https://www.extra.ec/noticia/servicios-y-tramites/calidad-aire-quito-consultarla-real-dias-alerta-155140.html",
+  "estado": 200,
+  "archivos": [
+   "06-Gases-y-Crecimiento\\01-gases-y-aerosoles.md"
+  ]
+ },
+ {
+  "url": "https://www.fao.org/gaez/gaezv4/en",
+  "estado": 200,
+  "archivos": [
+   "README.md"
+  ]
+ },
+ {
+  "url": "https://www.gob.ec/gadp-tungurahua/tramites/red-hidrometeorologica-provincial",
+  "estado": 200,
+  "archivos": [
+   "02-Ecuador\\01-INAMHI.md",
+   "README.md"
+  ]
+ },
+ {
+  "url": "https://www.inamhi.gob.ec/biblioteca/",
+  "estado": 200,
+  "archivos": [
+   "02-Ecuador\\01-INAMHI.md",
+   "README.md"
+  ]
+ },
+ {
+  "url": "https://www.mdpi.com/2072-4292/15/24/5713",
+  "estado": 403,
+  "archivos": [
+   "02-Ecuador\\01-INAMHI.md",
+   "03-Verificacion-Endpoints\\02-validacion-lluvia-INAMHI.md",
+   "README.md"
+  ]
+ },
+ {
+  "url": "https://www.nature.com/articles/sdata201880.pdf",
+  "estado": 200,
+  "archivos": [
+   "02-Ecuador\\01-INAMHI.md",
+   "README.md"
+  ]
+ },
+ {
+  "url": "https://www.teleamazonas.com/caida-ceniza-chimborazo-volcan-sangay/",
+  "estado": 200,
+  "archivos": [
+   "06-Gases-y-Crecimiento\\01-gases-y-aerosoles.md"
+  ]
+ },
+ {
+  "url": "https://www.vistazo.com/actualidad/nacional/cae-ceniza-volcanica-en-chimborazo-advierten-alta-posibilidad-en-bolivar-los-rios-guayas-y-manabi-YY1313320",
+  "estado": 200,
+  "archivos": [
+   "06-Gases-y-Crecimiento\\01-gases-y-aerosoles.md"
+  ]
+ }
+]

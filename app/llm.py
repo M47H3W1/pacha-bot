@@ -27,13 +27,19 @@ class Gemini:
         self.model = os.getenv("GEMINI_MODEL", "gemini-2.5-flash").strip()
         self.activo = bool(self.key)
 
-    def responder(self, pregunta: str, contexto: dict, historial: list[dict] | None = None) -> str | None:
+    def responder(self, pregunta: str, contexto: dict, historial: list[dict] | None = None,
+                  audio_ogg: bytes | None = None) -> str | None:
+        """Responde una pregunta escrita o una nota de voz (audio_ogg)."""
         if not self.activo:
             return None
         contents = [{"role": m["role"], "parts": [{"text": m["content"]}]} for m in (historial or [])[-8:]]
-        contents.append({"role": "user", "parts": [{"text":
-                         f"CONTEXTO (datos de Pacha):\n{json.dumps(contexto, ensure_ascii=False)}\n\n"
-                         f"PREGUNTA DEL AGRICULTOR:\n{pregunta}"}]})
+        parts = [{"text": f"CONTEXTO (datos de Pacha):\n{json.dumps(contexto, ensure_ascii=False)}\n\n"
+                          f"PREGUNTA DEL AGRICULTOR:\n{pregunta}"}]
+        if audio_ogg:
+            import base64
+            parts.insert(0, {"inline_data": {"mime_type": "audio/ogg",
+                                             "data": base64.b64encode(audio_ogg).decode()}})
+        contents.append({"role": "user", "parts": parts})
         body = {"system_instruction": {"parts": [{"text": SISTEMA}]}, "contents": contents,
                 "generationConfig": {"temperature": 0.4, "maxOutputTokens": 600}}
         try:

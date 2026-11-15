@@ -180,6 +180,9 @@ class Clima:
             self.metodo = "NASA POWER corregido por altura (6,5 °C por km)"
             self.factor_lluvia = 1.0
         self.tmax, self.tmin = tmax + dT, tmin + dT
+        textura = (sitio.suelo or {}).get("textura", "")
+        self.agua_util = next((v for k, v in sorted(AGUA_UTIL_TEXTURA.items(), key=lambda kv: -len(kv[0]))
+                               if k in textura and "supuesto" not in textura), AGUA_UTIL_DEFECTO)
         self.p = p * (1 + dP)
         doy = np.array([f.timetuple().tm_yday for f in self.fechas])
         self.et0 = et0_penman_monteith(self.tmax, self.tmin, serie("RH2M"), serie("WS2M"),
@@ -227,6 +230,8 @@ class Clima:
         return {
             "lluvia_anual": float(np.median(lluvia)),
             "lluvia_seca": float(np.percentile(lluvia, 20)),
+            "lluvia_humeda": float(np.percentile(lluvia, 80)),
+            "lluvia_min": float(lluvia.min()), "lluvia_max": float(lluvia.max()),
             "et0_anual": float(np.median(self.ET0_m.sum(axis=1))),
             "lluvia_mes": np.median(self.P_m, axis=0).tolist(),
             "et0_mes": np.median(self.ET0_m, axis=0).tolist(),
@@ -240,47 +245,113 @@ class Clima:
 
 
 # ---------------------------------------------------------------- banco de agua
+# Balance diario de agua en el suelo (modelo del equipo, notebook AgroBot v2), corrido sobre NASA POWER.
+AGUA_UTIL_TEXTURA = {"arenoso": 70, "franco arenoso": 110, "franco": 150, "franco arcilloso": 160, "arcilloso": 140}
+# Cómo se nombra cada textura en el campo de la sierra (el nombre técnico va entre paréntesis)
+NOMBRE_LOCAL = {"arenoso": "tierra arenosa, suelta", "franco arenoso": "tierra suelta con arena",
+                "franco": "tierra negra de chacra, ni suelta ni pegajosa", "franco arcilloso": "tierra pesada, un poco chocoto",
+                "arcilloso": "chocoto, tierra de barro pegajosa"}
+
+
+def nombre_suelo(textura: str) -> str:
+    """'franco' -> 'tierra negra de chacra, ni suelta ni pegajosa (franco)'."""
+    t = (textura or "franco").replace(" (supuesto)", "").strip()
+    return f"{NOMBRE_LOCAL[t]} ({t})" if t in NOMBRE_LOCAL else t
+
+
+AGUA_UTIL_DEFECTO = 110   # mm por metro de raíz cuando no hay dato de suelo
+RESERVA_INICIAL = 0.5     # suelo a la mitad de su reserva el día de siembra
+LLUVIA_EFECTIVA = 0.85    # parte de la lluvia que aprovecha el suelo
+FACTOR_SECO = 0.8         # escenario seco: 20 % menos lluvia
+UMBRAL_PROBLEMA = 0.15    # un mes "con problema" si falta >= 15 % de lo que pide (y >= 5 mm)
+ANIO_BUENO, ANIO_MALO = 0.10, 0.30
+
+
+def _balance_suelo(P, etc, taw, factor=1.0):
+    """Día a día: el cultivo toma de la reserva del suelo más la lluvia efectiva. Devuelve uso y déficit."""
+    reserva = RESERVA_INICIAL * taw
+    uso, deficit = np.empty(len(P)), np.empty(len(P))
+    for d in range(len(P)):
+        disponible = reserva + LLUVIA_EFECTIVA * factor * P[d]
+        uso[d] = min(etc[d], disponible)
+        deficit[d] = etc[d] - uso[d]
+        reserva = min(taw, disponible - uso[d])
+    return uso, deficit
+
+
 def banco_de_agua(clima: Clima, crop: Crop, mes_siembra: int) -> dict:
-    """Balance mensual del ciclo para cada año; devuelve año normal (mediana) y seco (p80)."""
+    """Simula el ciclo completo en cada año histórico (siembra el día 1 del mes) con balance de suelo.
+    Devuelve el año normal (mediana), el año seco (20 % menos lluvia), un veredicto y el estado de cada mes."""
     kc = curva_kc(crop)
     n = len(kc)
-    filas = []  # por año: lista de (mes, Pe, ETc)
+    taw = crop.zr * clima.agua_util
+    filas = []
     for y in clima.anios:
         ini = clima.idx.get(dt.date(y, mes_siembra, 1))
         if ini is None or ini + n > len(clima.fechas):
             continue
         sl = slice(ini, ini + n)
-        etc, pr, ms, ys = kc * clima.et0[sl], clima.p[sl], clima.mes[sl], clima.anio[sl]
-        meses = []
-        for (yy, mm) in dict.fromkeys(zip(ys.tolist(), ms.tolist())):
-            sel = (ys == yy) & (ms == mm)
-            p_mes_total = clima.P_m[clima.anio_i[yy], mm - 1]
-            pe_total = float(lluvia_util_mensual(p_mes_total))
-            p_ciclo = pr[sel].sum()
-            pe = pe_total * (p_ciclo / p_mes_total) if p_mes_total > 0 else 0.0
-            meses.append((mm, pe, float(etc[sel].sum()), int(sel.sum())))
-        filas.append(meses)
-    k = min(len(f) for f in filas)
-    mes_ids = [m for m, *_ in filas[0][:k]]
-    pe = np.array([[f[i][1] for i in range(k)] for f in filas])
-    etc = np.array([[f[i][2] for i in range(k)] for f in filas])
-    dias = [filas[0][i][3] for i in range(k)]
-    falta = np.maximum(etc - pe, 0)
-    total_falta = falta.sum(axis=1)
-    pe_med, etc_med, falta_med = (np.median(a, axis=0) for a in (pe, etc, falta))
-    peor = int(np.argmax(falta_med))
+        P, etc = clima.p[sl], kc * clima.et0[sl]
+        uso, deficit = _balance_suelo(P, etc, taw)
+        _, def_seco = _balance_suelo(P, etc, taw, FACTOR_SECO)
+        meses = list(dict.fromkeys(zip(clima.anio[sl].tolist(), clima.mes[sl].tolist())))
+        clave = list(zip(clima.anio[sl].tolist(), clima.mes[sl].tolist()))
+        por_mes = []
+        for ym in meses:
+            m = np.array([k == ym for k in clave])
+            por_mes.append((ym[1], float(uso[m].sum()), float(etc[m].sum()), float(deficit[m].sum()), int(m.sum())))
+        filas.append(dict(meses=por_mes, P=float(P.sum()), etc=float(etc.sum()),
+                          deficit=float(deficit.sum()), seco=float(def_seco.sum())))
+    k = min(len(f["meses"]) for f in filas)
+    mes_ids = [m for m, *_ in filas[0]["meses"][:k]]
+    dias = [filas[0]["meses"][i][4] for i in range(k)]
+    uso_m = np.array([[f["meses"][i][1] for i in range(k)] for f in filas])
+    etc_m = np.array([[f["meses"][i][2] for i in range(k)] for f in filas])
+    def_m = np.array([[f["meses"][i][3] for i in range(k)] for f in filas])
+    problema = (def_m >= np.maximum(5.0, UMBRAL_PROBLEMA * etc_m)) & (etc_m > 0)
+    frac = problema.mean(axis=0)
+    estados = ["verde" if f <= 0.2 else "amarillo" if f <= 0.5 else "rojo" for f in frac]
+    tot_def = np.array([f["deficit"] for f in filas])
+    tot_etc = np.array([f["etc"] for f in filas])
+    ratio = np.divide(tot_def, tot_etc, out=np.zeros_like(tot_def), where=tot_etc > 0)
+    n_anios = len(filas)
+    n_bien, n_mal = int((ratio < ANIO_BUENO).sum()), int((ratio >= ANIO_MALO).sum())
+    veredicto = "si" if n_bien / n_anios >= 0.7 else "cuidado" if n_mal / n_anios <= 0.3 else "no"
+    lluvias = np.array([f["P"] for f in filas])
+    falta_med = np.median(def_m, axis=0)
+    peor = int(np.argmax(frac + falta_med / 1e4))
     return {
         "cultivo": crop.id, "mes_siembra": mes_siembra,
-        "meses": [MESES[m - 1] for m in mes_ids], "dias": dias,
-        "lluvia_util": pe_med.tolist(), "gasto": etc_med.tolist(), "falta": falta_med.tolist(),
-        "total_lluvia_util": float(np.median(pe.sum(axis=1))),
-        "total_gasto": float(np.median(etc.sum(axis=1))),
-        "total_falta": float(np.median(total_falta)),
-        "total_falta_seco": float(np.percentile(total_falta, 80)),
+        "meses": [MESES[m - 1] for m in mes_ids], "mes_ids": mes_ids, "dias": dias,
+        "lluvia_util": np.median(uso_m, axis=0).tolist(), "gasto": np.median(etc_m, axis=0).tolist(),
+        "falta": falta_med.tolist(), "estado_mes": estados, "frac_problema": frac.tolist(),
+        "total_lluvia_util": float(np.median(uso_m.sum(axis=1))),
+        "total_gasto": float(np.median(tot_etc)),
+        "total_falta": float(np.median(tot_def)),
+        "total_falta_seco": float(np.mean([f["seco"] for f in filas])),
         "mes_critico": MESES_LARGO[mes_ids[peor] - 1],
         "falta_semana_critica": float(falta_med[peor] / dias[peor] * 7),
-        "anios": len(filas),
+        "lluvia_ciclo": float(np.median(lluvias)), "lluvia_min": float(lluvias.min()),
+        "lluvia_max": float(lluvias.max()),
+        "cv_lluvia": float(lluvias.std(ddof=1) / lluvias.mean()) if lluvias.mean() > 0 else 0.0,
+        "veredicto": veredicto, "n_bien": n_bien, "n_mal": n_mal, "anios": n_anios,
     }
+
+
+def comparar_fuentes(sitio: Sitio, clima: Clima) -> dict | None:
+    """Fuente complementaria: compara lluvia y ET0 anuales de Pacha (NASA corregido) con Open-Meteo/ERA5,
+    la fuente que usa el notebook del equipo. Sirve para decir qué tan seguros estamos."""
+    otra = clients.era5_anual(sitio.lat, sitio.lon)
+    if not otra:
+        return None
+    p_nasa = float(np.median(clima.P_m.sum(axis=1)))
+    e_nasa = float(np.median(clima.ET0_m.sum(axis=1)))
+    dif_p = abs(p_nasa - otra["lluvia"]) / max(otra["lluvia"], 1)
+    dif_e = abs(e_nasa - otra["et0"]) / max(otra["et0"], 1)
+    peor = max(dif_p, dif_e)
+    nivel = "alta" if peor <= 0.2 else "media" if peor <= 0.4 else "baja"
+    return {"lluvia_nasa": p_nasa, "lluvia_era5": otra["lluvia"], "et0_nasa": e_nasa, "et0_era5": otra["et0"],
+            "dif_lluvia": dif_p, "dif_et0": dif_e, "confianza": nivel, "anios_era5": otra["anios"]}
 
 
 def litros(mm_falta: float, area_m2: float, eficiencia: float) -> dict:
@@ -302,7 +373,8 @@ def riego_semana(sitio: Sitio, crop: Crop, fecha_siembra: dt.date, hoy: dt.date 
                if t is not None and t <= FROST_T]
     return {"dia": dia, "etapa": etapa(crop, dia), "gasto": gasto, "lluvia": lluvia,
             "lluvia_util": util, "falta": max(gasto - util, 0), "heladas": heladas,
-            "tmin": f["tmin"], "fechas": f["fecha"]}
+            "tmin": f["tmin"], "fechas": f["fecha"], "lluvia_dia": [x or 0 for x in f["lluvia"]],
+            "falta_dia": [max(k * (e or 0) - (x or 0) * 0.8, 0) for k, e, x in zip(kcs, f["et0"], f["lluvia"])]}
 
 
 # ---------------------------------------------------------------- análisis por cultivo
@@ -388,6 +460,7 @@ def evaluar_rotacion(sitio, clima, ids: list[str], mes_inicio: int) -> dict:
     leguminosas = [c for c in crops if c.fija_n]
     suelo = 0.4 * (1 if leguminosas else 0) + 0.3 * cubierto + 0.3 * (1 if repetidas == 0 else 0)
     suelo -= 0.3 if papa_tras_papa else 0
+    suelo -= 0.15 if any(c.id == "descanso" for c in crops[1:]) else 0  # suelo desnudo: riesgo de erosión
     aptitud = min(c.aptitud_altura(sitio.elev) for c in crops)
     return dict(ids=ids, crops=crops, falta=falta, falta_seco=falta_seco, helada=helada,
                 falta_anual=falta * 12 / meses_total,

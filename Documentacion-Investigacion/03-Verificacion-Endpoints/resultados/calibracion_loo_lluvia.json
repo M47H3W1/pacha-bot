@@ -1,0 +1,28 @@
+{
+  "MERRA2": {
+    "sesgo_mediano_crudo_pct": 21,
+    "error_abs_mediano_crudo_pct": 35,
+    "sesgo_mediano_calibrado_pct": -5,
+    "error_abs_mediano_calibrado_pct": 16,
+    "dentro_25pct_crudo": 35,
+    "dentro_25pct_calibrado": 57,
+    "intervalo80_factor": [
+      0.77,
+      1.44
+    ],
+    "sd_log_residuo": 0.29
+  },
+  "IMERG": {
+    "sesgo_mediano_crudo_pct": 39,
+    "error_abs_mediano_crudo_pct": 40,
+    "sesgo_mediano_calibrado_pct": 2,
+    "error_abs_mediano_calibrado_pct": 15,
+    "dentro_25pct_crudo": 34,
+    "dentro_25pct_calibrado": 55,
+    "intervalo80_factor": [
+      0.74,
+      1.4
+    ],
+    "sd_log_residuo": 0.279
+  }
+}

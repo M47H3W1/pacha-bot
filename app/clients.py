@@ -10,10 +10,11 @@ import httpx
 log = logging.getLogger(__name__)
 CACHE = Path(os.getenv("CACHE_DIR", Path(__file__).resolve().parent.parent / "cache"))
 CACHE.mkdir(parents=True, exist_ok=True)
+SEMILLAS = Path(__file__).with_name("semillas")
 
 POWER_PARAMS = "T2M_MAX,T2M_MIN,PRECTOTCORR,RH2M,WS2M,ALLSKY_SFC_SW_DWN"
 POWER_START, POWER_END = 2001, 2024
-UA = {"User-Agent": "PachaBot/1.0 (NASA Space Apps 2026)"}
+UA = {"User-Agent": "PachaBot/1.0 (NASA Space Apps 2026 demo; https://github.com/M47H3W1)"}
 
 
 def _key(*parts) -> str:
@@ -22,6 +23,10 @@ def _key(*parts) -> str:
 
 def _cached(name: str, fetch):
     """Guarda en disco solo respuestas válidas (las que no traen ok=False)."""
+    semilla = SEMILLAS / f"{name}.json.gz"
+    if semilla.exists():  # datos de sitios de demostración que vienen con el código (solo lectura)
+        with gzip.open(semilla, "rt", encoding="utf-8") as f:
+            return json.load(f)
     path = CACHE / f"{name}.json.gz"
     if path.exists():
         with gzip.open(path, "rt", encoding="utf-8") as f:
@@ -31,6 +36,27 @@ def _cached(name: str, fetch):
         with gzip.open(path, "wt", encoding="utf-8") as f:
             json.dump(data, f)
     return data
+
+
+def power_clima(lat: float, lon: float) -> dict | None:
+    """Climatología mensual de NASA POWER: humedad del suelo en la zona de raíces y superficial (GWETROOT, GWETTOP; 0–1)."""
+    lat, lon = round(lat, 2), round(lon, 2)
+
+    def fetch():
+        try:
+            r = httpx.get("https://power.larc.nasa.gov/api/temporal/climatology/point", headers=UA, timeout=60,
+                          params=dict(parameters="GWETROOT,GWETTOP", community="AG", latitude=lat, longitude=lon,
+                                      format="JSON"))
+            r.raise_for_status()
+            par = r.json()["properties"]["parameter"]
+            meses = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"]
+            return {"ok": True, **{k: [par[k][m] for m in meses] for k in ("GWETROOT", "GWETTOP")}}
+        except Exception as e:
+            log.warning("POWER climatología no disponible: %s", e)
+            return {"ok": False}
+
+    data = _cached(_key("powerclima", lat, lon), fetch)
+    return data if data.get("ok") else None
 
 
 def power_daily(lat: float, lon: float) -> dict:
@@ -86,8 +112,16 @@ def soil(lat: float, lon: float) -> dict | None:
             out[layer["name"]] = sum(vals) / len(vals) / factor
         return out
 
-    data = _cached(_key("soil", lat, lon), fetch)
+    clave = _key("soil", lat, lon)
+    if clave in _SUELO_FALLIDO:  # SoilGrids ya falló en este proceso: no esperar otra vez su tiempo de espera
+        return None
+    data = _cached(clave, fetch)
+    if not data.get("ok"):
+        _SUELO_FALLIDO.add(clave)
     return data if data.get("ok") else None
+
+
+_SUELO_FALLIDO: set[str] = set()
 
 
 def forecast_week(lat: float, lon: float) -> dict:
@@ -128,3 +162,55 @@ def ifs_diario(lat: float, lon: float) -> dict:
 
     data = _cached(_key("ifs", lat, lon), fetch)
     return data if data.get("ok") else None
+
+
+def era5_anual(lat: float, lon: float) -> dict | None:
+    """Lluvia y ET0 anuales (mediana 2015-2024) de Open-Meteo Archive, modelo por defecto (ERA5).
+    Es la fuente del notebook del equipo; Pacha la usa solo para validar, no para calcular."""
+    lat, lon = round(lat, 2), round(lon, 2)
+
+    def fetch():
+        try:
+            r = httpx.get("https://archive-api.open-meteo.com/v1/archive", headers=UA, timeout=60, params={
+                "latitude": lat, "longitude": lon, "start_date": "2015-01-01", "end_date": "2024-12-31",
+                "daily": "precipitation_sum,et0_fao_evapotranspiration", "timezone": "America/Guayaquil"})
+            r.raise_for_status()
+            d = r.json()["daily"]
+        except Exception as e:
+            log.warning("ERA5 no disponible: %s", e)
+            return {"ok": False}
+        por_anio = {}
+        for t, p, e in zip(d["time"], d["precipitation_sum"], d["et0_fao_evapotranspiration"]):
+            a = por_anio.setdefault(t[:4], [0.0, 0.0, 0])
+            a[0] += p or 0
+            a[1] += e or 0
+            a[2] += 1
+        completos = [v for v in por_anio.values() if v[2] >= 360]
+        if not completos:
+            return {"ok": False}
+        lluvias = sorted(v[0] for v in completos)
+        et0s = sorted(v[1] for v in completos)
+        return {"ok": True, "lluvia": lluvias[len(lluvias) // 2], "et0": et0s[len(et0s) // 2], "anios": len(completos)}
+
+    data = _cached(_key("era5", lat, lon), fetch)
+    return data if data.get("ok") else None
+
+
+def elevaciones(puntos: list[tuple[float, float]]) -> list[float] | None:
+    """Altura de varios puntos en una sola consulta (Open-Meteo, modelo de 90 m). None si falla."""
+    lats = ",".join(f"{la:.5f}" for la, _ in puntos)
+    lons = ",".join(f"{lo:.5f}" for _, lo in puntos)
+
+    def fetch():
+        try:
+            r = httpx.get("https://api.open-meteo.com/v1/elevation", headers=UA, timeout=15,
+                          params={"latitude": lats, "longitude": lons})
+            r.raise_for_status()
+            return {"ok": True, "elev": r.json()["elevation"]}
+        except Exception as e:
+            log.warning("Elevación múltiple no disponible: %s", e)
+            return {"ok": False}
+
+    import hashlib
+    data = _cached("elevs_" + hashlib.sha1((lats + lons).encode()).hexdigest()[:16], fetch)
+    return data["elev"] if data.get("ok") else None
