@@ -1,135 +1,138 @@
-# Pacha · @Pacha_EC_Bot
+# Pacha 🌱 · Datos de la NASA para la tierra de la sierra
 
-Bot de Telegram para agricultores de la sierra del Ecuador. NASA Space Apps Challenge 2026, reto
-"Field Shift: Adapting Farms with NASA Data".
+**Español** · [English](README.en.md)
 
-## Qué hace
-1. **Mi terreno**: ubicación GPS o provincia de la sierra. Muestra altura, suelo, lluvia, evaporación y heladas.
-2. **Mi cultivo y rotación**: dos caminos.
-   - *Ya tengo un cultivo*: compara tu rotación con dos alternativas.
-   - *Quiero empezar*: recomienda los 3 mejores cultivos para el mes de siembra y arma rotaciones.
-   Cada opción tiene una tarjeta con por qué, evidencia, beneficios, lo que no sabemos y riesgos.
-3. **Banco de agua** (se abre tras elegir cultivo): lluvia útil que entra menos gasto del cultivo que sale.
-   La diferencia, dividida por la eficiencia del riego, son los litros por m² que hay que poner.
-   Incluye año normal, año seco y cuánto regar esta semana con pronóstico.
+NASA Space Apps Challenge 2026 · Sede Sangolquí (ESPE) · Reto **"Field Shift: Adapting Farms with NASA Data"**
 
-Extras: escenarios de clima, alerta de helada a 7 días, preguntas libres con Gemini, historial por agricultor,
-glosario y explicación de los datos.
-
-## Modo campo (por defecto)
-Pensado para agricultores con poca lectura o que hablan poco español:
-- Menú de 6 botones: Mi chakra, Qué sembrar, Cuánto regar, ¿Viene helada?, Preguntar y Más.
-- Cada respuesta tiene máximo 4 líneas, trato de usted y un dibujo (meses, semana o cultivos).
-- Nada de mm, puntajes ni porcentajes. Se habla de veces por semana, días, baldes por cuadro de 3 por 3 pasos
-  y la prueba del dedo en la tierra.
-- Botón 🔊 Escuchar en cada pantalla (voz en español). Se puede activar el audio automático en Más.
-- Notas de voz del agricultor: se responden con Gemini cuando haya clave.
-- Botones en kichwa y español. **Las palabras en kichwa están por validar con hablantes nativos** (app/kichwa.py).
-- Los números completos siguen detrás de 📊 Ver los números y en Más → Modo técnico, para técnicos y jurado.
-
-## Ciencia
-- ET0 diaria FAO-56 Penman-Monteith con NASA POWER 2001–2024.
-- Lluvia y temperatura de POWER corregidas mes a mes con ECMWF IFS de 9 km (Open-Meteo), que ya está a la
-  altura real. Sin esa corrección POWER duplica la lluvia en los Andes (≈1.650 mm frente a ≈800 mm en Chimborazo).
-- Balance diario de agua en el suelo (modelo del notebook AgroBot v2 del equipo): reserva = raíz × agua útil del
-  suelo, arranca a la mitad, lluvia efectiva 85 %, escenario seco con 20 % menos lluvia. Se simula el ciclo en cada
-  uno de los ~23 años de NASA POWER y se da un veredicto (sí / con riego de apoyo / no) y un semáforo por mes.
-- Kc por etapas FAO-56; ciclos de variedades INIAP (Superchola, Sultana, Tunkahuan). Chocho, melloco y oca con Kc estimado.
-- Rotaciones de referencia del equipo: R0 papa-papa-barbecho, R1 Illangama y R2 granos andinos (app/rotaciones_ref.csv).
-- Fuente complementaria: Open-Meteo/ERA5 (la del notebook) solo para validar lluvia y ET0 y decir qué tan seguros estamos.
-- Helada: probabilidad de aire a 2 m ≤ 4 °C, porque las hojas se enfrían 3–5 °C más en noches despejadas.
-- Suelo: SoilGrids (ISRIC). Si no responde, se usa "franco" y se avisa.
-
-## Ejecutar con Docker
-```bash
-cp .env.example .env   # y pon TELEGRAM_BOT_TOKEN
-docker compose up -d --build
-docker compose logs -f
-```
-
-## Variables
-| Variable | Uso |
+| | |
 |---|---|
-| `TELEGRAM_BOT_TOKEN` | Obligatoria |
-| `SUPABASE_URL`, `SUPABASE_SERVICE_KEY` | Persistencia en Supabase. Sin ellas se usa SQLite en el volumen |
-| `GEMINI_API_KEY`, `GEMINI_MODEL` | Explicaciones y preguntas libres. Sin clave se usan textos fijos |
+| **Demo en vivo** | https://pacha-chat.vercel.app (abre sin cuenta, pensada para celular) |
+| **Bot de Telegram** | [@Pacha_EC_Bot](https://t.me/Pacha_EC_Bot) |
+| **Licencia** | [MIT](LICENSE) |
+| **Datos principales** | [NASA POWER](https://power.larc.nasa.gov/) (comunidad AG, diario, 2001–2024) |
 
-Antes de usar Supabase, aplica `supabase/migrations/001_init.sql` en el proyecto.
+## El problema
+En la sierra del Ecuador, sobre los 2.500 m, la mayoría de familias campesinas siembra sin riego tecnificado
+y decide qué y cuándo sembrar por costumbre. La lluvia cambia de un año a otro y la papa repetida agota el
+suelo y multiplica plagas. Los datos satelitales existen, pero llegan en tablas, unidades técnicas e inglés;
+quien más los necesita (personas mayores, con poca lectura o que hablan kichwa) no puede usarlos.
 
-## Pruebas
-```bash
-python -m pytest -q tests
-python scripts/dry_run.py
-```
+## La solución
+**Aplicación web y móvil** (Astro, instalable en el celular) con seis pantallas: Bienvenida → Ubicación
+(parroquia o GPS y tamaño de la parcela) → **Mi parcela** → **Qué sembrar** (los 3 mejores cultivos y en
+**cuántos de cada 10 años** gana cada uno, mes a mes y rotaciones) → **Riego** de esta semana → **Datos** (fuentes
+NASA y de Ecuador, validación y créditos). Cada cifra muestra su fuente y se puede escuchar en voz alta.
 
-## Equipo
-Lee [CONTRIBUTING.md](CONTRIBUTING.md) antes de tu primer commit: ramas, Pull Requests y manejo de credenciales.
+El chat anterior sigue en `/chat/` como "Preguntar a Pacha": un asistente que responde **con dibujos, mensajes de una a tres líneas y audio**, como una
+conversación de mensajería. El agricultor manda **un punto y un círculo** con el tamaño de su tierra, y Pacha:
 
-## Aplicación web y móvil (Astro, Vercel)
+1. **📋 Ver mi tierra**: altura, pendiente, suelo, temperatura, lluvia de un año normal y de un año seco,
+   evaporación, **humedad del suelo mes a mes** y cuánto cambió la lluvia en la última década.
+2. **🌱 Qué sembrar**: los cultivos que sirven a su altura y que están en época de siembra en su zona, con un
+   veredicto de agua (✅ lluvia alcanza · ⚠️ regar a veces · ❌ necesita riego) y el mes de cosecha.
+3. **🔁 Qué sembrar después**: rotaciones que cortan plagas y alimentan la tierra (leguminosas), y
+   **📚 rotaciones probadas** en campo en Ecuador (Sicalpa, Illangama, Río Paute, Santa Catalina, Tumbaco).
+4. **💧 Cuánto regar**: qué días de esta semana regar y cuánta agua, contada en **baldes, tanques o tanqueros**
+   para el área real de su tierra.
+5. **Preguntas libres** escritas o por nota de voz, respondidas por modelos abiertos que solo hablan con los
+   números calculados para esa tierra.
 
-App instalable en el celular (PWA) hecha con **Astro** a partir del mock (`Mocks/`). Es la entrada principal; el chat
-anterior sigue disponible en `/chat/` como "Preguntar a Pacha".
-
-| Pantalla | Ruta | Qué muestra |
+## Datos de la NASA y cómo se usan
+| Dato | Producto | Para qué |
 |---|---|---|
-| Bienvenida | `/` | "Planifique su próxima siembra": probar con el ejemplo de Calpi o consultar su parcela |
-| Ubicación | `/ubicacion` | Elegir parroquia (59 de la sierra), usar el GPS del teléfono y el tamaño de la parcela |
-| Mi parcela | `/parcela` | Altura, temperatura, suelo, lluvia contra evaporación por mes, humedad del suelo y tendencia |
-| Qué sembrar | `/sembrar` | Los 3 mejores cultivos para el mes, **en cuántos de cada 10 años gana cada uno**, semáforo mes a mes y rotaciones |
-| Riego | `/riego` | Cuántas veces y cuánta agua regar esta semana, con el pronóstico |
-| Datos | `/datos` | Fuentes NASA y de Ecuador, validación con el INAMHI, créditos y declaración de IA |
+| Temperatura máxima y mínima a 2 m (`T2M_MAX`, `T2M_MIN`) | [NASA POWER Daily API](https://power.larc.nasa.gov/docs/services/api/temporal/daily/) (MERRA-2) | Rango de temperatura, días de calor, evaporación |
+| Lluvia corregida (`PRECTOTCORR`) | NASA POWER (MERRA-2 / GPM IMERG) | Lluvia mensual, año seco, aguaceros, balance de agua |
+| Humedad relativa (`RH2M`) y viento a 2 m (`WS2M`) | NASA POWER (MERRA-2) | Evaporación FAO-56 Penman-Monteith |
+| Radiación solar (`ALLSKY_SFC_SW_DWN`) | NASA POWER (CERES) | Evaporación FAO-56 Penman-Monteith |
 
-Cada cifra lleva una chapita con su fuente. Botón 🔊 para escuchar (voz del teléfono). Funciona en celular y
-escritorio, y la interfaz queda guardada para usarla sin señal.
+Consulta usada: `https://power.larc.nasa.gov/api/temporal/daily/point?parameters=T2M_MAX,T2M_MIN,PRECTOTCORR,RH2M,WS2M,ALLSKY_SFC_SW_DWN&community=AG&start=20010101&end=20241231&latitude=…&longitude=…&format=JSON`
+(ver [`app/clients.py`](app/clients.py)).
 
-**API JSON** (`api/index.py` → `web/app_api.py`): `GET /api/parroquias`, `GET /api/fuentes` y
-`POST /api/app/{parcela|recomendacion|cultivo|riego|probadas}` con `{"estado": {"lat", "lon", "radio", "mes", "crop", "dias"}}`.
-Calpi (el ejemplo del mock) trae datos guardados en `app/semillas/` para que la demo no dependa de la red.
+**Fuentes complementarias (no NASA):** ECMWF IFS 9 km vía Open-Meteo (corrección de lluvia y temperatura
+por altura), [SoilGrids](https://soilgrids.org/) de ISRIC (textura y materia orgánica del suelo), modelo de
+elevación de Open-Meteo (altura y pendiente del círculo). Calendario de siembra, variedades y casos de
+rotación: INIAP y estudios de campo recopilados por el equipo ([Documentacion-Investigacion/](Documentacion-Investigacion/)).
 
-En local:
+## Procesamiento (de los datos crudos a la respuesta)
+1. **Descarga**: serie diaria de NASA POWER 2001–2024 para el punto (unos 8.700 días), en paralelo con
+   suelo y altura. Se guarda en caché.
+2. **Limpieza**: valores faltantes (`-999`) se rellenan con el promedio del mismo mes.
+3. **Corrección por altura**: la celda de POWER (0,5° × 0,625°, unos 55 × 70 km) promedia valles y páramos y en los Andes llega a
+   duplicar la lluvia. Se corrige mes a mes con ECMWF IFS 9 km (razón para la lluvia, diferencia para
+   temperaturas); si no hay datos, se ajusta la temperatura con 6,5 °C por km de diferencia de altura.
+4. **Evaporación (ET0)**: FAO-56 Penman-Monteith diaria con temperatura, humedad, viento y radiación.
+5. **Balance de agua en el suelo**: cubeta diaria con la reserva del suelo (raíz × agua útil según textura),
+   85 % de lluvia efectiva y Kc por etapa FAO-56. Se simula **cada uno de los ~23 años** para dar la
+   probabilidad de éxito y el riego por mes; el año seco usa 20 % menos lluvia.
+6. **Rasgos de la parcela**: días sobre 25 °C, días con más de 10 mm, humedad del suelo mes a mes y
+   comparación de la década 2013–2024 contra 2001–2012.
+7. **Reglas agronómicas**: altitud apta por cultivo, épocas de siembra por zona (INIAP), familias botánicas
+   para rotar y leguminosas que fijan nitrógeno.
+8. **Respuesta**: imagen generada con matplotlib, texto corto y audio (voz neuronal es-EC).
 
+## Arquitectura
+```
+App Astro (frontend/, PWA estática)          Chat (frontend/public/chat/, HTML + JS, Leaflet, voz)
+   │  GET /api/parroquias · /api/fuentes          │  POST /api/accion · /api/pregunta · /api/voz · /api/transcribir
+   │  POST /api/app/{parcela|recomendacion|cultivo|riego|probadas}
+   ▼                                              ▼
+FastAPI en Vercel (Python 3.12)
+   ├─ web/app_api.py    respuestas JSON para la app (incluye "gana X de N años")
+   ├─ web/servicio.py   respuestas del chat: imagen + texto + audio
+   ├─ app/engine.py     sitio, clima corregido, FAO-56, balance de suelo, rotaciones
+   ├─ app/charts.py     dibujos (fichas, semáforos, tarjetas de cultivos)
+   ├─ app/clients.py    NASA POWER, ECMWF IFS, SoilGrids, elevación (con caché)
+   ├─ app/voz.py        texto a voz (edge-tts, respaldo gTTS)
+   └─ web/openrouter.py preguntas libres con modelos abiertos en cascada
+```
+El servidor no guarda datos del agricultor: el celular envía el estado en cada llamada.
+El bot de Telegram ([`app/bot.py`](app/bot.py)) usa el mismo motor.
+
+## Ejecutar y reproducir
 ```bash
 pip install -r requirements.txt uvicorn
-cd frontend && npm install && npm run build && cd ..
-uvicorn api.index:app --port 8765          # sirve la app compilada y la API en http://localhost:8765
-# o, para editar la interfaz con recarga: (cd frontend && npm run dev)  → http://localhost:4321 (usa la API del 8765)
+cd frontend && npm install && npm run build && cd ..   # compila la app Astro en frontend/dist
+uvicorn api.index:app --port 8765        # abre http://localhost:8765 (app) y /chat/ (chat)
+python -m pytest -q tests                # pruebas del motor y de la API
 ```
+Para editar la interfaz con recarga: `cd frontend && npm run dev` (http://localhost:4321, usa la API del 8765).
+Vercel compila `frontend/` según `vercel.json` y publica la API de Python en `/api`.
+El ejemplo de Calpi (el del mock) trae datos guardados en `app/semillas/` para que la demo no dependa de la red.
+Variables opcionales (en `.env` o en Vercel, nunca en el código): `OPENROUTER_API_KEY` activa las preguntas
+libres; sin ella todo lo demás funciona con botones. El bot de Telegram necesita `TELEGRAM_BOT_TOKEN`
+(ver [`.env.example`](.env.example) y `docker compose up -d --build`).
 
-Vercel compila `frontend/` (`vercel.json` → `frontend/dist`) y publica la API de Python en `/api`.
+## Limitaciones conocidas
+- La celda de NASA POWER es gruesa; la corrección con ECMWF reduce el error, pero no reemplaza una estación.
+  La validación contra estaciones del INAMHI está en [Documentacion-Investigacion/03-Verificacion-Endpoints](Documentacion-Investigacion/03-Verificacion-Endpoints/).
+- La humedad del suelo es un modelo de balance, no una medición satelital (SMAP no resuelve parcelas pequeñas).
+- Kc de chocho, melloco y oca son estimados. Las palabras en kichwa del bot están por validar con hablantes nativos.
+- Las heladas no se muestran en la demo web por decisión de diseño.
 
-## Chat "Preguntar a Pacha" (`/chat/`)
+## Impacto y siguientes pasos
+- **Usuarios:** familias campesinas de la sierra (Chimborazo, Cotopaxi, Tungurahua, Pichincha, Imbabura,
+  Carchi, Bolívar, Cañar, Azuay, Loja). Funciona con celular básico y datos móviles; responde en audio.
+- **Siguiente paso:** pasar de la maqueta a WhatsApp Business con técnicos del MAG o de juntas de riego,
+  validar con 2–3 comunidades, agregar kichwa hablado y sustituir fuentes no NASA por SMAP/NASADEM donde
+  la resolución lo permita.
+- **Costo de operación:** función serverless gratuita, NASA POWER sin costo y modelos de lenguaje abiertos.
 
-Página para celular que simula una conversación de mensajería con Pacha. Pacha responde **solo con imágenes y
-notas de voz**, calculadas con los datos reales (NASA POWER corregido con ECMWF, FAO-56, balance de suelo).
+## Declaración de uso de inteligencia artificial
+- **Desarrollo:** el código, la documentación y el análisis contaron con asistencia de **Claude Code (Anthropic)**.
+  El equipo definió el problema, la metodología científica, los cultivos, el calendario y los casos de campo,
+  y revisó cada cambio por Pull Request.
+- **Dentro de la aplicación:** las preguntas libres se responden con modelos abiertos vía
+  [OpenRouter](https://openrouter.ai/) (Gemma de Google, Nemotron de NVIDIA), limitados a los números
+  calculados por el motor. La voz se genera con edge-tts / gTTS y las notas de voz se transcriben con el
+  reconocimiento de voz del navegador.
+- **Imágenes:** ninguna imagen fue generada con IA. Los dibujos se generan por código a partir de los datos;
+  las fotos de cultivos son de Wikimedia Commons con autor y licencia en
+  [`app/imagenes/cultivos/README.md`](app/imagenes/cultivos/README.md).
+- No se usan logotipos de la NASA.
 
-- El agricultor envía su terreno desde el clip → **Ubicación**: un punto y un **círculo** con el área (se puede marcar
-  desde cualquier lugar). El área se usa para contar el agua en baldes, tanques o tanqueros; el clima sigue siendo
-  el de la celda de NASA corregida a la altura del punto.
-- Preguntas escritas o por nota de voz: **OpenRouter** con modelos abiertos gratuitos en cascada.
-- Sitios de demostración (Guano, Cayambe, Saquisilí) vienen con datos guardados en `app/semillas/` para no
-  depender de la red durante la presentación.
-
-| Archivo | Qué hace |
-|---|---|
-| `frontend/public/chat/` | Página del chat (HTML, CSS, JS sin compilación, mapa Leaflet) |
-| `api/index.py` | API FastAPI (función Python de Vercel) |
-| `web/servicio.py` | Arma cada respuesta: imagen + guion de audio |
-| `web/openrouter.py` | Preguntas libres con OpenRouter |
-
-Variables de entorno (en Vercel → Settings → Environment Variables, o en `.env` local; **nunca en el código**):
-
-| Variable | Para qué |
-|---|---|
-| `OPENROUTER_API_KEY` | Activa las preguntas libres. Sin ella, la maqueta funciona solo con botones |
-| `OPENROUTER_MODELS` | Opcional. Modelos de texto separados por coma (los gratuitos cambian seguido) |
-| `OPENROUTER_AUDIO_MODELS` | Opcional. Modelos que entienden notas de voz |
-
-En local:
-
-```bash
-pip install -r requirements.txt uvicorn
-uvicorn api.index:app --port 8765
-```
-
-Las fotos de los cultivos están en `app/imagenes/cultivos/` (ver su README). Al cambiar una foto, se ve en la web
-después del siguiente despliegue.
+## Créditos y licencia
+- Código bajo [licencia MIT](LICENSE). Las fotos conservan su propia licencia (CC BY-SA / CC0).
+- *These data were obtained from the NASA Langley Research Center (LaRC) POWER Project funded through the
+  NASA Earth Science/Applied Science Program.*
+- FAO-56 (Allen et al., 1998) para evaporación y coeficientes de cultivo; INIAP para variedades y épocas de siembra.
+- Antes de tu primer commit, lee [CONTRIBUTING.md](CONTRIBUTING.md).
