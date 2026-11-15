@@ -1,6 +1,6 @@
 // Service worker de Pacha: la interfaz funciona sin señal y la última respuesta de cada consulta queda guardada.
-const VERSION = "pacha-v1";
-const BASICO = ["/", "/ubicacion/", "/parcela/", "/sembrar/", "/riego/", "/datos/", "/manifest.webmanifest", "/icono.svg"];
+const VERSION = "pacha-v2";
+const BASICO = ["/", "/ubicacion/", "/parcela/", "/sembrar/", "/riego/", "/datos/", "/juego/", "/manifest.webmanifest", "/icono.svg"];
 
 self.addEventListener("install", (e) => {
   e.waitUntil(caches.open(VERSION).then((c) => c.addAll(BASICO)).then(() => self.skipWaiting()));

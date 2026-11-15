@@ -54,6 +54,12 @@ def _limpiar_estado(st: dict) -> dict:
         out["crop"] = st["crop"]
     if "radio" in out:
         out["radio"] = min(max(out["radio"], 10), 3000)
+    for k in ("n", "anio", "m2"):  # juego Astro Granja
+        if isinstance(st.get(k), (int, float)) and not isinstance(st.get(k), bool):
+            out[k] = st[k]
+    if isinstance(st.get("riegos"), list):
+        out["riegos"] = [[int(r[0]), float(r[1])] for r in st["riegos"][:400]
+                         if isinstance(r, list) and len(r) == 2 and all(isinstance(x, (int, float)) for x in r)]
     return out
 
 
@@ -81,7 +87,7 @@ def consulta(nombre: str, c: Consulta):
         return JSONResponse({"error": "Falta la ubicación de la parcela."}, status_code=400)
     if not (-5.1 <= st["lat"] <= 1.5 and -81.1 <= st["lon"] <= -75.1):
         return JSONResponse({"error": "La ubicación está fuera del Ecuador continental."}, status_code=422)
-    if nombre in ("cultivo", "riego") and "crop" not in st:
+    if nombre in ("cultivo", "riego", "ciclo") and "crop" not in st:
         return JSONResponse({"error": "Falta el cultivo."}, status_code=400)
     log.info("app %s %s", nombre, {k: st[k] for k in st if k not in ("lat", "lon")})
     try:

@@ -1,0 +1,69 @@
+// Estado del juego Astro Granja en el navegador (clave propia; la parcela se comparte con la app vía lib/estado).
+
+export const N_PARCELAS = 4;
+
+export interface Parcela {
+  crop: string | null;       // cultivo sembrado (o "descanso")
+  riegos: [number, number][]; // [día del ciclo, mm] que puso el jugador
+  abono: boolean;            // abono orgánico en esta temporada
+  cosechada: boolean;
+  historial: string[];       // cultivos anteriores en esta franja (para rotar)
+  puntaje?: number;
+}
+
+export interface Juego {
+  version: 1;
+  temporada: number;         // 1, 2, 3...
+  mes: number | null;        // mes de siembra de la temporada
+  anio: number | null;       // año de NASA POWER que se está jugando
+  dia: number;               // días desde la siembra
+  sembrado: boolean;         // ya empezó a correr el tiempo
+  tanque: number;            // litros en el tanque
+  tanqueMax: number;
+  salud: number;             // puntos de "salud de la tierra" (0–100), puntos del juego, no una medición
+  parcelas: Parcela[];
+  medallas: string[];
+  cosechas: number;
+}
+
+const CLAVE = "pacha.juego.v1";
+
+export function nuevo(): Juego {
+  return {
+    version: 1, temporada: 1, mes: null, anio: null, dia: 0, sembrado: false, tanque: 0, tanqueMax: 0, salud: 60,
+    parcelas: Array.from({ length: N_PARCELAS }, () => ({ crop: null, riegos: [], abono: false, cosechada: false, historial: [] })),
+    medallas: [], cosechas: 0,
+  };
+}
+
+export function cargar(): Juego {
+  try {
+    const j = JSON.parse(localStorage.getItem(CLAVE) || "null");
+    if (j && j.version === 1 && Array.isArray(j.parcelas)) return j;
+  } catch { /* sin almacenamiento */ }
+  return nuevo();
+}
+
+export function guardarJuego(j: Juego) {
+  try { localStorage.setItem(CLAVE, JSON.stringify(j)); } catch { /* modo privado */ }
+}
+
+export function borrarJuego() {
+  try { localStorage.removeItem(CLAVE); } catch { /* nada */ }
+}
+
+/** Color del suelo según la salud de la tierra: pálido y cansado → oscuro y rico. */
+export function colorSuelo(salud: number): string {
+  const t = Math.max(0, Math.min(1, salud / 100));
+  const a = [196, 156, 108], b = [74, 47, 29];
+  const c = a.map((v, i) => Math.round(v + (b[i] - v) * t));
+  return `rgb(${c[0]},${c[1]},${c[2]})`;
+}
+
+export const MEDALLAS: Record<string, { icono: string; nombre: string; texto: string }> = {
+  primera: { icono: "🥇", nombre: "Primera cosecha", texto: "Cosechaste tu primer cultivo." },
+  agua: { icono: "💧", nombre: "Buen regador", texto: "Cosecha con 3 estrellas de agua." },
+  rotacion: { icono: "🔄", nombre: "Rotación completa", texto: "Una franja con tres familias distintas seguidas." },
+  leguminosa: { icono: "🫘", nombre: "Amiga del suelo", texto: "Sembraste una leguminosa que alimenta la tierra." },
+  sana: { icono: "🌱", nombre: "Tierra sana", texto: "La salud de tu tierra llegó a 85." },
+};
