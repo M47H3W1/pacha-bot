@@ -1,6 +1,7 @@
 // Mapa para elegir la chacra: pin fijo al centro y un círculo con el tamaño de la tierra (20–600 m).
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
+import { ic } from "./ui";
 
 export interface Lugar { lat: number; lon: number; radio: number; nombre: string }
 
@@ -25,17 +26,26 @@ export function crearMapa(cont: HTMLElement, inicial: { lat: number; lon: number
     </div>
     <div class="mapa-panel">
       <div class="demos">${DEMOS.map((d, i) => `<button type="button" class="chip" data-demo="${i}">${d.nombre}</button>`).join("")}
-        <button type="button" class="chip" data-gps>◎ Aquí</button></div>
+        <button type="button" class="chip" data-gps>${ic("gps", "ic-chip")} Aquí</button></div>
       <label class="deslizador"><span>Tamaño de la chacra</span>
         <input type="range" min="20" max="600" step="5" value="${inicial.radio}" aria-label="Radio de la chacra en metros">
         <output></output></label>
-      <button type="button" class="btn-juego grande" data-confirmar>✅ Esta es mi chacra</button>
+      <button type="button" class="btn-juego grande" data-confirmar>${ic("check", "ic-btn")}<span>Esta es mi chacra</span></button>
     </div>`;
   const mapa = L.map(cont.querySelector<HTMLElement>(".mapa-leaflet")!, { zoomControl: false, attributionControl: true })
     .setView([inicial.lat, inicial.lon], 16);
   L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {
     maxZoom: 19, attribution: "Imágenes © Esri",
   }).addTo(mapa);
+  // nombres de ciudades, pueblos, ríos y vías encima de la foto satelital (como en los mapas del celular)
+  mapa.createPane("nombres");
+  mapa.getPane("nombres")!.style.zIndex = "450";
+  mapa.getPane("nombres")!.style.pointerEvents = "none";
+  for (const capa of ["Reference/World_Transportation", "Reference/World_Boundaries_and_Places"]) {
+    L.tileLayer(`https://server.arcgisonline.com/ArcGIS/rest/services/${capa}/MapServer/tile/{z}/{y}/{x}`, {
+      maxZoom: 19, pane: "nombres", attribution: capa.endsWith("Places") ? "Nombres © Esri" : "",
+    }).addTo(mapa);
+  }
   const rango = cont.querySelector<HTMLInputElement>("input[type=range]")!;
   const salida = cont.querySelector<HTMLOutputElement>("output")!;
   const circulo = L.circle(mapa.getCenter(), { radius: inicial.radio, color: "#ffd34d", weight: 3, fillOpacity: 0.15 }).addTo(mapa);

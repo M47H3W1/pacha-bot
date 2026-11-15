@@ -206,7 +206,7 @@ def tierra(st: dict) -> dict:
     pendiente = "sin dato de pendiente" if dz is None else (
         "terreno plano" if dz < 5 else "pendiente suave" if dz < 15 else "pendiente fuerte")
     suelo = sitio.suelo or {}
-    textura = suelo.get("textura", "franco").replace(" (supuesto)", "")
+    textura = E.nombre_suelo(suelo.get("textura", "franco"))
     guarda = "guarda poca agua" if c["taw"] < 45 else "guarda bien el agua" if c["taw"] >= 70 else "guarda agua media"
     mo = f"Materia orgánica {num(suelo['mo'], 1)} %" if suelo.get("mo") else guarda.capitalize()
     falta = res["et0_anual"] - res["lluvia_anual"]
@@ -215,7 +215,7 @@ def tierra(st: dict) -> dict:
     calor = f"{num(c['calor'])} días al año" if c["calor"] >= 1 else "casi nunca"
     tarjetas = [
         ("Altura y tamaño", f"{num(round(sitio.elev, -1))} m", f"{area} · {pendiente}", "#5d4037"),
-        ("Suelo", textura.capitalize(), mo, "#8d6e63"),
+        ("Suelo", textura.split(" (")[0].split(",")[0].capitalize(), mo, "#8d6e63"),
         ("Temperatura", f"{res['tmin']:.0f} a {res['tmax']:.0f} °C", f"Calor fuerte (>{CALOR} °C): {calor}",
          "#e65100"),
         ("Lluvia", f"{num(round(res['lluvia_anual'], -1))} mm", f"Año seco: {num(round(res['lluvia_seca'], -1))} mm · "
@@ -228,7 +228,7 @@ def tierra(st: dict) -> dict:
     ]
     img = charts.ficha_tierra(tarjetas, c["humedad"], "Así es su tierra",
                               f"Datos de la NASA {c['periodo']} · suelo de SoilGrids")
-    lineas = [f"📍 Su tierra: {area}, a {num(round(sitio.elev, -1))} m, suelo {textura} que {guarda}.",
+    lineas = [f"📍 Su tierra: {area}, a {num(round(sitio.elev, -1))} m, {textura.split(' (')[0]}, que {guarda}.",
               f"🌡️ Entre {res['tmin']:.0f} y {res['tmax']:.0f} °C. 🌧️ {num(round(res['lluvia_anual'], -1))} mm de lluvia al año."]
     if secos:
         lineas.append(f"🏜️ Suelo seco {cuando(secos)}: ahí se riega.")

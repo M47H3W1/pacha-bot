@@ -58,7 +58,8 @@ import "../styles/graficos.css";
           </article>
           <article class="tarjeta">
             <h3>Suelo</h3>
-            <div class="cifra">${esc(s.textura.charAt(0).toUpperCase() + s.textura.slice(1))}</div>
+            <div class="cifra">${esc((s.nombre || s.textura).split(" (")[0].split(",")[0].replace(/^./, (x: string) => x.toUpperCase()))}</div>
+            <p class="peque">${esc((s.nombre || "").includes(",") ? s.nombre.split(", ")[1].split(" (")[0] : "")}${s.nombre?.includes("(") ? ` · en libros: suelo ${esc(s.textura)}` : ""}</p>
             <p class="peque">Guarda ${esc(s.guarda)} agua: unos ${num(s.agua_util_mm)} mm donde están las raíces.${s.supuesto ? " (Dato de suelo supuesto: el servicio no respondió.)" : ""}</p>
             ${fuente(s.supuesto ? "Valor típico" : "SoilGrids")}
           </article>

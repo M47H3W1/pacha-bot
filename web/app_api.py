@@ -90,12 +90,17 @@ def parcela(st: dict) -> dict:
     return {
         "lugar": _lugar(st, sitio),
         "suelo": {"textura": suelo.get("textura", "franco").replace(" (supuesto)", ""),
+                  "nombre": E.nombre_suelo(suelo.get("textura", "franco")),
                   "supuesto": "supuesto" in suelo.get("textura", "supuesto"),
                   "mo": suelo.get("mo"), "agua_util_mm": round(c["taw"]),
                   "guarda": "poca" if c["taw"] < 45 else "bien" if c["taw"] >= 70 else "media"},
         "pendiente": None if dz is None else {"desnivel_m": round(dz),
                                                "clase": "plano" if dz < 5 else "suave" if dz < 15 else "fuerte"},
         "clima": {"lluvia_anual": round(res["lluvia_anual"]), "lluvia_seca": round(res["lluvia_seca"]),
+                  "lluvia_humeda": round(res["lluvia_humeda"]), "lluvia_min": round(res["lluvia_min"]),
+                  "lluvia_max": round(res["lluvia_max"]),
+                  # índice de aridez (lluvia ÷ evaporación, UNEP): < 0,5 seca, 0,5–0,65 algo seca, > 0,65 húmeda
+                  "aridez": round(res["lluvia_anual"] / max(res["et0_anual"], 1), 2),
                   "et0_anual": round(res["et0_anual"]), "tmin": round(res["tmin"], 1), "tmax": round(res["tmax"], 1),
                   "lluvia_mes": [round(x) for x in res["lluvia_mes"]], "et0_mes": [round(x) for x in res["et0_mes"]],
                   "tipo_mes": tipos, "humedad_mes": [round(h, 2) for h in c["humedad"]],

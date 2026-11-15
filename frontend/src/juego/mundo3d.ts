@@ -1,5 +1,6 @@
-// Mundo 3D estilo "casual cute" con identidad andina: sombreado toon, sombras suaves, chacras en franjas,
+// Mundo 3D estilo "casual cute" con identidad andina: sombreado toon suave, sombras, chacras en franjas,
 // casa de adobe con teja, cerco de madera, árboles redondos, nubes y volcán nevado. Escala real en metros.
+// El sol y la luna cruzan el cielo: el día pasa a la noche poco a poco y se acelera cuando avanza el tiempo del juego.
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeometry.js";
@@ -30,11 +31,11 @@ export function hayWebGL(): boolean {
   }
 }
 
-/** Rampa de 3 tonos para el sombreado toon (luz, media, sombra). */
+/** Rampa de 4 tonos para el sombreado toon, con filtro lineal: bandas suaves en lugar de facetas duras. */
 function rampaToon(): THREE.DataTexture {
-  const d = new Uint8Array([110, 110, 110, 255, 185, 185, 185, 255, 255, 255, 255, 255]);
-  const t = new THREE.DataTexture(d, 3, 1, THREE.RGBAFormat);
-  t.minFilter = t.magFilter = THREE.NearestFilter;
+  const d = new Uint8Array([125, 125, 125, 255, 178, 178, 178, 255, 226, 226, 226, 255, 255, 255, 255, 255]);
+  const t = new THREE.DataTexture(d, 4, 1, THREE.RGBAFormat);
+  t.minFilter = t.magFilter = THREE.LinearFilter;
   t.generateMipmaps = false;
   t.needsUpdate = true;
   return t;
@@ -42,6 +43,10 @@ function rampaToon(): THREE.DataTexture {
 
 const suave = (k: number) => 1 - Math.pow(1 - Math.min(1, Math.max(0, k)), 3);              // ease-out cúbico
 const rebote = (k: number) => { k = Math.min(1, k); return 1 + 2.2 * Math.pow(k - 1, 3) + 1.2 * Math.pow(k - 1, 2); }; // ease-out back
+const escalon = (a: number, b: number, x: number) => { const k = Math.min(1, Math.max(0, (x - a) / (b - a))); return k * k * (3 - 2 * k); };
+// spline de Catmull-Rom: el relieve pasa por los puntos reales sin quiebres entre celdas de la grilla
+const cr = (p0: number, p1: number, p2: number, p3: number, x: number) =>
+  p1 + 0.5 * x * (p2 - p0 + x * (2 * p0 - 5 * p1 + 4 * p2 - p3 + x * (3 * (p1 - p2) + p3 - p0)));
 
 export function crearMundo3D(cont: HTMLElement, t: Terreno, elev: number): Mundo {
   const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
@@ -55,12 +60,13 @@ export function crearMundo3D(cont: HTMLElement, t: Terreno, elev: number): Mundo
   renderer.domElement.classList.add("lienzo3d");
 
   const escena = new THREE.Scene();
+  const matVentana = new THREE.MeshToonMaterial({ color: 0x5aa9d6, emissive: 0xffc24a, emissiveIntensity: 0 });
   const alto = Math.max(0, Math.min(1, (elev - 2400) / 1400));
   const cielo = new THREE.Color().lerpColors(new THREE.Color(0xa8dcf5), new THREE.Color(0x6ab4ea), alto);
-  escena.background = cielo;
+  escena.background = cielo.clone();
   const L = t.lado_m;
   const S = Math.max(14, Math.min(48, L * 0.34));   // tamaño de la zona de chacras
-  escena.fog = new THREE.Fog(cielo, S * 4, S * 14);
+  escena.fog = new THREE.Fog(cielo.clone(), S * 4, S * 14);
 
   const gradiente = rampaToon();
   const cache = new Map<number, THREE.MeshToonMaterial>();
@@ -73,16 +79,17 @@ export function crearMundo3D(cont: HTMLElement, t: Terreno, elev: number): Mundo
   // la exageración solo ayuda en terrenos planos; en laderas fuertes se usa la altura real
   const EXAGERACION = Math.min(EXAG_MAX, Math.max(1, (S * 0.6) / Math.max(t.desnivel_m, 1)));
   const n = t.n, paso = L / (n - 1);
+  const A = (i: number, j: number) => t.alturas[Math.max(0, Math.min(n - 1, i))][Math.max(0, Math.min(n - 1, j))];
   const H = (x: number, z: number) => {
     const fx = Math.max(0, Math.min(n - 1.0001, (x + L / 2) / paso));
     const fz = Math.max(0, Math.min(n - 1.0001, (z + L / 2) / paso));
     const j = Math.floor(fx), i = Math.floor(fz), dx = fx - j, dz = fz - i;
-    const a = t.alturas[i][j], b = t.alturas[i][j + 1], c = t.alturas[i + 1][j], d = t.alturas[i + 1][j + 1];
-    return ((a * (1 - dx) + b * dx) * (1 - dz) + (c * (1 - dx) + d * dx) * dz - t.centro) * EXAGERACION;
+    const fila = (ii: number) => cr(A(ii, j - 1), A(ii, j), A(ii, j + 1), A(ii, j + 2), dx);
+    return (cr(fila(i - 1), fila(i), fila(i + 1), fila(i + 2), dz) - t.centro) * EXAGERACION;
   };
 
   // --- terreno con chacras en franjas (colores cálidos andinos) ---
-  const ancho = L * 1.7, seg = 96;
+  const ancho = L * 1.7, seg = 160;
   const geo = new THREE.PlaneGeometry(ancho, ancho, seg, seg);
   geo.rotateX(-Math.PI / 2);
   const pos = geo.attributes.position as THREE.BufferAttribute;
@@ -93,8 +100,13 @@ export function crearMundo3D(cont: HTMLElement, t: Terreno, elev: number): Mundo
     const x = pos.getX(k), z = pos.getZ(k);
     pos.setY(k, H(x, z));
     const r = Math.hypot(x, z);
-    if (r <= L / 2) tmp.copy(franjas[Math.abs(Math.floor((z + x * 0.3) / (L / 8))) % franjas.length]);
-    else tmp.copy(pasto).offsetHSL(0.01 * Math.sin(x * 0.05), 0, 0.04 * Math.sin(x * 0.03 + z * 0.04));
+    if (r <= L / 2) {
+      // franjas con borde suave (se funden una con otra en lugar de cortarse en escalones)
+      const u = (z + x * 0.3) / (L / 8), k = Math.floor(u), f = u - k;
+      const c0 = franjas[((k % 6) + 6) % 6], c1 = franjas[(((k + 1) % 6) + 6) % 6];
+      tmp.copy(c0).lerp(c1, escalon(0.82, 1, f));
+      tmp.lerp(pasto, escalon(L / 2 - L * 0.06, L / 2, r));
+    } else tmp.copy(pasto).offsetHSL(0.01 * Math.sin(x * 0.05), 0, 0.04 * Math.sin(x * 0.03 + z * 0.04));
     colores.set([tmp.r, tmp.g, tmp.b], k * 3);
   }
   geo.setAttribute("color", new THREE.BufferAttribute(colores, 3));
@@ -116,18 +128,23 @@ export function crearMundo3D(cont: HTMLElement, t: Terreno, elev: number): Mundo
 
   // --- fondo: llanura lejana, volcán nevado y montañas ---
   const base = Math.min(H(-L * 0.8, -L * 0.8), H(L * 0.8, L * 0.8), H(0, 0)) - 1;
-  const lejos = new THREE.Mesh(new THREE.CircleGeometry(S * 16, 32), toon(0x8fbf5a));
+  const lejos = new THREE.Mesh(new THREE.CircleGeometry(S * 16, 96), toon(0x8fbf5a));
   lejos.rotation.x = -Math.PI / 2;
   lejos.position.y = base - 1;
   lejos.receiveShadow = true;
   escena.add(lejos);
+  // volcanes con perfil curvo y cumbre redondeada (torno), no conos de pocas caras
+  const perfil = (r: number, h: number, desde = 0, crece = 1) => Array.from({ length: 25 }, (_, k) => {
+    const q = desde + (1 - desde) * (k / 24);
+    return new THREE.Vector2(r * crece * Math.pow(1 - q, 1.5) * (1 - 0.18 * Math.pow(q, 6)), h * q);
+  });
   const montana = (x: number, z: number, r: number, h: number, nieve: boolean, color = 0x8d9aa8) => {
-    const m = new THREE.Mesh(new THREE.ConeGeometry(r, h, 10, 1), toon(color));
-    m.position.set(x, base + h / 2 - 1, z);
+    const m = new THREE.Mesh(new THREE.LatheGeometry(perfil(r, h), 48), toon(color));
+    m.position.set(x, base - 1, z);
     escena.add(m);
     if (nieve) {
-      const c = new THREE.Mesh(new THREE.ConeGeometry(r * 0.36, h * 0.34, 10, 1), toon(0xffffff));
-      c.position.set(x, base + h * 0.84 - 1, z);
+      const c = new THREE.Mesh(new THREE.LatheGeometry(perfil(r, h, 0.68, 1.03), 48), toon(0xffffff));
+      c.position.set(x, base - 1 + 0.002 * h, z);
       escena.add(c);
     }
   };
@@ -136,16 +153,63 @@ export function crearMundo3D(cont: HTMLElement, t: Terreno, elev: number): Mundo
   montana(S * 7, -S * 8, S * 2.2, S * 1.6, false, 0x7f9f6a);
   montana(-S * 9, -S * 6, S * 2.4, S * 1.5, false, 0x8aa66f);
 
-  // --- luces: cielo + sol con sombras suaves (más intensas a mayor altura) ---
-  escena.add(new THREE.HemisphereLight(0xeaf6ff, 0x6b8f3a, 1.4 + alto * 0.3));
+  // --- luces: cielo + sol con sombras suaves (más intensas a mayor altura) + luna de noche ---
+  const hemi = new THREE.HemisphereLight(0xeaf6ff, 0x6b8f3a, 1.4 + alto * 0.3);
+  escena.add(hemi);
   const sol = new THREE.DirectionalLight(0xfff1d0, 2.4 + alto * 0.6);
   sol.position.set(S * 1.2, S * 2, S * 0.9);
+  const luzLuna = new THREE.DirectionalLight(0x9db8ff, 0);
+  escena.add(luzLuna);
   sol.castShadow = true;
   sol.shadow.mapSize.set(1024, 1024);
   const cam = sol.shadow.camera as THREE.OrthographicCamera;
   cam.left = cam.bottom = -S * 1.3; cam.right = cam.top = S * 1.3; cam.near = 1; cam.far = S * 6;
   sol.shadow.bias = -0.0005;
   escena.add(sol);
+
+  // --- cielo animado: sol, luna y estrellas ---
+  const R = S * 9;
+  const disco = (radio: number, color: number) => new THREE.Mesh(new THREE.SphereGeometry(radio, 32, 16), new THREE.MeshBasicMaterial({ color, fog: false }));
+  const astroSol = disco(S * 0.55, 0xffd84d);
+  const halo = new THREE.Mesh(new THREE.SphereGeometry(S * 0.95, 32, 16), new THREE.MeshBasicMaterial({ color: 0xffe9a0, transparent: true, opacity: 0.35, fog: false, depthWrite: false }));
+  astroSol.add(halo);
+  const astroLuna = disco(S * 0.38, 0xfff3c2);
+  escena.add(astroSol, astroLuna);
+  const nE = 260, pe = new Float32Array(nE * 3);
+  for (let k = 0; k < nE; k++) {
+    const a = Math.random() * Math.PI * 2, e = 0.12 + Math.random() * 1.3;
+    pe.set([Math.cos(a) * Math.cos(e) * R * 1.4, Math.sin(e) * R * 1.4, Math.sin(a) * Math.cos(e) * R * 1.4], k * 3);
+  }
+  const geoEstrellas = new THREE.BufferGeometry();
+  geoEstrellas.setAttribute("position", new THREE.BufferAttribute(pe, 3));
+  const matEstrellas = new THREE.PointsMaterial({ color: 0xffffff, size: 2.2, sizeAttenuation: false, transparent: true, opacity: 0, fog: false, depthWrite: false });
+  escena.add(new THREE.Points(geoEstrellas, matEstrellas));
+  const C_NOCHE = new THREE.Color(0x101c3f), C_OCASO = new THREE.Color(0xf4a26b), C_GRIS = new THREE.Color(0x9aa7b4);
+  const C_SOL_BAJO = new THREE.Color(0xffb36b), C_SOL_ALTO = new THREE.Color(0xfff1d0);
+  const colorCielo = new THREE.Color();
+  // fase del día: 0 medianoche · 0,25 amanecer · 0,5 mediodía · 0,75 atardecer
+  let fase = 0.3, meta = 0.3, lloviendoAhora = false;
+  function pintarCielo() {
+    const th = (fase - 0.25) * Math.PI * 2, alto2 = Math.sin(th);
+    const dia = escalon(-0.12, 0.25, alto2), ocaso = Math.exp(-Math.pow(alto2 / 0.18, 2));
+    astroSol.position.set(Math.cos(th) * R, alto2 * R * 0.75, -R * 0.35);
+    astroLuna.position.set(-Math.cos(th) * R, -alto2 * R * 0.75, -R * 0.35);
+    astroSol.visible = alto2 > -0.15;
+    astroLuna.visible = alto2 < 0.15;
+    sol.position.copy(astroSol.position).multiplyScalar(0.3);
+    sol.intensity = (2.4 + alto * 0.6) * escalon(-0.04, 0.3, alto2) * (lloviendoAhora ? 0.55 : 1);
+    sol.color.lerpColors(C_SOL_BAJO, C_SOL_ALTO, escalon(0, 0.45, alto2));
+    luzLuna.position.copy(astroLuna.position).multiplyScalar(0.3);
+    luzLuna.intensity = 0.55 * (1 - dia);
+    hemi.intensity = 0.45 + (0.95 + alto * 0.3) * dia;
+    colorCielo.lerpColors(C_NOCHE, cielo, dia).lerp(C_OCASO, ocaso * 0.55);
+    if (lloviendoAhora) colorCielo.lerp(C_GRIS, 0.45 * dia);
+    (escena.background as THREE.Color).copy(colorCielo);
+    escena.fog!.color.copy(colorCielo);
+    matEstrellas.opacity = 0.9 * (1 - escalon(-0.2, 0.05, alto2));
+    renderer.toneMappingExposure = 0.8 + 0.25 * dia;
+    matVentana.emissiveIntensity = 1.4 * (1 - dia);
+  }
 
   // --- camas de cultivo con surcos ---
   const anchoF = (S / N_PARCELAS) * 0.78;
@@ -156,7 +220,7 @@ export function crearMundo3D(cont: HTMLElement, t: Terreno, elev: number): Mundo
   const tam = S / 13;
   for (let i = 0; i < N_PARCELAS; i++) {
     const zc = -S / 2 + (i + 0.5) * (S / N_PARCELAS);
-    const g = new THREE.PlaneGeometry(S, anchoF, 40, 12);
+    const g = new THREE.PlaneGeometry(S, anchoF, 80, 24);
     g.rotateX(-Math.PI / 2);
     const p = g.attributes.position as THREE.BufferAttribute;
     for (let k = 0; k < p.count; k++) {
@@ -175,7 +239,7 @@ export function crearMundo3D(cont: HTMLElement, t: Terreno, elev: number): Mundo
     parcelas.push(malla);
     matSuelo.push(m);
     // anillo dorado que marca cosecha o franja elegida
-    const anillo = new THREE.Mesh(new THREE.TorusGeometry(anchoF * 0.32, anchoF * 0.07, 8, 24), new THREE.MeshBasicMaterial({ color: 0xffd34d }));
+    const anillo = new THREE.Mesh(new THREE.TorusGeometry(anchoF * 0.32, anchoF * 0.07, 16, 48), new THREE.MeshBasicMaterial({ color: 0xffd34d }));
     anillo.rotation.x = -Math.PI / 2;
     anillo.position.set(S / 2 + anchoF * 0.7, 0, zc);
     anillo.visible = false;
@@ -196,7 +260,7 @@ export function crearMundo3D(cont: HTMLElement, t: Terreno, elev: number): Mundo
   }
 
   // --- cerco de madera alrededor de las chacras ---
-  const poste = new THREE.CylinderGeometry(tam * 0.09, tam * 0.11, tam * 0.9, 6);
+  const poste = new THREE.CylinderGeometry(tam * 0.09, tam * 0.11, tam * 0.9, 12);
   const madera = toon(0x8d5a2b);
   const borde2 = S / 2 + anchoF * 1.2;
   const puntos: [number, number][] = [];
@@ -218,7 +282,7 @@ export function crearMundo3D(cont: HTMLElement, t: Terreno, elev: number): Mundo
   techo.position.y = tam * 2.4;
   const puerta = new THREE.Mesh(new RoundedBoxGeometry(tam * 0.7, tam * 1.1, tam * 0.1, 2, tam * 0.05), toon(0x6d4c2f));
   puerta.position.set(0, tam * 0.55, tam * 1.11);
-  const ventana = new THREE.Mesh(new THREE.BoxGeometry(tam * 0.55, tam * 0.5, tam * 0.08), toon(0x5aa9d6));
+  const ventana = new THREE.Mesh(new THREE.BoxGeometry(tam * 0.55, tam * 0.5, tam * 0.08), matVentana);  // se enciende de noche
   ventana.position.set(tam * 0.9, tam * 1.05, tam * 1.11);
   casa.add(paredes, techo, puerta, ventana);
   casa.traverse((o) => { if ((o as THREE.Mesh).isMesh) { o.castShadow = true; o.receiveShadow = true; } });
@@ -228,8 +292,8 @@ export function crearMundo3D(cont: HTMLElement, t: Terreno, elev: number): Mundo
   escena.add(casa);
 
   // --- árboles redondos ---
-  const tronco = new THREE.CylinderGeometry(tam * 0.12, tam * 0.18, tam * 1.2, 6);
-  const copa = new THREE.IcosahedronGeometry(tam * 0.8, 1);
+  const tronco = new THREE.CylinderGeometry(tam * 0.12, tam * 0.18, tam * 1.2, 12);
+  const copa = new THREE.IcosahedronGeometry(tam * 0.8, 4);
   const verdes = [0x4caf50, 0x66bb6a, 0x388e3c];
   for (let k = 0; k < 16; k++) {
     const a = (k / 16) * Math.PI * 2 + 0.3 * Math.sin(k * 3), r = borde2 * (1.6 + 0.5 * ((k * 37) % 7) / 7);
@@ -246,7 +310,7 @@ export function crearMundo3D(cont: HTMLElement, t: Terreno, elev: number): Mundo
 
   // --- nubes esponjosas ---
   const nubes: THREE.Group[] = [];
-  const bola = new THREE.SphereGeometry(1, 12, 10);
+  const bola = new THREE.SphereGeometry(1, 24, 16);
   for (let k = 0; k < 6; k++) {
     const nube = new THREE.Group();
     for (let b = 0; b < 4; b++) {
@@ -261,11 +325,11 @@ export function crearMundo3D(cont: HTMLElement, t: Terreno, elev: number): Mundo
   }
 
   // --- plantas: geometrías compartidas ---
-  const geoTallo = new THREE.CylinderGeometry(0.05, 0.08, 1, 6);
-  const geoMata = new THREE.IcosahedronGeometry(0.55, 1);
-  const geoEspiga = new THREE.CapsuleGeometry(0.16, 0.9, 4, 8);
-  const geoRastrera = new THREE.SphereGeometry(0.5, 12, 8);
-  const geoFlor = new THREE.SphereGeometry(0.13, 8, 6);
+  const geoTallo = new THREE.CylinderGeometry(0.05, 0.08, 1, 8);
+  const geoMata = new THREE.IcosahedronGeometry(0.55, 3);
+  const geoEspiga = new THREE.CapsuleGeometry(0.16, 0.9, 6, 12);
+  const geoRastrera = new THREE.SphereGeometry(0.5, 20, 14);
+  const geoFlor = new THREE.SphereGeometry(0.13, 12, 8);
   function armarPlanta(g: THREE.Group, v: VistaParcela) {
     g.clear();
     const f = FAMILIA[v.familia || "ninguna"] || FAMILIA.ninguna;
@@ -384,6 +448,11 @@ export function crearMundo3D(cont: HTMLElement, t: Terreno, elev: number): Mundo
       g.scale.setScalar((u.objetivo ?? 1) * crecer);
       g.rotation.z = u.marchita ? 0.45 : Math.sin(ahora * 1.6 + u.fase) * 0.06;  // brisa
     }
+    // el sol camina despacio solo; cuando el juego avanza días, alcanza la meta a paso rápido pero continuo
+    const falta = meta - fase;
+    fase += falta > 0 ? Math.min(falta, dt * 0.6) : dt / 90;
+    if (meta < fase) meta = fase;
+    pintarCielo();
     nubes.forEach((nube, k) => { nube.position.x += dt * S * 0.03 * (1 + k * 0.1); if (nube.position.x > S * 8) nube.position.x = -S * 8; });
     if (lluvia.visible) {
       const p = gotas.attributes.position as THREE.BufferAttribute;
@@ -415,6 +484,7 @@ export function crearMundo3D(cont: HTMLElement, t: Terreno, elev: number): Mundo
       const c = new THREE.Color(colorSuelo);
       matSuelo.forEach((m) => m.color.copy(c));
       lluvia.visible = lloviendo;
+      lloviendoAhora = lloviendo;
       vista.forEach((v, i) => {
         plantas[i].forEach((g, k) => {
           if (cosechando.has(i)) return;
@@ -436,6 +506,7 @@ export function crearMundo3D(cont: HTMLElement, t: Terreno, elev: number): Mundo
       });
     },
     alTocar(cb) { alTocar = cb; },
+    pasarTiempo(dias) { meta = Math.min(meta + Math.min(dias, 1), fase + 1.2); },
     parcelaEn,
     resaltar(i) {
       resaltada = i;

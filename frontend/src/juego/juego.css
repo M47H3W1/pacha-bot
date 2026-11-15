@@ -196,7 +196,11 @@ body.en-mapa .creditos { display: none; }
   .acciones button { width: 78px; height: 70px; font-size: .8rem; }
   .pachita { width: 140px; height: 186px; }
 }
-@media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+/* Movimiento reducido: se calman los adornos que se repiten; quedan los que cuentan algo (cohete, fuego, boca de Pachita). */
+@media (prefers-reduced-motion: reduce) {
+  .icono-sobre, .icono-grande, .nube-m, .sol-menu, .estrellas-fondo, .tiempo .t.cosechar, .franja2d.lista, .nitro-dibujo.aire span, .pachita.habla { animation: none !important; }
+  .logo, .menu-tablero, .carta { animation-duration: .01s !important; }
+}
 
 /* ---------- historia: nombre de la granja y llegada en cohete ---------- */
 .intro { position: fixed; inset: 0; z-index: 25; overflow: hidden; background: linear-gradient(#0b1a3a, #24407a 60%, #3f6fb0); }
@@ -357,7 +361,7 @@ body.en-mapa .pachita { width: 74px; height: 124px; }
 .sello-n { background: linear-gradient(#5fd068, #2e9e3e); border: 2px solid #1d6b28; }
 .familia { border-width: 4px; border-radius: 22px; box-shadow: 0 4px 0 color-mix(in srgb, var(--color) 45%, #fff); }
 .leccion { border-left: 0; border: 3px dashed var(--madera-cla); background: #fffdf5; border-radius: 18px; }
-.leccion::before { content: "💡 "; }
+.leccion::before { content: none; }
 
 /* ---------- toasts y medallas ---------- */
 .toast-medalla { border: 5px solid var(--oro); background: radial-gradient(circle at 30% 20%, #fffdf3, #ffe9a8); box-shadow: 0 6px 0 #c98b00, 0 16px 30px rgb(0 0 0 / .3); }
@@ -367,3 +371,177 @@ body.en-mapa .pachita { width: 74px; height: 124px; }
 .franja2d.regando { box-shadow: inset 0 0 0 999px rgb(79 195 247 / .35); transition: box-shadow .3s; }
 .acciones { top: auto; bottom: calc(96px + env(safe-area-inset-bottom)); transform: none; }
 @media (max-height: 640px) { .acciones button { width: 54px; height: 54px; font-size: .62rem; } }
+
+/* =====================================================================
+   v3: menú de juego, cohete con volumen, íconos SVG, nada se tapa, cultivos 3D, boca de Pachita
+   ===================================================================== */
+
+/* ---------- íconos SVG ---------- */
+.ic { width: 1.3em; height: 1.3em; flex: 0 0 auto; vertical-align: middle; }
+.ic-btn { width: 1.6em; height: 1.6em; }
+.btn-juego { display: inline-flex; align-items: center; justify-content: center; gap: .45em; }
+.btn-juego .ic-btn { filter: drop-shadow(0 2px 0 rgb(0 0 0 / .2)); }
+.ic-linea { width: 1.35em; height: 1.35em; margin-right: .2em; vertical-align: -.3em; }
+.ic-mini { width: 22px; height: 22px; }
+.ic-chip { width: 1.2em; height: 1.2em; vertical-align: -.25em; }
+.ic-accion { width: 32px; height: 32px; }
+.ic-medalla { width: 46px; height: 46px; }
+.hud-casa .ic, .hud-boton .ic { width: 30px; height: 30px; }
+.tiempo .t .ic { width: 30px; height: 30px; }
+.tiempo .t { display: inline-flex; align-items: center; justify-content: center; gap: 4px; }
+.estrellas { display: flex; justify-content: center; gap: 4px; }
+.estrellas .ic { width: 44px; height: 44px; }
+.gota-ic .ic { width: 40px; height: 40px; }
+.candado .ic { width: 40px; height: 40px; filter: drop-shadow(0 2px 2px rgb(0 0 0 / .3)); }
+.leccion { display: flex; gap: 10px; align-items: flex-start; }
+.ic-leccion { width: 38px; height: 38px; }
+.chip { display: inline-flex; align-items: center; gap: 4px; }
+.medalla-carta span, .toast-medalla span { font-size: 0; }
+
+/* ---------- cultivos 3D (imágenes) ---------- */
+img.icono-sobre, img.icono-grande, img.icono-mini, img.icono-rueda, img.icono-familia, img.icono-nitro, img.planta2d { object-fit: contain; display: block; }
+img.icono-familia { display: inline-block; }
+img.icono-nitro { width: 70px; height: 70px; margin: 0 auto; }
+.planta2d { width: var(--tam, 30px); height: var(--tam, 30px); display: inline-block; }
+.plantas2d { display: flex; gap: 2px; align-items: flex-end; }
+
+/* ---------- Pachita: poses con boca animada ---------- */
+.pachita .pose { inset: auto; left: 50%; bottom: 0; height: 100%; width: auto; max-width: none; object-fit: initial;
+  transform: translateX(-50%) scale(.92) translateY(6px); transform-origin: 50% 100%; }
+.pachita[data-pose="saluda"] .pose-saluda, .pachita:not([data-pose]) .pose-saluda,
+.pachita[data-pose="piensa"] .pose-piensa, .pachita[data-pose="paraguas"] .pose-paraguas { transform: translateX(-50%); }
+.pachita .pose img { width: 100%; height: 100%; display: block; }
+.boca { position: absolute; aspect-ratio: 1.7; transform: translate(-50%, -50%); border-radius: 50%; display: grid; place-items: center;
+  background: radial-gradient(closest-side, #fba46c 62%, rgb(251 164 108 / 0)); opacity: 0; transition: opacity .12s; }
+.pachita.habla .boca { opacity: 1; }
+.boca i { width: 56%; height: 64%; border-radius: 45% 45% 55% 55% / 35% 35% 65% 65%; border: 1px solid #5a1a16;
+  background: radial-gradient(ellipse 60% 42% at 50% 88%, #f07a84 60%, transparent 62%), linear-gradient(#fff 0 16%, #6e1f1c 17%);
+  transform-origin: 50% 25%; animation: boca .85s linear infinite; }
+@keyframes boca { 0%, 100% { transform: scaleY(.22); } 14% { transform: scaleY(.9); } 28% { transform: scaleY(.38); } 44% { transform: scaleY(1); }
+  58% { transform: scaleY(.26); } 74% { transform: scaleY(.8); } 86% { transform: scaleY(.45); } }
+
+/* ---------- globo y paneles: el panel ocupa solo el hueco libre entre el HUD y Pachita ---------- */
+.globo { max-height: 34vh; overflow-y: auto; }
+.panel { top: var(--hud-alto, 70px); bottom: var(--dock, 150px); }
+.panel.centro { top: auto; max-height: calc(100dvh - var(--hud-alto, 70px) - var(--dock, 150px)); }
+body.en-menu .panel { z-index: 35; }
+@media (min-width: 900px) {
+  .panel { right: 180px; top: max(var(--hud-alto, 90px), 20px); bottom: var(--dock, 30px); }
+}
+
+/* ---------- HUD con nombres ---------- */
+.medidor-mini { gap: 8px; padding: 5px 10px; }
+.medidor-cuerpo { flex: 1; display: grid; gap: 3px; min-width: 0; }
+.medidor-nombre { font: 700 .72rem var(--fuente-titulo); color: #fff8ec; text-shadow: 0 1px 0 #6e3f17; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sem-titulo { flex: 0 0 auto; padding: 3px 8px; border-radius: 99px; font: 700 .78rem var(--fuente-titulo); background: rgb(255 248 236 / .95); color: #4a2a0e; }
+.sem-temp { display: inline-flex; align-items: center; gap: 2px; }
+
+/* ---------- cartas: nunca se montan una sobre otra ---------- */
+.cartas { grid-template-columns: repeat(auto-fill, minmax(min(150px, 100%), 1fr)); gap: 12px; align-items: stretch; }
+.carta { min-width: 0; overflow-wrap: anywhere; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 12px 10px; box-sizing: border-box; }
+.carta.ancha { align-items: stretch; text-align: left; }
+.carta-icono .ic { width: 34px; height: 34px; }
+.carta-icono { font-size: 0; flex: 0 0 auto; }
+body.juego .carta-valor { font-size: clamp(1.05rem, 4.4vw, 1.35rem); line-height: 1.15; }
+.carta-valor small { font: 700 .8rem var(--fuente); color: #5b4a3a; }
+.carta-cabeza { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.carta-cabeza h3 { margin: 0; }
+.carta-cabeza .carta-valor { margin: 0; }
+.estado-tierra { margin-left: auto; background: color-mix(in srgb, var(--c) 14%, #fff); color: var(--c); border: 2px solid var(--c);
+  border-radius: 99px; padding: 4px 10px; font: 700 .85rem var(--fuente-titulo); }
+.regla-lluvia { position: relative; height: 18px; margin: 30px 4px 4px; }
+.regla-zonas { position: absolute; inset: 0; border-radius: 99px; border: 2px solid #3b2a1a;
+  background: linear-gradient(90deg, #d9a066 0 var(--a), #8bc34a var(--a) var(--b), #4fb3e8 var(--b) 100%); }
+.regla-marca { position: absolute; top: -4px; bottom: -4px; width: 6px; margin-left: -3px; background: #3b2a1a; border-radius: 3px; }
+.regla-marca b { position: absolute; bottom: calc(100% + 2px); left: 50%; transform: translateX(-50%); font: 700 .78rem var(--fuente-titulo);
+  background: #1e6fb8; color: #fff; padding: 1px 8px; border-radius: 99px; white-space: nowrap; }
+.regla-textos { display: grid; grid-template-columns: 1fr auto 1fr; gap: 6px; font-size: .78rem; color: #4f4033; }
+.regla-textos span { display: grid; }
+.regla-textos b { font: 700 .95rem var(--fuente-titulo); color: #3b2a1a; }
+.regla-textos .centro { align-self: center; font-weight: 800; color: #6b5b4b; text-align: center; }
+.regla-textos .fin { text-align: right; }
+.leyenda-mini { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 12px; margin: 6px 0 2px; font-size: .8rem; font-weight: 800; }
+.leyenda-mini span::before { content: ""; display: inline-block; width: 12px; height: 12px; border-radius: 50%; background: var(--c); margin-right: 4px; vertical-align: -1px; border: 1.5px solid #3b2a1a; }
+.barra-h b { font-size: .72rem; }
+
+/* ---------- lección del nitrógeno ---------- */
+.nitro { background: #eef7e4; border: 3px solid #5fb35a; border-radius: 18px; padding: 10px; margin: 0 0 12px; }
+.nitro h3 { margin: 0 0 8px; color: #2e7d32; }
+.nitro-pasos { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.nitro-pasos li { background: #fff; border-radius: 14px; padding: 8px; text-align: center; font-size: .82rem; line-height: 1.25; position: relative; }
+.nitro-pasos li + li::before { content: "→"; position: absolute; left: -10px; top: 32px; font-weight: 900; color: #2e7d32; }
+.nitro-pasos b { font-family: var(--fuente-titulo); display: block; margin-top: 4px; }
+.nitro-pasos p { margin: 2px 0 0; }
+.nitro-dibujo { height: 70px; display: grid; place-items: center; }
+.nitro-dibujo.aire { background: linear-gradient(#bfe3fa, #eaf6ff); border-radius: 12px; display: flex; justify-content: space-around; align-items: center; }
+.nitro-dibujo.aire span { width: 26px; height: 26px; border-radius: 50%; background: #2b8fc4; color: #fff; font: 700 .9rem var(--fuente-titulo);
+  display: grid; place-items: center; border: 2px solid #3b2a1a; animation: flotarN 2.4s ease-in-out infinite; }
+.nitro-dibujo.aire span:nth-child(2) { animation-delay: -.8s; } .nitro-dibujo.aire span:nth-child(3) { animation-delay: -1.6s; }
+@keyframes flotarN { 50% { transform: translateY(-8px); } }
+@media (max-width: 420px) { .nitro-pasos { grid-template-columns: 1fr; } .nitro-pasos li + li::before { content: "↓"; left: 50%; top: -15px; } }
+
+/* ---------- menú principal de juego ---------- */
+body.en-menu .creditos { display: none; }
+.menu-fondo, .menu-fondo .paisaje-svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.intro { background: #ffe6b5; }
+.sol-menu { transform-origin: 490px 150px; animation: latirSol 4s ease-in-out infinite; }
+@keyframes latirSol { 50% { transform: scale(1.06); } }
+.nube-m { animation: derivar 38s linear infinite alternate; } .nube-m.n2 { animation-duration: 52s; animation-direction: alternate-reverse; }
+@keyframes derivar { to { transform: translateX(120px); } }
+.menu-capa { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
+  gap: 14px; padding: calc(18px + env(safe-area-inset-top)) 16px calc(150px + env(safe-area-inset-bottom)); overflow-y: auto; box-sizing: border-box; }
+.logo { margin: 4vh 0 0; display: grid; justify-items: center; line-height: .9; font-family: var(--fuente-titulo); text-align: center;
+  animation: logoEntra .8s cubic-bezier(.3,1.6,.5,1) backwards; }
+.logo span { font-size: clamp(3rem, 15vw, 5.6rem); font-weight: 700; letter-spacing: .02em; -webkit-text-stroke: 3px #4a2a0e; paint-order: stroke fill;
+  filter: drop-shadow(0 6px 0 #4a2a0e) drop-shadow(0 12px 14px rgb(0 0 0 / .25)); }
+.logo-1 { color: #2b8fc4; background: linear-gradient(#7fd3ff, #2b6cb0); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; transform: rotate(-4deg); }
+.logo-2 { color: #5fb35a; background: linear-gradient(#b9f07a, #3a9d3a); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; transform: rotate(2deg); margin-top: -.12em; }
+.logo small { margin-top: 12px; font: 700 1rem var(--fuente-titulo); color: #fff; background: var(--poncho); padding: 4px 14px; border-radius: 99px;
+  border: 3px solid #4a2a0e; box-shadow: 0 4px 0 #4a2a0e; }
+@keyframes logoEntra { from { transform: scale(.4) translateY(-40px); opacity: 0; } }
+.menu-tablero { width: min(360px, 100%); display: grid; gap: 12px; background: linear-gradient(#e2a865, #b8783a); border: 5px solid #6e3f17; border-radius: 28px;
+  padding: 18px 16px 16px; box-shadow: inset 0 3px 0 rgb(255 255 255 / .35), 0 8px 0 #6e3f17, 0 18px 30px rgb(0 0 0 / .3); box-sizing: border-box;
+  position: relative; animation: logoEntra .7s .15s cubic-bezier(.3,1.5,.5,1) backwards; }
+.menu-tablero::before { content: ""; position: absolute; left: 14px; right: 14px; top: -5px; height: 10px; border-radius: 0 0 6px 6px; background: var(--faja); }
+.menu-granja { margin: -4px 0 2px; text-align: center; color: #fff8ec; font-weight: 800; text-shadow: 0 1px 0 #6e3f17; }
+.menu-fila { display: flex; justify-content: center; gap: 12px; }
+.btn-redondo { width: 58px; height: 58px; border-radius: 18px; border: 3px solid #6e3f17; display: grid; place-items: center;
+  background: radial-gradient(circle at 30% 25%, #fff8e6, #f3d9a4 70%); box-shadow: inset 0 3px 0 #fff, 0 4px 0 #6e3f17; }
+.btn-redondo .ic { width: 32px; height: 32px; }
+.btn-redondo:active { transform: translateY(3px); box-shadow: inset 0 3px 0 #fff, 0 1px 0 #6e3f17; }
+.menu-creditos { margin-top: 0; font-size: .75rem; font-weight: 800; color: #fff8ec; text-shadow: 0 1px 2px rgb(0 0 0 / .5); text-align: center; }
+.tarjeta-nombre { position: relative; top: auto; left: auto; right: auto; margin: 22vh auto 0; width: min(420px, 100%); box-sizing: border-box;
+  border: 5px solid #6e3f17; box-shadow: 0 8px 0 #6e3f17, 0 18px 30px rgb(0 0 0 / .3); }
+
+/* ---------- aterrizaje del cohete ---------- */
+.escena-aterrizaje { position: absolute; inset: 0; }
+.cohete-baja { position: absolute; left: 50%; bottom: 36%; width: 130px; height: 211px; animation: none; transform: translate(-50%, -115vh); z-index: 2; }
+.cohete-baja .cohete-svg { overflow: visible; }
+.cohete-svg .fuego { opacity: 0; transition: opacity .2s; }
+.cohete-baja.encendido .fuego { opacity: 1; }
+.cohete-svg .llama { transform-origin: 80px 186px; animation: llama .09s ease-in-out infinite alternate; }
+.cohete-baja.frenando .llama.l1 { animation-name: llamaFuerte; }
+@keyframes llamaFuerte { from { transform: scale(1.5, 1.4); } to { transform: scale(1.8, 1.7); } }
+.cohete-svg .patas-g { transform: translateY(-34px) scaleY(.3); transform-origin: 80px 150px; transition: transform .35s cubic-bezier(.3,1.6,.5,1); }
+.cohete-baja.patas .patas-g, .cohete-baja.puerta-abierta .patas-g { transform: none; }
+.cohete-svg .puerta { transition: transform .4s; transform-origin: 66px 158px; }
+.cohete-baja.puerta-abierta .puerta { transform: scaleX(.15); }
+.sombra-cohete { position: absolute; left: 50%; bottom: calc(36% - 12px); width: 170px; height: 26px; border-radius: 50%;
+  background: radial-gradient(closest-side, rgb(40 25 10 / .7), transparent); transform: translateX(-50%) scale(.2); opacity: 0; }
+.humo-caja { position: absolute; inset: 0; pointer-events: none; z-index: 3; }
+.bocanada { position: absolute; width: 72px; height: 72px; border-radius: 50%;
+  background: radial-gradient(circle at 40% 35%, #ffffff, #e9e3d8 55%, rgb(200 190 175 / 0) 72%); }
+.chispa { position: absolute; width: 16px; height: 16px; border-radius: 50%; background: radial-gradient(circle, #fff6b8, #ffb02e 50%, rgb(226 64 28 / 0) 72%); }
+body.bajo-cohete .pachita-caja { animation: salirCohete .9s cubic-bezier(.3,1.5,.5,1); }
+@keyframes salirCohete { from { transform: translate(-28vw, 30px) scale(.3); opacity: 0; } }
+
+/* botones de tiempo compactos: ícono arriba y texto corto abajo, en una sola línea */
+.tiempo .t, .tiempo .btn-juego:not(.grande) { flex-direction: column; gap: 0; font-size: .74rem; line-height: 1.05; padding: 4px 8px; min-height: 56px; }
+.tiempo .t span, .tiempo .btn-juego:not(.grande) span { white-space: nowrap; }
+.tiempo .t .ic-btn, .tiempo .btn-juego:not(.grande) .ic-btn { width: 26px; height: 26px; }
+.tiempo .btn-juego:not(.grande) { flex: 1; max-width: 110px; }
+.globo { margin-bottom: 80px; }
+body.juego:has(#escena:not([hidden])) .creditos { display: none; }
+.menu-capa { padding-bottom: calc(var(--dock, 150px) + 12px); }
+.logo span { font-size: clamp(2.4rem, min(15vw, 10vh), 5.6rem); }
+.logo { margin-top: 2vh; }

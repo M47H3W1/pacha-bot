@@ -147,7 +147,7 @@ La guía **Pachita**, una granjera de la sierra (sombrero, poncho y anaco), con 
 11. **Certificado de Granjero Cósmico:** con el nombre de la granja, cosechas, puntaje, rotación elegida y medallas;
     se puede descargar como imagen. Sin compras ni anuncios.
 
-Los 18 íconos de cultivos (`frontend/src/juego/iconos.ts`) son SVG redibujados a partir de la lámina del equipo.
+Los 18 íconos 3D de cultivos (`frontend/public/img/cultivos3d/`) se recortaron de la lámina del equipo con `scripts/recortar_cultivos.py`; los íconos de interfaz son SVG propios (`frontend/src/juego/ui.ts`), sin emojis. El cielo del mundo 3D pasa del día a la noche, el mapa muestra los nombres de pueblos y vías, y el botón de play termina el cultivo más largo en 10 segundos.
 
 | Archivo | Qué hace |
 |---|---|
@@ -166,8 +166,8 @@ Los 18 íconos de cultivos (`frontend/src/juego/iconos.ts`) son SVG redibujados 
   reconocimiento de voz del navegador.
 - **Imágenes:** los dibujos de la app se generan por código a partir de los datos; las fotos de cultivos son de
   Wikimedia Commons con autor y licencia en [`app/imagenes/cultivos/README.md`](app/imagenes/cultivos/README.md).
-  En el juego Astro Granja, las ilustraciones de Pachita (tres poses entregadas por el equipo, generadas con IA) llevan
-  la marca "IA"; los modelos 3D se programaron con asistencia de IA. La voz de Pachita es edge-tts con tono de niña.
+  En el juego Astro Granja, las ilustraciones de Pachita (tres poses) y los 18 íconos 3D de cultivos, entregados por el equipo y
+  generados con IA, llevan la marca "IA"; los modelos 3D se programaron con asistencia de IA. La voz de Pachita es edge-tts con tono de niña.
 - No se usan logotipos de la NASA.
 
 ## Créditos y licencia
