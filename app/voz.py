@@ -19,6 +19,9 @@ VOZ = os.getenv("PACHA_VOZ", "es-EC-AndreaNeural")
 VELOCIDAD = os.getenv("PACHA_VOZ_VELOCIDAD", "-8%")
 # Estilos: la voz del chat (adulta y pausada) y la de Pachita en el juego para niños (más aguda, ágil y alegre)
 ESTILOS = {"normal": (VOZ, VELOCIDAD, "+0Hz"), "nina": (VOZ, "+4%", "+38Hz")}
+# Inglés (juego bilingüe): Ana es una voz infantil de Microsoft; la normal usa Jenny
+VOZ_EN = os.getenv("PACHA_VOZ_EN", "en-US-AnaNeural")
+ESTILOS_EN = {"normal": ("en-US-JennyNeural", "+0%", "+0Hz"), "nina": (VOZ_EN, "+4%", "+8Hz")}
 CACHE_AUDIO = CACHE / "audio"
 CACHE_AUDIO.mkdir(parents=True, exist_ok=True)
 KICHWA = Path(__file__).with_name("audios") / "kichwa"
@@ -26,9 +29,12 @@ KICHWA = Path(__file__).with_name("audios") / "kichwa"
 _EMOJI = re.compile("[\U0001F000-\U0001FAFF☀-➿⬀-⯿️‍⃣]")
 
 
-def limpiar(texto: str) -> str:
+def limpiar(texto: str, lang: str = "es") -> str:
     t = re.sub(r"<[^>]+>", "", texto)
-    t = t.replace("→", ", después, ").replace("°C", " grados").replace("m²", " metros cuadrados")
+    if lang == "en":
+        t = t.replace("→", ", then, ").replace("°C", " degrees").replace("m²", " square meters")
+    else:
+        t = t.replace("→", ", después, ").replace("°C", " grados").replace("m²", " metros cuadrados")
     t = t.replace("·", ",").replace("•", "").replace("«", "").replace("»", "")
     t = _EMOJI.sub("", t)
     t = re.sub(r"[ \t]+", " ", t)
@@ -45,10 +51,11 @@ def grabacion_kichwa(clave: str | None) -> bytes | None:
     return None
 
 
-async def audio(texto: str, estilo: str = "normal") -> bytes | None:
-    """MP3 con voz natural en español de Ecuador. Usa caché: el mismo texto sale al instante."""
-    limpio = limpiar(texto)
-    voz, velocidad, tono = ESTILOS.get(estilo, ESTILOS["normal"])
+async def audio(texto: str, estilo: str = "normal", lang: str = "es") -> bytes | None:
+    """MP3 con voz natural en español de Ecuador (o en inglés). Usa caché: el mismo texto sale al instante."""
+    limpio = limpiar(texto, lang)
+    tabla = ESTILOS_EN if lang == "en" else ESTILOS
+    voz, velocidad, tono = tabla.get(estilo, tabla["normal"])
     clave = hashlib.sha1(f"{voz}|{velocidad}|{tono}|{limpio}".encode()).hexdigest()[:20]
     f = CACHE_AUDIO / f"{clave}.mp3"
     if f.exists():
@@ -67,7 +74,10 @@ async def audio(texto: str, estilo: str = "normal") -> bytes | None:
         try:
             from gtts import gTTS
             buf = io.BytesIO()
-            gTTS(limpio, lang="es", tld="com.mx").write_to_fp(buf)
+            if lang == "en":
+                gTTS(limpio, lang="en", tld="com").write_to_fp(buf)
+            else:
+                gTTS(limpio, lang="es", tld="com.mx").write_to_fp(buf)
             datos = buf.getvalue()
         except Exception as e:
             log.warning("No se pudo generar audio: %s", e)

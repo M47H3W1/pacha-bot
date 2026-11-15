@@ -739,3 +739,15 @@ body.en-mapa .globo { margin-top: 26px; }
   .globo { padding: 22px 14px 10px; font-size: .98rem; line-height: 1.38; }
   .globo-nombre { top: -17px; font-size: .8rem; }
 }
+
+/* ---------- botón de idioma (ES / EN) ---------- */
+.btn-idioma b { font: 700 1.05rem var(--fuente-titulo); color: var(--madera-osc); letter-spacing: .02em; }
+.hud-boton.btn-idioma { color: var(--madera-osc); }
+.hud-boton.btn-idioma b { color: #fff8ec; text-shadow: 0 1px 0 var(--madera-osc); font-size: .95rem; }
+.idioma-flota { position: absolute; z-index: 5; top: calc(14px + env(safe-area-inset-top)); right: 14px; }
+.mapa-idioma { position: absolute; z-index: 600; right: 12px; bottom: 12px; min-width: 52px; height: 48px; padding: 0 12px; border-radius: 16px; border: 3px solid var(--madera-osc);
+  background: linear-gradient(#fff9ec, #f6e3bd); box-shadow: inset 0 2px 0 #fff, 0 4px 0 var(--madera-osc), 0 6px 12px rgb(0 0 0 / .25); }
+.mapa-idioma b { font: 700 1.05rem var(--fuente-titulo); color: var(--madera-osc); }
+@media (min-width: 900px) { .mapa-idioma { bottom: 56px; } }
+.acciones button small { font-size: inherit; font-weight: inherit; line-height: 1.1; }
+@media (max-width: 899px) { .mapa-estado { max-width: calc(100% - 96px); } }

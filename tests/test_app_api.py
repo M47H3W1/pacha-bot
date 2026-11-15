@@ -22,3 +22,10 @@ def test_validaciones_de_la_api():
     assert cliente.post("/api/app/parcela", json={"estado": {"lat": 40, "lon": 2}}).status_code == 422
     assert cliente.post("/api/app/cultivo", json={"estado": {"lat": -1.6466, "lon": -78.7437}}).status_code == 400
     assert cliente.post("/api/app/ciclo", json={"estado": {"lat": -1.6466, "lon": -78.7437}}).status_code == 400
+
+
+def test_voz_con_idioma():
+    from app import voz
+    assert cliente.post("/api/voz", json={"texto": "hola", "lang": "fr"}).status_code == 422
+    assert "degrees" in voz.limpiar("15 °C", "en") and "grados" in voz.limpiar("15 °C")
+    assert voz.ESTILOS_EN["nina"][0].startswith("en-US")

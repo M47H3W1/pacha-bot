@@ -111,38 +111,46 @@ The Telegram bot needs `TELEGRAM_BOT_TOKEN` in `.env` (never in code; see [`.env
 
 ## Astro Granja game (kids aged 8 to 12)
 
-**Play:** https://pacha-chat.vercel.app (on a phone; `?sin3d=1` forces the non-3D mode)
+**Play:** https://pacha-chat.vercel.app (on a phone; `?sin3d=1` forces the non-3D mode). **Spanish and English:** the ES/EN button is in the menu, on the map and in the top bar; Pachita's voice changes with the language.
 
 An original casual farming app to learn how to plant and care for highland soil with real data, in Spanish. It is guided
 by **Pachita**, a farmer from the Andes (felt hat, poncho and anaco skirt), with short speech bubbles and voice. The story:
 
 1. **Farm name:** from her rocket, Pachita asks for the name of your farm.
-2. **Arrival:** the rocket lands next to the volcano, Pachita welcomes you and asks you to pick your plot on a satellite
-   map with a point and a variable-radius circle (20–600 m).
+2. **Arrival:** the rocket comes down with fire and sound, lands on the field and Pachita welcomes you. Then she asks you
+   to pick your plot on a satellite map that **opens at your location** (no example sites): a circle whose size goes from
+   0.1 to 10 hectares with the slider, and you can type a larger one (up to 100 ha).
 3. **This is your land:** the plot appears in 3D with its real relief (`/api/app/terreno`) and a technical sheet with the
    NASA data only: normal and dry-year rain, evaporation, temperature and hot days, sun (CERES), air humidity and
-   wind, **monthly root-zone soil moisture** (GWETROOT) and last-decade change (`/api/app/parcela`). Pachita explains it in simple sentences.
+   wind, **monthly root-zone soil moisture** (GWETROOT) and last-decade change (`/api/app/parcela`), plus the **slope of
+   the land** with the plot's profile (Copernicus DEM relief from Open-Meteo, which is not NASA data and is labeled as such).
+   Pachita explains it in simple sentences.
 4. **Seeds by botanical family:** the 13 crops as animated icons grouped into legumes, nightshades, grasses, amaranths,
-   Andean tubers and pasture/cover, with why each family matters for rotation. Crops unsuitable for the altitude are
-   locked with the reason (`/api/app/semillas`).
+   Andean tubers and pasture/cover, with why each family matters for rotation. Each seed opens a card with its cycle, the
+   altitude where it grows, what it is used for and its planting months. Crops unsuitable for the altitude are locked with
+   the reason (`/api/app/semillas`); vetch, clover, alfalfa and biomass are "information only": Pachita explains why they
+   can't be planted on their own.
 5. **Calendar:** 12-month wheel with the crop's planting window for the zone (INIAP); Pachita warns when out of season.
-6. **Planting:** tap the strips of the plot (or plant them all).
+6. **Planting:** tap the plots (or "Plant all"). When the four are filled, **time runs by itself**.
 7. **How much water?:** litres the crop drinks over its cycle (per square metre and for the whole plot), what rain
    provides and what must be irrigated in a normal and a dry year, with the monthly traffic light (`/api/app/ciclo`).
-8. **Growing:** time advances with the real weather of one NASA POWER year. Drought stress (plants wilt), heat stress
-   (days above 25 °C) and heavy rain; watering uses litres from the tank and the server recomputes the cycle.
-9. **Harvest:** score computed on the server from the water deficit and the season, with the engine's verdict.
+8. **Growing:** time advances with the real weather of one NASA POWER year. A **timeline** shows the crop's stages and
+   the days left until harvest. Drought and heat stress (Arrarray!), and heavy rain (Achachay!); watering uses liters from
+   the tank and the server recomputes the cycle.
+9. **Harvest:** "Harvest all" with an animated hoe; a single card per seed (average of its plots), with the score computed
+   on the server from the water deficit and the season.
 10. **Rotate:** Pachita explains why rotation prevents soil degradation and recommends **3 rotations** computed for the
-    plot (`/api/app/cultivo`).
-11. **Cosmic Farmer certificate:** with the farm name, harvests, score, chosen rotation and medals; downloadable as an
-    image. No purchases or ads.
+    plot (`/api/app/cultivo`). **The app follows the chosen rotation step by step** (for example pea → potato → mixed
+    pasture) and always shows it in the top bar, until it is complete.
+11. **Cosmic Farmer certificate:** full screen (landscape on desktop, portrait on phones), with the farm name, harvests,
+    score, chosen rotation and medals; downloadable as an image. No purchases or ads.
 
 The 18 3D crop icons (`frontend/public/img/cultivos3d/`) were cut from the team's sheet with `scripts/recortar_cultivos.py`; interface icons are custom SVGs (`frontend/src/juego/ui.ts`), no emojis. The 3D sky moves from day to night, the map shows town and road names, and the play button finishes the longest crop in 10 seconds.
 
 | File | Purpose |
 |---|---|
 | `frontend/src/pages/index.astro` | Game page (site home) |
-| `frontend/src/juego/` | Controller, 3D and 2D worlds, map, Pachita and state |
+| `frontend/src/juego/` | Controller, 3D and 2D worlds, map, Pachita, sounds (Web Audio), ES/EN language and state |
 | `web/app_api.py` | `parcela`, `terreno`, `semillas`, `cultivo` and `ciclo` (every number comes from here) |
 | `tests/test_juego.py` | Offline tests for `/api/app/terreno` |
 
@@ -150,7 +158,7 @@ The 18 3D crop icons (`frontend/public/img/cultivos3d/`) were cut from the team'
 - **Development:** code, documentation and analysis were assisted by **Claude Code (Anthropic)**. The team defined the
   problem, scientific method, crops, calendar and field cases, and reviewed every change through Pull Requests.
 - **Inside the game:** no language models; every number comes from the engine. Pachita's voice is generated with
-  edge-tts / gTTS. The Telegram bot uses Gemini (Google AI Studio) to explain results and answer free questions.
+  edge-tts / gTTS (in English, the child-like voice `en-US-AnaNeural`); the rocket sounds are synthesized in the browser. The Telegram bot uses Gemini (Google AI Studio) to explain results and answer free questions.
 - **Images:** the bot's drawings are generated by code from the data; its crop photos come from Wikimedia Commons with
   author and license in [`app/imagenes/cultivos/README.md`](app/imagenes/cultivos/README.md). In the Astro Granja
   game, Pachita's illustrations (three poses) and the 18 3D crop icons, provided by the team and AI-generated, carry an "IA" mark; the 3D models were

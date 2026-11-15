@@ -67,11 +67,11 @@ export function colorSuelo(salud: number): string {
   return `rgb(${c[0]},${c[1]},${c[2]})`;
 }
 
-export const MEDALLAS: Record<string, { icono: string; nombre: string; texto: string }> = {
-  primera: { icono: "medalla", nombre: "Primera cosecha", texto: "Cosechaste tu primer cultivo." },
-  agua: { icono: "gota", nombre: "Buen regador", texto: "Cosecha con 3 estrellas de agua." },
-  rotacion: { icono: "rotar", nombre: "Rotación completa", texto: "Una franja con tres familias distintas seguidas." },
-  leguminosa: { icono: "nitrogeno", nombre: "Amiga del suelo", texto: "Sembraste una leguminosa que alimenta la tierra." },
-  sana: { icono: "tierra", nombre: "Tierra sana", texto: "La salud de tu tierra llegó a 85." },
-  cosmico: { icono: "cohete", nombre: "Granjero cósmico", texto: "Terminaste la historia y ganaste tu certificado." },
+export const MEDALLAS: Record<string, { icono: string; nombre: string; texto: string; nombreEn: string; textoEn: string }> = {
+  primera: { icono: "medalla", nombre: "Primera cosecha", texto: "Cosechaste tu primer cultivo.", nombreEn: "First harvest", textoEn: "You harvested your first crop." },
+  agua: { icono: "gota", nombre: "Buen regador", texto: "Cosecha con 3 estrellas de agua.", nombreEn: "Good waterer", textoEn: "A harvest with 3 water stars." },
+  rotacion: { icono: "rotar", nombre: "Rotación completa", texto: "Una parcela con tres familias distintas seguidas.", nombreEn: "Full rotation", textoEn: "A plot with three different families in a row." },
+  leguminosa: { icono: "nitrogeno", nombre: "Amiga del suelo", texto: "Sembraste una leguminosa que alimenta la tierra.", nombreEn: "Friend of the soil", textoEn: "You planted a legume that feeds the soil." },
+  sana: { icono: "tierra", nombre: "Tierra sana", texto: "La salud de tu tierra llegó a 85.", nombreEn: "Healthy soil", textoEn: "The health of your soil reached 85." },
+  cosmico: { icono: "cohete", nombre: "Granjero cósmico", texto: "Terminaste la historia y ganaste tu certificado.", nombreEn: "Cosmic farmer", textoEn: "You finished the story and won your certificate." },
 };

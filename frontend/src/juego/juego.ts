@@ -2,16 +2,17 @@
 // Historia: nombre de la granja → Pachita llega en cohete → elegir la parcela → ficha técnica de la tierra →
 // semillas por familia → calendario → sembrar → agua que necesita → crecer (riego y estrés) → cosecha →
 // rotación (3 combinaciones) → certificado de Granjero Cósmico.
-import { consultar, esc, MESES, MESES_CORTOS, num } from "../lib/api";
+import { consultar, esc, MESES_CORTOS, num } from "../lib/api";
 import { guardar, leer, tieneParcela } from "../lib/estado";
 import { cargar, colorSuelo, guardarJuego, MEDALLAS, N_PARCELAS, nuevo, type Juego, type Paso } from "./estado";
 import { icono } from "./iconos";
-import { crearMapa, RADIO_DEMO } from "./mapa";
-import { t } from "./i18n";
+import { areaTexto, crearMapa, RADIO_DEMO } from "./mapa";
+import { fijarIdioma, idioma, t } from "./i18n";
+import { epocaTexto, mesCorto, mesDeApi, nombreDe, nombreMes, razonAltura, usoDe } from "./textos";
 import * as sonido from "./sonido";
 import { crearMundo2D } from "./mundo2d";
 import { ETAPAS, type Mundo, type Terreno, type VistaParcela } from "./mundo";
-import { decir, decirVarias, desbloquearAudio, estaSilenciado, PACHITA_SVG, silenciar, urlPose } from "./pachita";
+import { callar, decir, decirVarias, desbloquearAudio, estaSilenciado, PACHITA_SVG, silenciar, urlPose } from "./pachita";
 import { ic, icG } from "./ui";
 
 type Cultivo = { id: string; nombre: string; emoji: string; foto: string | null; familia: string; fija_n: boolean;
@@ -25,28 +26,29 @@ type Ciclo = { cultivo: Cultivo; mes: number; anio: number; dias: Dia[]; taw_mm:
   en_epoca: boolean; epoca: string | null; veredicto: string; estado_mes: string[]; meses: string[]; litros_por_mm: number;
   tanque_litros: number; dias_secos: number; agua: Agua; m2: number };
 
-const MESES_EN = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 const DESCANSO: Cultivo = { id: "descanso", nombre: "Descanso con cobertura", emoji: "", foto: null, familia: "ninguna",
   fija_n: false, ciclo_dias: 120, se_puede: true, apto: true, en_epoca: true, meses: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], epoca_texto: "todo el año" };
-const VEREDICTO: Record<string, string> = { si: "La lluvia suele alcanzar", cuidado: "Hay que regar a veces", no: "Necesita riego" };
+const veredicto = (v: string) => ({ si: t("La lluvia suele alcanzar", "Rain is usually enough"), cuidado: t("Hay que regar a veces", "You need to water sometimes"),
+  no: t("Necesita riego", "It needs irrigation") } as Record<string, string>)[v] || "";
 
 // Familias botánicas: por qué importan para rotar
-const FAMILIAS: { id: string[]; nombre: string; icono: string; color: string; porque: string; tambien?: string[] }[] = [
-  { id: ["fabacea"], nombre: "Leguminosas (Fabáceas)", icono: "fijadores", color: "#2e7d32",
-    porque: "Atrapan nitrógeno del aire con sus raíces y alimentan la tierra. ¡Son las mejores amigas del suelo!",
+const FAMILIAS: { id: string[]; es: string; en: string; icono: string; color: string; pq: [string, string]; tambien?: string[] }[] = [
+  { id: ["fabacea"], es: "Leguminosas (Fabáceas)", en: "Legumes (Fabaceae)", icono: "fijadores", color: "#2e7d32",
+    pq: ["Atrapan nitrógeno del aire con sus raíces y alimentan la tierra. ¡Son las mejores amigas del suelo!", "Their roots trap nitrogen from the air and feed the soil. They are the soil's best friends!"],
     tambien: ["vicia", "trebol", "alfalfa"] },
-  { id: ["solanacea"], nombre: "Solanáceas", icono: "papa", color: "#8d6e63",
-    porque: "Comen mucho del suelo. Si se siembran seguidas, se llenan de plagas como el gusano blanco." },
-  { id: ["poacea"], nombre: "Gramíneas (Poáceas)", icono: "trigo", color: "#c99a2e",
-    porque: "Sus raíces finas sujetan el suelo y dejan paja que lo protege de la lluvia." },
-  { id: ["amarantacea"], nombre: "Amarantáceas", icono: "quinua", color: "#c2185b",
-    porque: "La quinua es un grano andino muy nutritivo que aguanta la sequía." },
-  { id: ["basellacea", "oxalidacea"], nombre: "Tubérculos andinos", icono: "oca", color: "#d84315",
-    porque: "Melloco y oca son de familias distintas a la papa: sirven para rotar sin repetir plagas." },
-  { id: ["pasto", "ninguna"], nombre: "Pastos y cobertura", icono: "pasto", color: "#558b2f",
-    porque: "Cubren el suelo para que la lluvia no lo lave y le devuelven materia orgánica.", tambien: ["biomasa"] },
+  { id: ["solanacea"], es: "Solanáceas", en: "Nightshades (Solanaceae)", icono: "papa", color: "#8d6e63",
+    pq: ["Comen mucho del suelo. Si se siembran seguidas, se llenan de plagas como el gusano blanco.", "They take a lot from the soil. If planted back to back, they fill up with pests like the white grub."] },
+  { id: ["poacea"], es: "Gramíneas (Poáceas)", en: "Grasses (Poaceae)", icono: "trigo", color: "#c99a2e",
+    pq: ["Sus raíces finas sujetan el suelo y dejan paja que lo protege de la lluvia.", "Their fine roots hold the soil and leave straw that protects it from the rain."] },
+  { id: ["amarantacea"], es: "Amarantáceas", en: "Amaranths (Amaranthaceae)", icono: "quinua", color: "#c2185b",
+    pq: ["La quinua es un grano andino muy nutritivo que aguanta la sequía.", "Quinoa is a very nutritious Andean grain that withstands drought."] },
+  { id: ["basellacea", "oxalidacea"], es: "Tubérculos andinos", en: "Andean tubers", icono: "oca", color: "#d84315",
+    pq: ["Melloco y oca son de familias distintas a la papa: sirven para rotar sin repetir plagas.", "Ulluco and oca are from different families than potato: they help rotate without repeating pests."] },
+  { id: ["pasto", "ninguna"], es: "Pastos y cobertura", en: "Pastures and cover", icono: "pasto", color: "#558b2f",
+    pq: ["Cubren el suelo para que la lluvia no lo lave y le devuelven materia orgánica.", "They cover the soil so rain doesn't wash it away and give organic matter back to it."], tambien: ["biomasa"] },
 ];
 const familiaDe = (f: string) => FAMILIAS.find((x) => x.id.includes(f));
+const famNombre = (f: { es: string; en: string }) => t(f.es, f.en);
 const NOMBRE_EXTRA: Record<string, string> = { vicia: "Vicia", trebol: "Trébol", alfalfa: "Alfalfa", biomasa: "Biomasa" };
 
 const $ = <T extends HTMLElement = HTMLElement>(s: string) => document.querySelector<T>(s)!;
@@ -66,24 +68,24 @@ const m2Parcela = () => Math.round((lugar().area_m2 || 2500) / N_PARCELAS);
 function paso(p: Paso) { J.paso = p; guardarTodo(); }
 function guardarTodo() { guardarJuego(J); pintarHud(); }
 const cap = (s: string) => (s ? s[0].toUpperCase() + s.slice(1) : s);
-const fecha = (iso: string) => { const [y, m, d] = iso.split("-").map(Number); return `${d} de ${MESES[m - 1]} · año ${y}`; };
+const fecha = (iso: string) => { const [y, m, d] = iso.split("-").map(Number); return t(`${d} de ${nombreMes(m - 1)} · año ${y}`, `${nombreMes(m - 1)} ${d} · year ${y}`); };
 /** Agua siempre en litros (redondeada para que se lea fácil). */
 function agua(litros: number) {
   const l = Math.max(1, litros);
   const r = l < 100 ? Math.round(l) : l < 10000 ? Math.round(l / 10) * 10 : Math.round(l / 100) * 100;
-  return `${num(r)} litros`;
+  return t(`${num(r)} litros`, `${num(r)} liters`);
 }
-const nombreCorto = (id: string) => (cultivos.get(id)?.nombre || id).toLowerCase();
+const nombreCorto = (id: string) => nombreCultivo(id).toLowerCase();
 const espera = (ms: number) => new Promise((r) => setTimeout(r, ms));
 /** Litros en pocas letras para la barra de arriba: 850 L · 12,5 mil L · 2,9 mill. L */
-const litrosCortos = (l: number) => (l < 1000 ? `${num(Math.round(l))} L` : l < 1e6 ? `${num(l / 1000, 1)} mil L` : `${num(l / 1e6, 1)} mill. L`);
+const litrosCortos = (l: number) => (l < 1000 ? `${num(Math.round(l))} L` : l < 1e6 ? t(`${num(l / 1000, 1)} mil L`, `${num(l / 1000, 1)}k L`) : t(`${num(l / 1e6, 1)} mill. L`, `${num(l / 1e6, 1)}M L`));
 const btn = (icono: string, texto: string) => `${ic(icono, "ic-btn")}<span>${texto}</span>`;
 
 // ---------------------------------------------------------------- paneles
 function abrirPanel(titulo: string, html: string, clase = "") {
   const p = $("#panel");
   p.className = `panel ${clase}`;
-  p.innerHTML = `<div class="panel-cabeza"><h2>${esc(titulo)}</h2><button class="cerrar" type="button" aria-label="Cerrar">✕</button></div>
+  p.innerHTML = `<div class="panel-cabeza"><h2>${esc(titulo)}</h2><button class="cerrar" type="button" aria-label="${t("Cerrar", "Close")}">✕</button></div>
     <div class="panel-cuerpo">${html}</div>`;
   p.hidden = false;
   p.querySelector(".cerrar")!.addEventListener("click", cerrarPanel);
@@ -121,23 +123,30 @@ function fondoMenu(c: HTMLElement, contenido: string) {
   c.innerHTML = `<div class="menu-fondo">${PAISAJE}</div><div class="menu-capa">${contenido}</div>`;
 }
 
+/** Qué pantalla se ve (para volver a dibujarla al cambiar de idioma). */
+let pantalla: "menu" | "nombre" | "aterrizaje" | "mapa" | "mundo" = "menu";
+const botonIdioma = (clase = "btn-redondo") => `<button type="button" class="${clase} btn-idioma" data-idioma aria-label="${t("Cambiar a inglés", "Switch to Spanish")}"><b>${idioma() === "es" ? "EN" : "ES"}</b></button>`;
+const alternarIdioma = (host: ParentNode) => host.querySelector("[data-idioma]")?.addEventListener("click", cambiarIdioma);
+
 /** Pantalla de inicio como la de un juego: logo, Pachita y botones grandes sobre el paisaje andino. */
 function menuPrincipal() {
+  pantalla = "menu";
   const c = $("#intro");
   const hay = !!J.granja;
   fondoMenu(c, `
     <h1 class="logo" aria-label="Astro Granja"><span class="logo-1">Astro</span><span class="logo-2">Granja</span>
-      <small>con Pachita y datos de la NASA</small></h1>
+      <small>${t("con Pachita y datos de la NASA", "with Pachita and NASA data")}</small></h1>
     <div class="menu-tablero">
-      ${hay ? `<button class="btn-juego grande" data-seguir>${btn("play", "Seguir jugando")}</button>
-               <p class="menu-granja">Granja <b>${esc(J.granja)}</b> · temporada ${J.temporada}</p>` : ""}
-      <button class="btn-juego grande ${hay ? "borde" : ""}" data-nueva>${btn("cohete", hay ? "Nueva granja" : "¡Jugar!")}</button>
+      ${hay ? `<button class="btn-juego grande" data-seguir>${btn("play", t("Seguir jugando", "Keep playing"))}</button>
+               <p class="menu-granja">${t("Granja", "Farm")} <b>${esc(J.granja)}</b> · ${t("temporada", "season")} ${J.temporada}</p>` : ""}
+      <button class="btn-juego grande ${hay ? "borde" : ""}" data-nueva>${btn("cohete", hay ? t("Nueva granja", "New farm") : t("¡Jugar!", "Play!"))}</button>
       <div class="menu-fila">
-        <button class="btn-redondo" data-sonido aria-label="Sonido">${ic(estaSilenciado() ? "mudo" : "sonido")}</button>
-        <button class="btn-redondo" data-medallas aria-label="Medallas">${ic("medalla")}</button>
+        <button class="btn-redondo" data-sonido aria-label="${t("Sonido", "Sound")}">${ic(estaSilenciado() ? "mudo" : "sonido")}</button>
+        <button class="btn-redondo" data-medallas aria-label="${t("Medallas", "Medals")}">${ic("medalla")}</button>
+        ${botonIdioma()}
       </div>
     </div>
-    <p class="menu-creditos">NASA Space Apps 2026 · Datos: NASA POWER, FAO-56, INIAP · Relieve: Open-Meteo<br>Ilustraciones de Pachita y cultivos con asistencia de IA (marcadas «IA»)</p>`);
+    <p class="menu-creditos">NASA Space Apps 2026 · ${t("Datos", "Data")}: NASA POWER, FAO-56, INIAP · ${t("Relieve", "Relief")}: Open-Meteo<br>${t("Ilustraciones de Pachita y cultivos con asistencia de IA (marcadas «IA»)", "Illustrations of Pachita and crops made with AI assistance (marked “IA”)")}</p>`);
   c.querySelector("[data-seguir]")?.addEventListener("click", () => {
     salirMenu();
     if (!tieneParcela() || J.paso === "mapa" || J.paso === "nombre") pantallaMapa(); else entrarMundo();
@@ -149,19 +158,24 @@ function menuPrincipal() {
     $("#silencio").innerHTML = ic(estaSilenciado() ? "mudo" : "sonido");
   });
   c.querySelector("[data-medallas]")!.addEventListener("click", abrirLogros);
-  decir(hay ? `¡Hola otra vez! Soy Pachita. ¿Seguimos cuidando la granja ${J.granja}?`
-    : "¡Hola! Soy Pachita, granjera de la sierra. Toca Jugar y te enseño a sembrar con datos de los satélites de la NASA.");
+  alternarIdioma(c);
+  decir(hay ? t(`¡Hola otra vez! Soy Pachita. ¿Seguimos cuidando la granja ${J.granja}?`, `Hello again! I'm Pachita. Shall we keep taking care of farm ${J.granja}?`)
+    : t("¡Hola! Soy Pachita, granjera de la sierra. Toca Jugar y te enseño a sembrar con datos de los satélites de la NASA.",
+      "Hi! I'm Pachita, a farmer from the Andes. Tap Play and I'll teach you to plant using data from NASA satellites."));
 }
 function salirMenu() { $("#intro").hidden = true; document.body.classList.remove("en-menu"); }
 
 function pantallaNombre() {
+  pantalla = "nombre";
   const c = $("#intro");
-  fondoMenu(c, `<form class="tarjeta-nombre" autocomplete="off">
-      <label for="nombre-granja">¿Cómo se llama tu granja?</label>
-      <input id="nombre-granja" maxlength="28" placeholder="Ej.: La Chacra Feliz" value="${esc(J.granja)}" required>
-      <button class="btn-juego grande" type="submit">${btn("cohete", "¡Que llegue Pachita!")}</button>
+  fondoMenu(c, `<div class="idioma-flota">${botonIdioma()}</div><form class="tarjeta-nombre" autocomplete="off">
+      <label for="nombre-granja">${t("¿Cómo se llama tu granja?", "What is your farm called?")}</label>
+      <input id="nombre-granja" maxlength="28" placeholder="${t("Ej.: La Chacra Feliz", "E.g.: Happy Farm")}" value="${esc(J.granja)}" required>
+      <button class="btn-juego grande" type="submit">${btn("cohete", t("¡Que llegue Pachita!", "Let Pachita land!"))}</button>
     </form>`);
-  decir("Primero, ponle un nombre a tu granja. Puede ser el de tu familia o uno inventado. ¡Pachita viene en camino en su cohete!");
+  alternarIdioma(c);
+  decir(t("Primero, ponle un nombre a tu granja. Puede ser el de tu familia o uno inventado. ¡Pachita viene en camino en su cohete!",
+    "First, give your farm a name. It can be your family's or a made-up one. Pachita is on her way in her rocket!"));
   c.querySelector<HTMLInputElement>("#nombre-granja")!.focus();
   c.querySelector("form")!.addEventListener("submit", (e) => {
     e.preventDefault();
@@ -175,6 +189,7 @@ function pantallaNombre() {
 
 /** El cohete baja frenando con fuego, levanta humo y polvo al tocar tierra, se abren las patas y sale Pachita. */
 async function aterrizaje() {
+  pantalla = "aterrizaje";
   const c = $("#intro");
   const quieto = matchMedia("(prefers-reduced-motion: reduce)").matches;
   sonido.preparar();  // se llama dentro del toque del jugador: así el celular deja sonar
@@ -251,20 +266,26 @@ function soltarHumo(caja: HTMLElement, cuantas: number, fuerza: number, fuego: b
 }
 
 // ---------------------------------------------------------------- 1. mapa
-function pantallaMapa() {
+let mapaCtl: ReturnType<typeof crearMapa> | null = null;
+function pantallaMapa(ini?: { lat: number; lon: number; radio: number }) {
+  pantalla = "mapa";
   $("#escena").hidden = true;
   document.body.classList.add("en-mapa");
   const cont = $("#mapa");
   cont.hidden = false;
   const e = lugar();
-  const m = crearMapa(cont, { lat: e.lat ?? -1.6466, lon: e.lon ?? -78.7437, radio: Math.round(radioActual()) }, (l) => {
+  const m = crearMapa(cont, ini ?? { lat: e.lat ?? -1.6466, lon: e.lon ?? -78.7437, radio: Math.round(radioActual()) }, (l) => {
     guardar({ lat: l.lat, lon: l.lon, area_m2: Math.PI * l.radio * l.radio, nombre: l.nombre, provincia: undefined });
     m.destruir();
+    mapaCtl = null;
     cont.hidden = true;
     document.body.classList.remove("en-mapa");
     paso("tierra");
     entrarMundo();
   });
+  mapaCtl = m;
+  cont.querySelector(".mapa-caja")!.insertAdjacentHTML("beforeend", botonIdioma("mapa-idioma"));
+  alternarIdioma(cont);
   decirVarias([
     t("Ahora busca tu chacra en el mapa. Te ubico donde estás: mueve el mapa con el dedo hasta que el pin rojo quede sobre tu tierra; los nombres de los pueblos te ayudan.",
       "Now find your farm on the map. I'll start where you are: drag the map until the red pin is over your land; the town names will help you."),
@@ -275,10 +296,11 @@ function pantallaMapa() {
 
 // ---------------------------------------------------------------- 2. mundo 3D
 async function entrarMundo() {
+  pantalla = "mundo";
   $("#escena").hidden = false;
   $("#hud").hidden = false;
   const cont = $("#mundo");
-  cont.innerHTML = `<div class="cargando-mundo"><div class="girar"></div><p>Dibujando la granja ${esc(J.granja)}…</p></div>`;
+  cont.innerHTML = `<div class="cargando-mundo"><div class="girar"></div><p>${t(`Dibujando la granja ${esc(J.granja)}…`, `Drawing farm ${esc(J.granja)}…`)}</p></div>`;
   try {
     terreno = await consultar("terreno", { n: 17 });
   } catch (err) {
@@ -318,18 +340,19 @@ function seguirHistoria() {
     case "agua": return panelAgua();
     case "rotacion": return rotarTierra();
     case "certificado": return certificado();
-    default: return decir("¡Seguimos! Avanza el tiempo y cuida tu siembra.");
+    default: return decir(t("¡Seguimos! Avanza el tiempo y cuida tu siembra.", "Let's go on! Move time forward and take care of your crops."));
   }
 }
 
 // ---------------------------------------------------------------- 3. ficha técnica de la tierra
 async function fichaTierra() {
-  abrirPanel("Así es tu tierra", `<div class="cargando-mundo chico"><div class="girar"></div><p>Leyendo los datos de la NASA…</p></div>`, "cartas-panel");
+  const titulo = t("Así es tu tierra", "This is your land");
+  abrirPanel(titulo, `<div class="cargando-mundo chico"><div class="girar"></div><p>${t("Leyendo los datos de la NASA…", "Reading NASA data…")}</p></div>`, "cartas-panel");
   try {
     parcelaInfo = await consultar("parcela");
     guardar({ provincia: parcelaInfo.lugar.provincia });
   } catch {
-    abrirPanel("Así es tu tierra", `<p>No pude leer tu tierra. Revisa la señal.</p><button class="btn-juego" data-r>Intentar otra vez</button>`);
+    abrirPanel(titulo, `<p>${t("No pude leer tu tierra. Revisa la señal.", "I couldn't read your land. Check your signal.")}</p><button class="btn-juego" data-r>${t("Intentar otra vez", "Try again")}</button>`);
     $("[data-r]").addEventListener("click", fichaTierra);
     return;
   }
@@ -337,55 +360,62 @@ async function fichaTierra() {
   const p = parcelaInfo, c = p.clima, tend = p.tendencia, n = p.nasa || {};
   const humedad: number[] = n.suelo_raiz_mes || [];
   const barras = humedad.map((h: number, i: number) =>
-    `<span class="barra-h" style="--h:${Math.max(6, h * 100)}%;--c:${h >= 0.75 ? "#2e7d32" : h >= 0.6 ? "#f9a825" : "#c62828"}" title="${MESES[i]}: ${Math.round(h * 100)} %"><i></i><b>${MESES_CORTOS[i][0].toUpperCase()}</b></span>`).join("");
+    `<span class="barra-h" style="--h:${Math.max(6, h * 100)}%;--c:${h >= 0.75 ? "#2e7d32" : h >= 0.6 ? "#f9a825" : "#c62828"}" title="${nombreMes(i)}: ${Math.round(h * 100)} %"><i></i><b>${mesCorto(i)[0].toUpperCase()}</b></span>`).join("");
   const carta = (icono: string, titulo: string, valor: string, detalle: string, color: string, clase = "") =>
     `<article class="carta ${clase}" style="--color:${color}"><div class="carta-icono">${ic(icono)}</div><h3>${titulo}</h3>
       <p class="carta-valor">${valor}</p><p class="carta-detalle">${detalle}</p></article>`;
-  const secos = humedad.map((h, i) => (h < 0.7 ? MESES[i] : "")).filter(Boolean);
+  const secos = humedad.map((h, i) => (h < 0.7 ? nombreMes(i) : "")).filter(Boolean);
   // lluvia: año normal frente al más seco y al más lluvioso que midió la NASA, y el índice de aridez (UNEP)
   const lmin = c.lluvia_min ?? c.lluvia_seca, lmax = c.lluvia_max ?? Math.round(c.lluvia_anual * 1.3);
   const lhum = c.lluvia_humeda ?? Math.round((c.lluvia_anual + lmax) / 2);
   const ar = c.aridez ?? c.lluvia_anual / Math.max(c.et0_anual, 1);
-  const estado = ar < 0.5 ? ["seca", "#c62828", "Llueve mucho menos de lo que el sol evapora: casi siempre hay que regar."]
-    : ar < 0.65 ? ["algo seca", "#e0a100", "Llueve un poco menos de lo que se evapora: hay que regar en los meses secos."]
-    : ar < 1 ? ["húmeda", "#2e7d32", "La lluvia casi alcanza a lo que se evapora: se riega solo en verano."]
-    : ["muy húmeda", "#1e6fb8", "Llueve más de lo que se evapora: cuida que el agua no lave la tierra."];
+  const estado = ar < 0.5 ? [t("seca", "dry"), "#c62828", t("Llueve mucho menos de lo que el sol evapora: casi siempre hay que regar.", "It rains much less than the sun evaporates: you almost always need to water.")]
+    : ar < 0.65 ? [t("algo seca", "somewhat dry"), "#e0a100", t("Llueve un poco menos de lo que se evapora: hay que regar en los meses secos.", "It rains a bit less than what evaporates: you need to water in the dry months.")]
+    : ar < 1 ? [t("húmeda", "humid"), "#2e7d32", t("La lluvia casi alcanza a lo que se evapora: se riega solo en verano.", "Rain almost matches what evaporates: you only water in the dry season.")]
+    : [t("muy húmeda", "very humid"), "#1e6fb8", t("Llueve más de lo que se evapora: cuida que el agua no lave la tierra.", "It rains more than what evaporates: make sure the water doesn't wash the soil away.")];
   const pos = (v: number) => Math.max(0, Math.min(100, ((v - lmin) / Math.max(lmax - lmin, 1)) * 100));
   const tarjetaLluvia = `<article class="carta ancha lluvia-carta" style="--color:#1e6fb8">
-      <div class="carta-cabeza"><div class="carta-icono">${ic("lluvia")}</div><div><h3>Lluvia al año</h3>
-        <p class="carta-valor">${num(c.lluvia_anual)} mm <small>en un año normal</small></p></div>
-        <span class="estado-tierra" style="--c:${estado[1]}">Tu zona es <b>${estado[0]}</b></span></div>
-      <div class="regla-lluvia" role="img" aria-label="De ${num(lmin)} a ${num(lmax)} milímetros según el año">
+      <div class="carta-cabeza"><div class="carta-icono">${ic("lluvia")}</div><div><h3>${t("Lluvia al año", "Rain per year")}</h3>
+        <p class="carta-valor">${num(c.lluvia_anual)} mm <small>${t("en un año normal", "in a normal year")}</small></p></div>
+        <span class="estado-tierra" style="--c:${estado[1]}">${t("Tu zona es", "Your area is")} <b>${estado[0]}</b></span></div>
+      <div class="regla-lluvia" role="img" aria-label="${t(`De ${num(lmin)} a ${num(lmax)} milímetros según el año`, `From ${num(lmin)} to ${num(lmax)} millimeters depending on the year`)}">
         <div class="regla-zonas" style="--a:${pos(c.lluvia_seca)}%;--b:${pos(lhum)}%"></div>
-        <span class="regla-marca" style="left:${pos(c.lluvia_anual)}%"><b>Normal</b></span>
+        <span class="regla-marca" style="left:${pos(c.lluvia_anual)}%"><b>${t("Normal", "Normal")}</b></span>
       </div>
-      <div class="regla-textos"><span><b>${num(lmin)} mm</b>el año más seco</span><span class="centro">seco · normal · lluvioso</span><span class="fin"><b>${num(lmax)} mm</b>el año más lluvioso</span></div>
-      <p class="carta-detalle">${estado[2]} De cada 10 litros que el sol evapora, la lluvia devuelve unos <b>${num(Math.min(20, Math.round(ar * 10)))}</b>.</p>
+      <div class="regla-textos"><span><b>${num(lmin)} mm</b>${t("el año más seco", "driest year")}</span><span class="centro">${t("seco · normal · lluvioso", "dry · normal · rainy")}</span><span class="fin"><b>${num(lmax)} mm</b>${t("el año más lluvioso", "rainiest year")}</span></div>
+      <p class="carta-detalle">${estado[2]} ${t(`De cada 10 litros que el sol evapora, la lluvia devuelve unos <b>${num(Math.min(20, Math.round(ar * 10)))}</b>.`, `Of every 10 liters the sun evaporates, rain gives back about <b>${num(Math.min(20, Math.round(ar * 10)))}</b>.`)}</p>
     </article>`;
-  abrirPanel("Así es tu tierra", `<p class="ficha-sub">Granja <b>${esc(J.granja)}</b> · ${esc(p.lugar.area_texto)} · datos de satélites de la NASA</p>
+  const areaTxt = areaTexto(lugar().area_m2 ?? p.lugar.area_m2);
+  abrirPanel(titulo, `<p class="ficha-sub">${t("Granja", "Farm")} <b>${esc(J.granja)}</b> · ${esc(areaTxt)} · ${t("datos de satélites de la NASA", "NASA satellite data")}</p>
   <div class="cartas">
     ${tarjetaLluvia}
-    ${carta("sol", "Evaporación", `${num(c.et0_anual)} mm`, c.et0_anual > c.lluvia_anual ? "Se evapora más de lo que llueve" : "Se evapora menos de lo que llueve", "#e65100")}
-    ${carta("termometro", "Temperatura", `${num(c.tmin)} a ${num(c.tmax)} °C`, `Noches frías y días templados · días de calor fuerte: ${tend.calor_dias}`, "#d84315")}
-    ${n.radiacion_kwh ? carta("dia", "Energía del sol", `${num(n.radiacion_kwh, 1)} kWh/m²`, "Cada día, en cada metro cuadrado", "#f2a900") : ""}
-    ${n.humedad_aire ? carta("nube", "Humedad del aire", `${n.humedad_aire} %`, `Viento: ${num(n.viento, 1)} m/s`, "#5c7da8") : ""}
-    ${carta("grafico", "Última década", `Lluvia ${tend.cambio_lluvia_pct > 0 ? "+" : ""}${tend.cambio_lluvia_pct} %`, `Temperatura ${tend.cambio_temp_c > 0 ? "+" : ""}${num(tend.cambio_temp_c, 1)} °C`, "#6a1b9a")}
+    ${carta("sol", t("Evaporación", "Evaporation"), `${num(c.et0_anual)} mm`, c.et0_anual > c.lluvia_anual ? t("Se evapora más de lo que llueve", "More evaporates than rains") : t("Se evapora menos de lo que llueve", "Less evaporates than rains"), "#e65100")}
+    ${carta("termometro", t("Temperatura", "Temperature"), `${num(c.tmin)} ${t("a", "to")} ${num(c.tmax)} °C`, t(`Noches frías y días templados · días de calor fuerte: ${tend.calor_dias}`, `Cold nights and mild days · days of strong heat: ${tend.calor_dias}`), "#d84315")}
+    ${n.radiacion_kwh ? carta("dia", t("Energía del sol", "Sun energy"), `${num(n.radiacion_kwh, 1)} kWh/m²`, t("Cada día, en cada metro cuadrado", "Every day, on each square meter"), "#f2a900") : ""}
+    ${n.humedad_aire ? carta("nube", t("Humedad del aire", "Air humidity"), `${n.humedad_aire} %`, `${t("Viento", "Wind")}: ${num(n.viento, 1)} m/s`, "#5c7da8") : ""}
+    ${carta("grafico", t("Última década", "Last decade"), `${t("Lluvia", "Rain")} ${tend.cambio_lluvia_pct > 0 ? "+" : ""}${tend.cambio_lluvia_pct} %`, `${t("Temperatura", "Temperature")} ${tend.cambio_temp_c > 0 ? "+" : ""}${num(tend.cambio_temp_c, 1)} °C`, "#6a1b9a")}
     ${tarjetaPendiente()}
-    ${humedad.length ? `<article class="carta ancha" style="--color:#2e7d32"><div class="carta-cabeza"><div class="carta-icono">${ic("gota")}</div><h3>Humedad del suelo en las raíces, mes a mes</h3></div>
+    ${humedad.length ? `<article class="carta ancha" style="--color:#2e7d32"><div class="carta-cabeza"><div class="carta-icono">${ic("gota")}</div><h3>${t("Humedad del suelo en las raíces, mes a mes", "Soil moisture at the roots, month by month")}</h3></div>
       <div class="barras-h">${barras}</div>
-      <p class="leyenda-mini"><span style="--c:#2e7d32">húmedo</span><span style="--c:#f9a825">justo</span><span style="--c:#c62828">seco: hay que regar</span></p>
-      <p class="carta-detalle">Satélites de la NASA (GWETROOT): 100 % es suelo empapado.</p></article>` : ""}
+      <p class="leyenda-mini"><span style="--c:#2e7d32">${t("húmedo", "moist")}</span><span style="--c:#f9a825">${t("justo", "just enough")}</span><span style="--c:#c62828">${t("seco: hay que regar", "dry: water it")}</span></p>
+      <p class="carta-detalle">${t("Satélites de la NASA (GWETROOT): 100 % es suelo empapado.", "NASA satellites (GWETROOT): 100 % is soaked soil.")}</p></article>` : ""}
   </div>
   <p class="fuente">${t("Clima: NASA POWER", "Climate: NASA POWER")} ${esc(p.periodo)} (MERRA-2, CERES) · FAO-56.${terreno?.pendiente_pct !== undefined ? t(" Pendiente: relieve Copernicus DEM (vía Open-Meteo, 90 m).", " Slope: Copernicus DEM relief (via Open-Meteo, 90 m).") : ""}</p>
-  <button class="btn-juego grande" data-sig>${btn("semilla", "Conocer las semillas")}</button>`, "cartas-panel");
+  <button class="btn-juego grande" data-sig>${btn("semilla", t("Conocer las semillas", "Meet the seeds"))}</button>`, "cartas-panel");
   $("[data-sig]").addEventListener("click", () => { paso("semillas"); abrirFamilias(); });
-  const anios = (() => { const [a0, a1] = String(p.periodo).split("–").map(Number); return a1 && a0 ? a1 - a0 + 1 : "muchos"; })();
+  const anios = (() => { const [a0, a1] = String(p.periodo).split("–").map(Number); return a1 && a0 ? a1 - a0 + 1 : t("muchos", "many"); })();
   const frases = [
-    `Los satélites de la NASA miraron tu granja todos los días durante ${anios} años. Con esos datos sabemos cómo es tu tierra.`,
-    `En un año normal llueven ${num(c.lluvia_anual)} milímetros. Un milímetro es un litro de agua en cada metro cuadrado. Pero el año más seco llovió solo ${num(lmin)} y el más lluvioso ${num(lmax)}: por eso hay que estar preparados.`,
-    `El sol y el viento evaporan ${num(c.et0_anual)} milímetros al año. Si se evapora más de lo que llueve, la tierra se seca y las plantas piden riego. Tu zona es ${estado[0]}.`,
-    secos.length ? `Mira las barras de humedad: el suelo se seca más en ${secos.slice(0, 3).join(", ")}. Esos meses las raíces tienen sed y hay que regar.` : "Mira las barras de humedad: tu suelo guarda agua casi todo el año. ¡Qué suerte!",
-    `La temperatura va de ${num(c.tmin)} grados en las noches frías a ${num(c.tmax)} en los días de sol fuerte. Cuando hace mucho calor, la tierra pierde agua más rápido.`,
+    t(`Los satélites de la NASA miraron tu granja todos los días durante ${anios} años. Con esos datos sabemos cómo es tu tierra.`,
+      `NASA satellites watched your farm every day for ${anios} years. With that data we know what your land is like.`),
+    t(`En un año normal llueven ${num(c.lluvia_anual)} milímetros. Un milímetro es un litro de agua en cada metro cuadrado. Pero el año más seco llovió solo ${num(lmin)} y el más lluvioso ${num(lmax)}: por eso hay que estar preparados.`,
+      `In a normal year it rains ${num(c.lluvia_anual)} millimeters. One millimeter is one liter of water on each square meter. But the driest year only had ${num(lmin)} and the rainiest ${num(lmax)}: that's why we must be prepared.`),
+    t(`El sol y el viento evaporan ${num(c.et0_anual)} milímetros al año. Si se evapora más de lo que llueve, la tierra se seca y las plantas piden riego. Tu zona es ${estado[0]}.`,
+      `The sun and wind evaporate ${num(c.et0_anual)} millimeters a year. If more evaporates than rains, the soil dries out and plants ask for water. Your area is ${estado[0]}.`),
+    secos.length ? t(`Mira las barras de humedad: el suelo se seca más en ${secos.slice(0, 3).join(", ")}. Esos meses las raíces tienen sed y hay que regar.`,
+      `Look at the moisture bars: the soil dries out most in ${secos.slice(0, 3).join(", ")}. In those months the roots are thirsty and you need to water.`)
+      : t("Mira las barras de humedad: tu suelo guarda agua casi todo el año. ¡Qué suerte!", "Look at the moisture bars: your soil holds water almost all year. How lucky!"),
+    t(`La temperatura va de ${num(c.tmin)} grados en las noches frías a ${num(c.tmax)} en los días de sol fuerte. Cuando hace mucho calor, la tierra pierde agua más rápido.`,
+      `The temperature goes from ${num(c.tmin)} degrees on cold nights to ${num(c.tmax)} on strong-sun days. When it is very hot, the soil loses water faster.`),
     ...(pendienteFrase() ? [pendienteFrase()] : []),
   ];
   decirVarias(frases);
@@ -459,23 +489,23 @@ const NOMBRE_EXTRA_EN: Record<string, string> = { vicia: "Vetch", trebol: "Clove
 const nombreExtra = (k: string) => t(NOMBRE_EXTRA[k], NOMBRE_EXTRA_EN[k]);
 
 async function abrirFamilias() {
-  if (J.sembrado) { decir("Ya sembraste. Espera la cosecha."); return; }
+  if (J.sembrado) { decir(t("Ya sembraste. Espera la cosecha.", "You already planted. Wait for the harvest.")); return; }
   try { if (!semillasInfo) await cargarSemillas(J.mes ?? (new Date().getMonth() + 1) % 12 + 1); }
-  catch { decir("No pude traer las semillas. Revisa la señal.", "preocupada"); return; }
+  catch { decir(t("No pude traer las semillas. Revisa la señal.", "I couldn't get the seeds. Check your signal."), "preocupada"); return; }
   const lista = [...semillasInfo!.cultivos, ...(J.temporada > 1 ? [DESCANSO] : [])];
   const grupos = FAMILIAS.map((f) => ({ f, cs: lista.filter((c) => f.id.includes(c.familia)) })).filter((g) => g.cs.length);
   const pend = rotacionPendiente();
-  const p = abrirPanel("Semillas por familia", `
+  const p = abrirPanel(t("Semillas por familia", "Seeds by family"), `
     ${pend ? `<div class="aviso-rot">${ic("rotar", "ic-leccion")}<div><b>${t("Tu rotación sigue con", "Your rotation continues with")} ${esc(nombreCorto(pend.id))}</b>
       <span>${t(`Paso ${pend.k + 1} de ${pend.n}. Busca la semilla marcada con la cinta amarilla.`, `Step ${pend.k + 1} of ${pend.n}. Look for the seed with the yellow ribbon.`)}</span></div></div>` : ""}
-    <div class="leccion">${ic("foco", "ic-leccion")}<div><b>¿Por qué familias?</b> Las plantas de una misma familia se enferman de lo mismo y comen lo mismo del suelo.
-      Si cambias de familia cada vez que siembras, la tierra descansa y las plagas se van. ¡Eso es <b>rotar</b>!
-      Las <b>N+</b> son leguminosas: fabrican su propio abono con el nitrógeno del aire.</div></div>
+    <div class="leccion">${ic("foco", "ic-leccion")}<div>${t(
+      "<b>¿Por qué familias?</b> Las plantas de una misma familia se enferman de lo mismo y comen lo mismo del suelo. Si cambias de familia cada vez que siembras, la tierra descansa y las plagas se van. ¡Eso es <b>rotar</b>! Las <b>N+</b> son leguminosas: fabrican su propio abono con el nitrógeno del aire.",
+      "<b>Why families?</b> Plants of the same family get sick from the same things and eat the same things from the soil. If you change family each time you plant, the soil rests and the pests go away. That's called <b>rotating</b>! The <b>N+</b> ones are legumes: they make their own fertilizer from the nitrogen in the air.")}</div></div>
     ${grupos.map(({ f, cs }) => `<section class="familia" style="--color:${f.color}">
-      <h3>${icono(f.icono, "icono-familia")} ${f.nombre}</h3><p>${f.porque}</p>
+      <h3>${icono(f.icono, "icono-familia")} ${famNombre(f)}</h3><p>${t(f.pq[0], f.pq[1])}</p>
       <div class="sobres">${cs.map((c) => `<button type="button" class="sobre ${c.apto === false ? "bloqueado" : ""} ${pend?.id === c.id ? "siguiente" : ""}" data-crop="${c.id}">
         ${icono(c.id, "icono-sobre")}${c.apto === false ? `<span class="candado">${ic("candado")}</span>` : ""}
-        <span class="sobre-nombre">${esc(c.nombre)}</span>${c.fija_n ? '<span class="sello-n">N+</span>' : ""}
+        <span class="sobre-nombre">${esc(nombreDe(c.id, c.nombre))}</span>${c.fija_n ? '<span class="sello-n">N+</span>' : ""}
         ${pend?.id === c.id ? `<span class="cinta-rot">${t("Tu rotación", "Your rotation")}</span>` : ""}</button>`).join("")}
         ${(f.tambien || []).map((k) => `<button type="button" class="sobre info" data-info="${k}" aria-label="${nombreExtra(k)}: ${t("solo información", "information only")}">
           ${icono(k, "icono-sobre")}<span class="sello-i">${ic("info", "ic-chip")}</span><span class="sobre-nombre">${nombreExtra(k)}</span>
@@ -484,9 +514,11 @@ async function abrirFamilias() {
   p.querySelectorAll<HTMLButtonElement>(".sobre[data-crop]").forEach((b) => b.addEventListener("click", () => detalleSemilla(b.dataset.crop!)));
   p.querySelectorAll<HTMLButtonElement>(".sobre[data-info]").forEach((b) => b.addEventListener("click", () => detalleInfo(b.dataset.info!)));
   decirVarias([
-    "Estas son las semillas de la sierra, ordenadas por familia. Las plantas de la misma familia son como primas: les gustan las mismas comidas y les dan las mismas plagas.",
+    t("Estas son las semillas de la sierra, ordenadas por familia. Las plantas de la misma familia son como primas: les gustan las mismas comidas y les dan las mismas plagas.",
+      "These are the seeds of the Andes, sorted by family. Plants of the same family are like cousins: they like the same foods and get the same pests."),
     pend ? t(`Tu rotación pide ${nombreCorto(pend.id)} ahora: es la semilla con la cinta amarilla.`, `Your rotation asks for ${nombreCorto(pend.id)} now: it is the seed with the yellow ribbon.`)
-      : "Las semillas con candado no crecen a la altura de tu granja. Las que tienen una «i» solo te las explico. Toca una semilla para conocerla y elegirla.",
+      : t("Las semillas con candado no crecen a la altura de tu granja. Las que tienen una «i» solo te las explico. Toca una semilla para conocerla y elegirla.",
+        "Seeds with a padlock don't grow at your farm's altitude. The ones with an “i” I only explain. Tap a seed to learn about it and choose it."),
   ]);
 }
 
@@ -500,7 +532,7 @@ function detalleInfo(k: string) {
       <div class="semilla-titulo"><span class="etiqueta info-etiqueta">${ic("info", "ic-chip")} ${t("Solo información", "Information only")}</span></div></div>
     <div class="estado-semilla no-se-siembra">${ic("candado", "ic-linea")} ${t("No se puede sembrar sola en esta granja", "It can't be planted on its own on this farm")}</div>
     <p class="texto-semilla">${esc(t(info.es, info.en))}</p>
-    <div class="fila-botones"><button class="btn-juego borde" data-volver>${btn("atras", "Otras semillas")}</button>
+    <div class="fila-botones"><button class="btn-juego borde" data-volver>${btn("atras", t("Otras semillas", "Other seeds"))}</button>
       ${abre ? `<button class="btn-juego" data-abre>${btn("semilla", t(`Ver ${info.abreNombre![0]}`, `See ${info.abreNombre![1]}`))}</button>` : ""}</div>`, "centro");
   $("[data-volver]").addEventListener("click", abrirFamilias);
   document.querySelector("[data-abre]")?.addEventListener("click", () => detalleSemilla(info.abre!));
@@ -510,16 +542,19 @@ function detalleInfo(k: string) {
 function detalleSemilla(id: string) {
   const c = cultivos.get(id)!;
   const f = familiaDe(c.familia);
+  const nom = nombreCultivo(id);
   const meses = new Set(c.meses || []);
   const elev = semillasInfo?.lugar?.elev;
   const dentro = c.alt_min !== undefined && elev !== undefined ? elev >= c.alt_min && elev <= c.alt_max! : null;
   const pend = rotacionPendiente();
-  abrirPanel(c.nombre, `<div class="semilla-hero" style="--color:${f?.color || "#555"}">
+  const razon = razonAltura(c, elev, c.razon);
+  const epoca = epocaTexto(c.meses, c.epoca_texto);
+  abrirPanel(nom, `<div class="semilla-hero" style="--color:${f?.color || "#555"}">
       ${icono(id, "icono-grande")}
-      <div class="semilla-titulo"><span class="etiqueta" style="--color:${f?.color || "#555"}">${f?.nombre || "Cobertura"}</span>
+      <div class="semilla-titulo"><span class="etiqueta" style="--color:${f?.color || "#555"}">${f ? famNombre(f) : t("Cobertura", "Cover")}</span>
         ${c.fija_n ? `<span class="bueno-chip">${ic("nitrogeno", "ic-chip")} ${t("Alimenta la tierra con nitrógeno", "Feeds the soil with nitrogen")}</span>` : ""}</div></div>
     <div class="estado-semilla ${c.apto === false ? "no-se-siembra" : "si-se-siembra"}">${c.apto === false
-      ? `${ic("candado", "ic-linea")} ${esc(c.razon || t("No se puede sembrar aquí", "It can't be planted here"))}`
+      ? `${ic("candado", "ic-linea")} ${esc(razon || t("No se puede sembrar aquí", "It can't be planted here"))}`
       : `${ic("check", "ic-linea")} ${t("Se puede sembrar en tu chacra", "It can be planted on your farm")}`}</div>
     <div class="semilla-datos">
       ${c.ciclo_dias ? `<div class="dato"><span class="dato-ic">${ic("reloj")}</span><b>${t("Tarda hasta la cosecha", "Time to harvest")}</b>
@@ -527,13 +562,13 @@ function detalleSemilla(id: string) {
       ${c.alt_min ? `<div class="dato"><span class="dato-ic">${ic("montana")}</span><b>${t("Altura donde crece", "Altitude where it grows")}</b>
         <span class="dato-v">${num(c.alt_min)}–${num(c.alt_max!)} m</span>
         <small class="${dentro === false ? "malo" : "bueno"}">${elev !== undefined ? `${t("Tu chacra: ", "Your farm: ")}${num(elev)} m ${dentro ? "✓" : "✗"}` : ""}</small></div>` : ""}
-      ${c.uso ? `<div class="dato"><span class="dato-ic">${ic("cesta")}</span><b>${t("Sirve para", "Used for")}</b><span class="dato-v chico">${esc(c.uso)}</span></div>` : ""}
+      ${c.uso ? `<div class="dato"><span class="dato-ic">${ic("cesta")}</span><b>${t("Sirve para", "Used for")}</b><span class="dato-v chico">${esc(usoDe(c.uso))}</span></div>` : ""}
       <div class="dato ancho"><span class="dato-ic">${ic("calendario")}</span><b>${t("Época de siembra en tu zona", "Planting season in your area")}</b>
-        <div class="tira-meses">${MESES_CORTOS.map((m, k) => `<span class="mes-chip ${meses.has(k + 1) ? "on" : ""}" title="${MESES[k]}">${m[0].toUpperCase()}</span>`).join("")}</div>
-        <small>${c.epoca_texto ? esc(c.epoca_texto) : t("Todo el año", "All year")}</small></div>
+        <div class="tira-meses">${MESES_CORTOS.map((_, k) => `<span class="mes-chip ${meses.has(k + 1) ? "on" : ""}" title="${nombreMes(k)}">${mesCorto(k)[0].toUpperCase()}</span>`).join("")}</div>
+        <small>${esc(epoca)}</small></div>
     </div>
-    <div class="fila-botones"><button class="btn-juego borde" data-volver>${btn("atras", "Otras semillas")}</button>
-      ${c.apto === false ? "" : `<button class="btn-juego" data-elegir>${btn("semilla", "Elegir esta semilla")}</button>`}</div>`, "centro semilla-detalle");
+    <div class="fila-botones"><button class="btn-juego borde" data-volver>${btn("atras", t("Otras semillas", "Other seeds"))}</button>
+      ${c.apto === false ? "" : `<button class="btn-juego" data-elegir>${btn("semilla", t("Elegir esta semilla", "Choose this seed"))}</button>`}</div>`, "centro semilla-detalle");
   $("[data-volver]").addEventListener("click", abrirFamilias);
   document.querySelector("[data-elegir]")?.addEventListener("click", () => {
     if (pend && pend.id !== id && J.temporada > 1) {
@@ -545,32 +580,40 @@ function detalleSemilla(id: string) {
     paso("calendario");
     abrirCalendario();
   });
-  if (c.apto === false) decir(`${c.nombre} no se puede sembrar aquí: ${c.razon}. Prueba con otra semilla de la lista.`, "pensando");
+  const fam = f ? famNombre(f).split(" (")[0].toLowerCase() : t("plantas de cobertura", "cover plants");
+  if (c.apto === false) decir(t(`${nom} no se puede sembrar aquí: ${razon}. Prueba con otra semilla de la lista.`, `${nom} can't be planted here: ${razon}. Try another seed from the list.`), "pensando");
   else decir(c.fija_n
-    ? `${c.nombre} es una leguminosa. En sus raíces viven bacterias amigas que atrapan el nitrógeno del aire y lo dejan en la tierra como abono. Tarda ${c.ciclo_dias} días en estar lista.`
-    : `${c.nombre} es de la familia de las ${f?.nombre.split(" (")[0].toLowerCase() || "plantas de cobertura"}. Tarda ${c.ciclo_dias} días en estar lista${c.epoca_texto ? ` y aquí se siembra ${c.epoca_texto}` : ""}.`);
+    ? t(`${nom} es una leguminosa. En sus raíces viven bacterias amigas que atrapan el nitrógeno del aire y lo dejan en la tierra como abono. Tarda ${c.ciclo_dias} días en estar lista.`,
+      `${nom} is a legume. Friendly bacteria live in its roots and trap nitrogen from the air, leaving it in the soil as fertilizer. It takes ${c.ciclo_dias} days to be ready.`)
+    : t(`${nom} es de la familia de las ${fam}. Tarda ${c.ciclo_dias} días en estar lista${c.epoca_texto ? ` y aquí se siembra ${c.epoca_texto}` : ""}.`,
+      `${nom} belongs to the ${fam} family. It takes ${c.ciclo_dias} days to be ready${c.meses?.length ? ` and here it is planted in ${epoca}` : ""}.`));
 }
 
 // ---------------------------------------------------------------- 5. calendario de siembra
+/** Mes abreviado que manda la API (siempre en español) en el idioma actual. */
+const mesApi = (m: string) => { const i = MESES_CORTOS.indexOf(m.slice(0, 3).toLowerCase()); return i >= 0 ? mesCorto(i) : m.slice(0, 3); };
+
 function abrirCalendario() {
-  if (J.sembrado) { decir("Primero cosecha lo que está sembrado."); return; }
+  if (J.sembrado) { decir(t("Primero cosecha lo que está sembrado.", "First harvest what is planted.")); return; }
   const c = J.crop ? cultivos.get(J.crop) : null;
   if (!c) { abrirFamilias(); return; }
+  const nom = nombreCorto(c.id);
   const meses = new Set(c.meses || []);
   const actual = J.mes ?? (new Date().getMonth() + 1) % 12 + 1;
   const r = 120, cx = 140, cy = 140;
-  const porciones = MESES_CORTOS.map((m, i) => {
+  const porciones = MESES_CORTOS.map((_, i) => {
     const a0 = ((i - 3) / 12) * Math.PI * 2, a1 = ((i - 2) / 12) * Math.PI * 2, am = (a0 + a1) / 2;
     const p = (a: number, rr: number) => `${cx + rr * Math.cos(a)},${cy + rr * Math.sin(a)}`;
     const ok = meses.has(i + 1);
-    return `<g class="mes ${actual === i + 1 ? "elegido" : ""}" data-mes="${i + 1}" tabindex="0" role="button" aria-label="${MESES[i]}${ok ? ", época de siembra" : ""}">
+    return `<g class="mes ${actual === i + 1 ? "elegido" : ""}" data-mes="${i + 1}" tabindex="0" role="button" aria-label="${nombreMes(i)}${ok ? t(", época de siembra", ", planting season") : ""}">
       <path style="fill:${ok ? "#5fb35a" : "#e3dccb"}" d="M${p(a0, 46)} L${p(a0, r)} A${r} ${r} 0 0 1 ${p(a1, r)} L${p(a1, 46)} A46 46 0 0 0 ${p(a0, 46)} Z"/>
-      <text x="${cx + 86 * Math.cos(am)}" y="${cy + 86 * Math.sin(am) + 6}" text-anchor="middle">${m}</text></g>`;
+      <text x="${cx + 86 * Math.cos(am)}" y="${cy + 86 * Math.sin(am) + 6}" text-anchor="middle">${mesCorto(i)}</text></g>`;
   }).join("");
-  abrirPanel(`¿Cuándo siembras ${c.nombre.toLowerCase()}?`, `<svg class="rueda" viewBox="0 0 280 280">${porciones}
+  abrirPanel(t(`¿Cuándo siembras ${nom}?`, `When do you plant ${nom}?`), `<svg class="rueda" viewBox="0 0 280 280">${porciones}
       <foreignObject x="${cx - 42}" y="${cy - 42}" width="84" height="84"><div class="rueda-icono">${icono(c.id, "icono-rueda")}</div></foreignObject></svg>
-    <p class="leyenda"><span class="punto epoca"></span> Época de siembra en tu zona (INIAP) <span class="punto"></span> Otros meses</p>`, "centro");
-  decir(`Los meses verdes son la época de siembra de ${c.nombre.toLowerCase()} en tu zona, según el INIAP: ahí llega la lluvia justo cuando la semilla la necesita para nacer. Toca un mes.`);
+    <p class="leyenda"><span class="punto epoca"></span> ${t("Época de siembra en tu zona (INIAP)", "Planting season in your area (INIAP)")} <span class="punto"></span> ${t("Otros meses", "Other months")}</p>`, "centro");
+  decir(t(`Los meses verdes son la época de siembra de ${nom} en tu zona, según el INIAP: ahí llega la lluvia justo cuando la semilla la necesita para nacer. Toca un mes.`,
+    `The green months are the planting season for ${nom} in your area, according to INIAP: that's when rain arrives just as the seed needs it to sprout. Tap a month.`));
   document.querySelectorAll<SVGGElement>(".rueda .mes").forEach((g) => {
     const mes = Number(g.dataset.mes);
     const elegir = () => elegirMes(mes, meses.has(mes));
@@ -582,11 +625,13 @@ function abrirCalendario() {
 function elegirMes(mes: number, enEpoca: boolean) {
   const c = cultivos.get(J.crop!)!;
   if (!enEpoca) {
-    abrirPanel("Fuera de época", `<div class="detalle-semilla">${icono(c.id, "icono-grande")}
-      <p class="grande">En <b>${MESES[mes - 1]}</b> no es época de ${c.nombre.toLowerCase()}. Aquí se siembra <b>${esc(c.epoca_texto || "")}</b>.</p></div>
-      <div class="fila-botones"><button class="btn-juego" data-otro>${btn("calendario", "Elegir otro mes")}</button>
-      <button class="btn-juego borde" data-igual>Sembrar igual</button></div>`, "centro");
-    decir(`En ${MESES[mes - 1]} no es época: la semilla nacería sin lluvia o la cosecha caería en meses de helada. Si siembras igual, tendrás que regar más y la planta puede sufrir.`, "pensando");
+    const nom = nombreCorto(c.id), epoca = epocaTexto(c.meses, c.epoca_texto);
+    abrirPanel(t("Fuera de época", "Out of season"), `<div class="detalle-semilla">${icono(c.id, "icono-grande")}
+      <p class="grande">${t(`En <b>${nombreMes(mes - 1)}</b> no es época de ${nom}. Aquí se siembra <b>${esc(epoca)}</b>.`, `In <b>${nombreMes(mes - 1)}</b> it's not the season for ${nom}. Here it is planted in <b>${esc(epoca)}</b>.`)}</p></div>
+      <div class="fila-botones"><button class="btn-juego" data-otro>${btn("calendario", t("Elegir otro mes", "Choose another month"))}</button>
+      <button class="btn-juego borde" data-igual>${t("Sembrar igual", "Plant anyway")}</button></div>`, "centro");
+    decir(t(`En ${nombreMes(mes - 1)} no es época: la semilla nacería sin lluvia o la cosecha caería en meses de helada. Si siembras igual, tendrás que regar más y la planta puede sufrir.`,
+      `In ${nombreMes(mes - 1)} it's not the season: the seed would sprout without rain or the harvest would fall in frost months. If you plant anyway, you'll have to water more and the plant may suffer.`), "pensando");
     $("[data-otro]").addEventListener("click", abrirCalendario);
     $("[data-igual]").addEventListener("click", () => fijarMes(mes));
     return;
@@ -607,7 +652,8 @@ function pedirSiembra() {
   const c = cultivos.get(J.crop || "");
   if (!c || !J.mes) { abrirFamilias(); return; }
   pintarControles();
-  decir(`Tu chacra tiene cuatro parcelas cuadradas. Toca una parcela para sembrar ${c.nombre.toLowerCase()} en ${MESES[J.mes - 1]}, o el botón Sembrar todo para llenar las cuatro.`);
+  decir(t(`Tu chacra tiene cuatro parcelas cuadradas. Toca una parcela para sembrar ${nombreCorto(c.id)} en ${nombreMes(J.mes - 1)}, o el botón Sembrar todo para llenar las cuatro.`,
+    `Your farm has four square plots. Tap a plot to plant ${nombreCorto(c.id)} in ${nombreMes(J.mes - 1)}, or the Plant all button to fill the four.`));
 }
 
 async function pedirCiclo(i: number) {
@@ -621,9 +667,9 @@ async function pedirCiclo(i: number) {
 
 async function sembrar(i: number) {
   const pc = J.parcelas[i];
-  if (J.sembrado) { decir("La temporada ya empezó. Espera la cosecha para sembrar de nuevo."); return; }
+  if (J.sembrado) { decir(t("La temporada ya empezó. Espera la cosecha para sembrar de nuevo.", "The season has already started. Wait for the harvest to plant again.")); return; }
   if (!J.crop || !J.mes) { abrirFamilias(); return; }
-  if (pc.crop === J.crop) { decir("Esa parcela ya está sembrada. Toca otra o pulsa ¿Cuánta agua?"); return; }
+  if (pc.crop === J.crop) { decir(t("Esa parcela ya está sembrada. Toca otra o pulsa ¿Cuánta agua?", "That plot is already planted. Tap another one or press How much water?")); return; }
   const antes = pc.crop;
   pc.crop = J.crop;
   pc.riegos = [];
@@ -632,7 +678,7 @@ async function sembrar(i: number) {
     if (!J.anio) J.anio = c.anio;
   } catch {
     pc.crop = antes;
-    decir("No pude sembrar: revisa la señal y toca otra vez.", "preocupada");
+    decir(t("No pude sembrar: revisa la señal y toca otra vez.", "I couldn't plant: check your signal and tap again."), "preocupada");
     return;
   }
   guardarTodo();
@@ -641,7 +687,8 @@ async function sembrar(i: number) {
   sonido.siembra();
   const n = J.parcelas.filter((p) => p.crop).length;
   if (n >= N_PARCELAS) { empezarTemporada(); return; }  // las cuatro parcelas sembradas: el tiempo corre solo
-  decir(`¡Sembraste ${nombreCorto(J.crop)} en la parcela ${i + 1}! Puedes sembrar más parcelas, o dejar alguna con descanso.`);
+  decir(t(`¡Sembraste ${nombreCorto(J.crop)} en la parcela ${i + 1}! Puedes sembrar más parcelas, o dejar alguna con descanso.`,
+    `You planted ${nombreCorto(J.crop)} in plot ${i + 1}! You can plant more plots, or leave one resting.`));
 }
 
 async function sembrarTodas() {
@@ -658,24 +705,29 @@ function panelAgua() {
   const k = plant.length; // parcelas sembradas (el ciclo trae litros por parcela)
   const a = c.agua;
   const L = (x: number) => x * k;
-  abrirPanel("¿Cuánta agua necesita?", `<div class="agua-panel">
+  const nom = nombreCorto(c.cultivo.id);
+  abrirPanel(t("¿Cuánta agua necesita?", "How much water does it need?"), `<div class="agua-panel">
     ${icono(c.cultivo.id, "icono-grande")}
-    <div class="gota-fila"><span class="gota-ic">${ic("brote")}</span><div><b>${agua(L(a.litros_cultivo))}</b><p>bebe tu ${c.cultivo.nombre.toLowerCase()} en todo su ciclo: <b>${num(a.gasto_mm)} litros en cada metro cuadrado</b></p></div></div>
-    <div class="gota-fila"><span class="gota-ic">${ic("lluvia")}</span><div><b>${agua(L(a.litros_lluvia))}</b><p>le da la lluvia en un año normal (${num(a.lluvia_util_mm)} litros por m²)</p></div></div>
-    <div class="gota-fila destaca"><span class="gota-ic">${ic("gota")}</span><div><b>${a.riego_mm >= 5 ? agua(L(a.litros_riego)) : "casi nada"}</b><p>hay que regar en un año normal${a.riego_mm >= 5 ? ` (${num(a.riego_mm)} litros por m²)` : ""}</p></div></div>
-    <div class="gota-fila"><span class="gota-ic">${ic("desierto")}</span><div><b>${a.riego_seco_mm >= 5 ? agua(L(a.litros_riego_seco)) : "casi nada"}</b><p>en un año seco${a.riego_seco_mm >= 5 ? ` (${num(a.riego_seco_mm)} litros por m²)` : ""}</p></div></div>
-    <h3>Agua mes a mes</h3>
-    <div class="semaforo grande">${c.meses.map((m, j) => `<span class="sem ${c.estado_mes[j]}">${m.slice(0, 3)}</span>`).join("")}</div>
-    <p class="leyenda-mini"><span style="--c:#2e7d32">hay agua</span><span style="--c:#e0a100">justo</span><span style="--c:#c62828">falta agua</span></p>
-    <p class="leyenda">${VEREDICTO[c.veredicto]}</p>
-    <p class="fuente">${num(L(c.m2))} m² sembrados · NASA POWER 2001–2024 · FAO-56 · riego con 75 % de eficiencia</p>
-    ${enCurso ? "" : `<button class="btn-juego grande" data-crecer>${btn("sol", "¡A crecer!")}</button>`}</div>`, "centro");
+    <div class="gota-fila"><span class="gota-ic">${ic("brote")}</span><div><b>${agua(L(a.litros_cultivo))}</b><p>${t(`bebe tu ${nom} en todo su ciclo: <b>${num(a.gasto_mm)} litros en cada metro cuadrado</b>`, `your ${nom} drinks over its whole cycle: <b>${num(a.gasto_mm)} liters on each square meter</b>`)}</p></div></div>
+    <div class="gota-fila"><span class="gota-ic">${ic("lluvia")}</span><div><b>${agua(L(a.litros_lluvia))}</b><p>${t(`le da la lluvia en un año normal (${num(a.lluvia_util_mm)} litros por m²)`, `rain gives it in a normal year (${num(a.lluvia_util_mm)} liters per m²)`)}</p></div></div>
+    <div class="gota-fila destaca"><span class="gota-ic">${ic("gota")}</span><div><b>${a.riego_mm >= 5 ? agua(L(a.litros_riego)) : t("casi nada", "almost nothing")}</b><p>${t("hay que regar en un año normal", "you must water in a normal year")}${a.riego_mm >= 5 ? ` (${num(a.riego_mm)} ${t("litros por m²", "liters per m²")})` : ""}</p></div></div>
+    <div class="gota-fila"><span class="gota-ic">${ic("desierto")}</span><div><b>${a.riego_seco_mm >= 5 ? agua(L(a.litros_riego_seco)) : t("casi nada", "almost nothing")}</b><p>${t("en un año seco", "in a dry year")}${a.riego_seco_mm >= 5 ? ` (${num(a.riego_seco_mm)} ${t("litros por m²", "liters per m²")})` : ""}</p></div></div>
+    <h3>${t("Agua mes a mes", "Water month by month")}</h3>
+    <div class="semaforo grande">${c.meses.map((m, j) => `<span class="sem ${c.estado_mes[j]}">${mesApi(m)}</span>`).join("")}</div>
+    <p class="leyenda-mini"><span style="--c:#2e7d32">${t("hay agua", "enough water")}</span><span style="--c:#e0a100">${t("justo", "just enough")}</span><span style="--c:#c62828">${t("falta agua", "not enough water")}</span></p>
+    <p class="leyenda">${veredicto(c.veredicto)}</p>
+    <p class="fuente">${num(L(c.m2))} m² ${t("sembrados", "planted")} · NASA POWER 2001–2024 · FAO-56 · ${t("riego con 75 % de eficiencia", "irrigation at 75 % efficiency")}</p>
+    ${enCurso ? "" : `<button class="btn-juego grande" data-crecer>${btn("sol", t("¡A crecer!", "Grow!"))}</button>`}</div>`, "centro");
   document.querySelector("[data-crecer]")?.addEventListener("click", empezarTemporada);
   decirVarias([
-    `Las plantas toman agua de la tierra con sus raíces y la sueltan por las hojas, como si sudaran. Cada metro cuadrado de tu ${c.cultivo.nombre.toLowerCase()} bebe ${num(a.gasto_mm)} litros en todo su ciclo: en toda tu parcela son ${agua(L(a.litros_cultivo))}.`,
-    a.riego_mm >= 5 ? `La lluvia de un año normal no alcanza: hay que regar unos ${agua(L(a.litros_riego))}. Mira los meses en rojo: ahí la tierra se queda sin agua.`
-      : `¡En un año normal la lluvia casi alcanza! Pero en un año seco habría que regar ${agua(L(a.litros_riego_seco))}. Por eso conviene guardar agua.`,
-    "Cuando avances el tiempo, mira la barra de agua del tanque. Si una planta se pone café y se dobla, tiene sed: toca Regar.",
+    t(`Las plantas toman agua de la tierra con sus raíces y la sueltan por las hojas, como si sudaran. Cada metro cuadrado de tu ${nom} bebe ${num(a.gasto_mm)} litros en todo su ciclo: en toda tu parcela son ${agua(L(a.litros_cultivo))}.`,
+      `Plants take water from the soil with their roots and release it through their leaves, as if sweating. Each square meter of your ${nom} drinks ${num(a.gasto_mm)} liters over its whole cycle: on your whole plot that is ${agua(L(a.litros_cultivo))}.`),
+    a.riego_mm >= 5 ? t(`La lluvia de un año normal no alcanza: hay que regar unos ${agua(L(a.litros_riego))}. Mira los meses en rojo: ahí la tierra se queda sin agua.`,
+      `Rain in a normal year isn't enough: you must water about ${agua(L(a.litros_riego))}. Look at the red months: that's when the soil runs out of water.`)
+      : t(`¡En un año normal la lluvia casi alcanza! Pero en un año seco habría que regar ${agua(L(a.litros_riego_seco))}. Por eso conviene guardar agua.`,
+        `In a normal year the rain is almost enough! But in a dry year you would need to water ${agua(L(a.litros_riego_seco))}. That's why it's good to store water.`),
+    t("Cuando avances el tiempo, mira la barra de agua del tanque. Si una planta se pone café y se dobla, tiene sed: toca Regar.",
+      "When time moves on, watch the tank's water bar. If a plant turns brown and droops, it is thirsty: tap Water."),
   ]);
 }
 
@@ -692,16 +744,16 @@ function empezarTemporada() {
     if (p.crop === "descanso") { cambio += 10; return; }
     if (c.fija_n) { cambio += 12; ganar("leguminosa"); }
     if (prev && prev !== "descanso") {
-      if (cultivos.get(prev)?.familia === c.familia) { cambio -= 15; razones.push(`la ${c.nombre.toLowerCase()} repite la familia de antes y eso trae plagas`); }
+      if (cultivos.get(prev)?.familia === c.familia) { cambio -= 15; razones.push(t(`la ${nombreCorto(c.id)} repite la familia de antes y eso trae plagas`, `the ${nombreCorto(c.id)} repeats the previous family and that brings pests`)); }
       else cambio += 5;
     }
   });
   if (desnuda && (parcelaInfo?.clima?.meses_lluvia?.length || 0) > 0) {
     cambio -= 5;
-    razones.push("hay parcelas sin cubrir y los aguaceros lavan la tierra desnuda");
+    razones.push(t("hay parcelas sin cubrir y los aguaceros lavan la tierra desnuda", "some plots are uncovered and downpours wash away bare soil"));
   }
   J.salud = Math.max(0, Math.min(100, J.salud + cambio));
-  J.tanque = J.tanqueMax = plantadas.reduce((s, [, i]) => s + (ciclos.get(i)?.tanque_litros || 0), 0);
+  J.tanque = J.tanqueMax = plantadas.reduce((acc, [, i]) => acc + (ciclos.get(i)?.tanque_litros || 0), 0);
   J.sembrado = true;
   J.dia = 0;
   paso("crecer");
@@ -711,7 +763,7 @@ function empezarTemporada() {
   pintarControles();
   const nota = t(" El tiempo ya corre solo: mira cómo crece. Con el botón de pausa lo detienes, y la gota de arriba te dice cuánta agua necesita.",
     " Time is already running by itself: watch it grow. The pause button stops it, and the drop at the top tells you how much water it needs.");
-  decir(razones.length ? `Ojo: ${razones[0]}.${nota}` : `¡Listo, a sembrar!${nota}`);
+  decir(razones.length ? t(`Ojo: ${razones[0]}.${nota}`, `Careful: ${razones[0]}.${nota}`) : t(`¡Listo, a sembrar!${nota}`, `All set, let's plant!${nota}`));
   detenerAuto();
   iniciarAuto();   // directamente en play: el jugador no tiene que tocar nada
 }
@@ -776,8 +828,8 @@ function eventos(antes: VistaParcela[]): boolean {
     if (v.lista && !a.lista) { decir(t(`¡La ${nom} está lista para cosechar! Toca «Cosechar todo» o la parcela para usar la azada.`, `The ${nom} is ready to harvest! Tap "Harvest all" or the plot to use the hoe.`)); parar = true; return; }
     if (v.marchita && !a.marchita) { decir(t(`¡Arrarray! ¡Qué sequía! Hace días que no llueve y la tierra de la ${nom} se quedó sin agua. Sus hojas se doblan. Toca Regar para darle de beber.`,
       `Arrarray! What a drought! It hasn't rained for days and the soil of the ${nom} has run out of water. Its leaves are drooping. Tap Water to give it a drink.`), "preocupada"); parar = true; return; }
-    if (v.etapa !== a.etapa && v.etapa === 2) decir(`¡La ${nom} ya está creciendo! Ahora saca hojas nuevas y sus raíces buscan agua más abajo.`);
-    if (v.etapa !== a.etapa && v.etapa === 3) decir(`¡La ${nom} está floreciendo! Es cuando más agua toma: si le falta ahora, la cosecha sale pequeña.`);
+    if (v.etapa !== a.etapa && v.etapa === 2) decir(t(`¡La ${nom} ya está creciendo! Ahora saca hojas nuevas y sus raíces buscan agua más abajo.`, `The ${nom} is growing now! It sprouts new leaves and its roots look for water deeper down.`));
+    if (v.etapa !== a.etapa && v.etapa === 3) decir(t(`¡La ${nom} está floreciendo! Es cuando más agua toma: si le falta ahora, la cosecha sale pequeña.`, `The ${nom} is flowering! That's when it drinks the most: if it lacks water now, the harvest will be small.`));
   });
   if (hoy && !parar) {
     if (hoy.calor && !avisos.has(`c${hoy.fecha.slice(0, 7)}`)) {
@@ -786,11 +838,12 @@ function eventos(antes: VistaParcela[]): boolean {
         `Arrarray! So hot! Today it reached ${num(hoy.tmax)} degrees. With so much sun the soil loses water faster and plants get tired.`), "preocupada");
     } else if (mesSeco(hoy) && !avisos.has(`s${hoy.fecha.slice(0, 7)}`)) {
       avisos.add(`s${hoy.fecha.slice(0, 7)}`);
-      decir(t(`¡Arrarray! Empieza el tiempo seco: en ${MESES[Number(hoy.fecha.slice(5, 7)) - 1]} casi no llueve y el sol seca la tierra. Mira las barras de humedad y riega cuando haga falta.`,
-        `Arrarray! The dry season begins: in ${MESES_EN[Number(hoy.fecha.slice(5, 7)) - 1]} it hardly rains and the sun dries the soil. Watch the moisture bars and water when needed.`), "preocupada");
+      decir(t(`¡Arrarray! Empieza el tiempo seco: en ${nombreMes(Number(hoy.fecha.slice(5, 7)) - 1)} casi no llueve y el sol seca la tierra. Mira las barras de humedad y riega cuando haga falta.`,
+        `Arrarray! The dry season begins: in ${nombreMes(Number(hoy.fecha.slice(5, 7)) - 1)} it hardly rains and the sun dries the soil. Watch the moisture bars and water when needed.`), "preocupada");
     } else if (hoy.lluvia >= 10 && J.dia - ultimoAguacero > 7) {
       ultimoAguacero = J.dia;
-      decir(`¡Achachay! Un aguacero. Cayeron ${num(hoy.lluvia)} litros en cada metro cuadrado. La tierra cubierta de plantas no se lava; la tierra desnuda se va con el agua.`, "lluvia");
+      decir(t(`¡Achachay! Un aguacero. Cayeron ${num(hoy.lluvia)} litros en cada metro cuadrado. La tierra cubierta de plantas no se lava; la tierra desnuda se va con el agua.`,
+        `Achachay! A downpour. ${num(hoy.lluvia)} liters fell on each square meter. Soil covered with plants doesn't wash away; bare soil goes with the water.`), "lluvia");
     }
   }
   return parar;
@@ -816,7 +869,7 @@ function iniciarAuto() {
 function detenerAuto() { if (auto) { clearInterval(auto); auto = null; } const b = document.querySelector("#btn-auto"); if (b) b.innerHTML = ic("play"); }
 
 async function regar() {
-  if (!J.sembrado) { decir("Primero siembra y empieza a crecer."); return; }
+  if (!J.sembrado) { decir(t("Primero siembra y empieza a crecer.", "First plant and let it start growing.")); return; }
   const regadas: string[] = [];
   let gastado = 0;
   for (const [i, p] of J.parcelas.entries()) {
@@ -838,8 +891,8 @@ async function regar() {
   }
   guardarTodo();
   pintarMundo();
-  if (!regadas.length) decir(J.tanque <= 0 ? "El tanque está vacío. Hay que esperar la lluvia." : "La tierra todavía está húmeda. No hace falta regar.");
-  else { sonido.riego(); decir(`Regamos la ${regadas[0]} con ${agua(gastado)} de agua. Ahora la tierra está húmeda y las raíces pueden beber.`); }
+  if (!regadas.length) decir(J.tanque <= 0 ? t("El tanque está vacío. Hay que esperar la lluvia.", "The tank is empty. We have to wait for rain.") : t("La tierra todavía está húmeda. No hace falta regar.", "The soil is still moist. No need to water."));
+  else { sonido.riego(); decir(t(`Regamos la ${regadas[0]} con ${agua(gastado)} de agua. Ahora la tierra está húmeda y las raíces pueden beber.`, `We watered the ${regadas[0]} with ${agua(gastado)} of water. Now the soil is moist and the roots can drink.`)); }
 }
 
 // ---------------------------------------------------------------- 9. cosecha
@@ -847,11 +900,13 @@ function tocarParcela(i: number) {
   const p = J.parcelas[i];
   if (vista(i).lista && !p.cosechada) { cosechar([p.crop!]); return; }
   if (!J.sembrado) { if (J.paso === "sembrar" || J.paso === "agua") sembrar(i); else seguirHistoria(); return; }
-  if (!p.crop || p.cosechada) { decir("Esta parcela está vacía."); return; }
+  if (!p.crop || p.cosechada) { decir(t("Esta parcela está vacía.", "This plot is empty.")); return; }
   const c = ciclos.get(i)!;
   const d = c.dias[Math.min(J.dia, c.dias.length - 1)];
   const h = Math.round(d.humedad * 100);
-  decir(`${cap(nombreCorto(p.crop))}: ${d.etapa}. La tierra tiene ${h} de cada 100 partes del agua que puede guardar${h < 30 ? ": está muy seca, ¡riégala!" : h < 60 ? ": todavía aguanta." : ": está bien húmeda."}`);
+  const et = ETAPA_TXT[d.etapa] || [d.etapa, d.etapa];
+  decir(t(`${cap(nombreCorto(p.crop))}: ${et[0].toLowerCase()}. La tierra tiene ${h} de cada 100 partes del agua que puede guardar${h < 30 ? ": está muy seca, ¡riégala!" : h < 60 ? ": todavía aguanta." : ": está bien húmeda."}`,
+    `${cap(nombreCorto(p.crop))}: ${et[1].toLowerCase()}. The soil holds ${h} out of every 100 parts of the water it can store${h < 30 ? ": it's very dry, water it!" : h < 60 ? ": it can still hold on." : ": it's nicely moist."}`));
 }
 
 type Cosecha = { id: string; n: number; puntaje: number; estrellas: number; secos: number; dias: number; calor: number; anio: number;
@@ -922,20 +977,21 @@ async function cosechar(ids: string[]) {
 
 function mostrarCosechas(cola: Cosecha[], k: number) {
   const c = cola[k], nom = nombreCorto(c.id);
-  const msg = c.puntaje >= 85 ? "¡Excelente cosecha! Cuidaste muy bien el agua."
-    : c.puntaje >= 60 ? "Buena cosecha. En algunos días le faltó agua."
-    : "La planta pasó sed. La próxima vez riega cuando la tierra esté seca.";
-  const epoca = c.en_epoca ? "" : ` Sembraste fuera de época: aquí se siembra ${c.epoca}.`;
+  const msg = c.puntaje >= 85 ? t("¡Excelente cosecha! Cuidaste muy bien el agua.", "Excellent harvest! You took great care of the water.")
+    : c.puntaje >= 60 ? t("Buena cosecha. En algunos días le faltó agua.", "Good harvest. On some days it lacked water.")
+    : t("La planta pasó sed. La próxima vez riega cuando la tierra esté seca.", "The plant went thirsty. Next time water when the soil is dry.");
+  const ep = epocaTexto(cultivos.get(c.id)?.meses, c.epoca);
+  const epoca = c.en_epoca ? "" : t(` Sembraste fuera de época: aquí se siembra ${ep}.`, ` You planted out of season: here it is planted in ${ep}.`);
   const hay = k + 1 < cola.length;
-  abrirPanel("¡Cosecha!", `<div class="cosecha">
+  abrirPanel(t("¡Cosecha!", "Harvest!"), `<div class="cosecha">
     <div class="cosecha-icono">${icono(c.id, "icono-grande")}</div>
     <p class="cosecha-titulo">${c.n > 1 ? t(`${c.n} parcelas de ${esc(nom)}`, `${c.n} plots of ${esc(nom)}`) : t(`1 parcela de ${esc(nom)}`, `1 plot of ${esc(nom)}`)}</p>
     <div class="estrellas">${ic("estrella").repeat(c.estrellas)}${ic("estrellaVacia").repeat(3 - c.estrellas)}</div>
-    <p class="grande"><b>${c.puntaje}</b> puntos${c.n > 1 ? ` <small>${t("(promedio de las parcelas)", "(average of the plots)")}</small>` : ""}</p>
+    <p class="grande"><b>${c.puntaje}</b> ${t("puntos", "points")}${c.n > 1 ? ` <small>${t("(promedio de las parcelas)", "(average of the plots)")}</small>` : ""}</p>
     <p>${esc(msg + epoca)}</p>
-    <p class="veredicto">En los años de la NASA, para este mes: <b>${VEREDICTO[c.veredicto] || ""}</b></p>
-    <p class="fuente">Días con sed: ${c.secos} de ${c.dias} · días de calor: ${c.calor} · año ${c.anio} de NASA POWER</p>
-    <button class="btn-juego grande" data-ok>${btn("pulgar", hay ? t("Siguiente cosecha", "Next harvest") : "Seguir")}</button></div>`, "centro");
+    <p class="veredicto">${t("En los años de la NASA, para este mes:", "In the NASA years, for this month:")} <b>${veredicto(c.veredicto)}</b></p>
+    <p class="fuente">${t(`Días con sed: ${c.secos} de ${c.dias} · días de calor: ${c.calor} · año ${c.anio} de NASA POWER`, `Thirsty days: ${c.secos} of ${c.dias} · hot days: ${c.calor} · NASA POWER year ${c.anio}`)}</p>
+    <button class="btn-juego grande" data-ok>${btn("pulgar", hay ? t("Siguiente cosecha", "Next harvest") : t("Seguir", "Continue"))}</button></div>`, "centro");
   $("[data-ok]").addEventListener("click", () => {
     cerrarPanel();
     if (hay) setTimeout(() => mostrarCosechas(cola, k + 1), 250);
@@ -949,32 +1005,37 @@ function mostrarCosechas(cola: Cosecha[], k: number) {
 async function leccionRotacion() {
   const ultimo = J.crop || [...J.parcelas].reverse().find((p) => p.crop)?.crop;
   if (!ultimo || !J.mes) { abrirFamilias(); return; }
-  abrirPanel("Rotar para cuidar la tierra", `<div class="cargando-mundo chico"><div class="girar"></div></div>`);
+  const titulo = t("Rotar para cuidar la tierra", "Rotate to care for the soil");
+  abrirPanel(titulo, `<div class="cargando-mundo chico"><div class="girar"></div></div>`);
   let rots: any[] = [];
   try {
     const cu = await consultar("cultivo", { crop: ultimo, mes: J.mes });
     rots = cu.rotaciones || [];
     rots.forEach((r: any) => r.pasos.forEach((s: any) => cultivos.set(s.id, { ...cultivos.get(s.id), ...s })));
   } catch { /* sin señal: queda la lección */ }
-  const p = abrirPanel("Rotar para cuidar la tierra", `
-    <div class="leccion">${ic("foco", "ic-leccion")}<div><b>¿Por qué rotar?</b> Si siembras siempre lo mismo, la tierra se cansa: pierde nitrógeno, se llena de
-      plagas y la lluvia se la lleva. Al cambiar de familia y sembrar leguminosas, el suelo se recupera.</div></div>
+  // la API manda el nombre de la leguminosa en español: se busca su id para mostrarlo en el idioma actual
+  const nombreLeg = (n: string) => { const id = [...cultivos.values()].find((c) => c.nombre.toLowerCase() === n.toLowerCase())?.id; return id ? nombreCultivo(id) : n; };
+  const p = abrirPanel(titulo, `
+    <div class="leccion">${ic("foco", "ic-leccion")}<div>${t(
+      "<b>¿Por qué rotar?</b> Si siembras siempre lo mismo, la tierra se cansa: pierde nitrógeno, se llena de plagas y la lluvia se la lleva. Al cambiar de familia y sembrar leguminosas, el suelo se recupera.",
+      "<b>Why rotate?</b> If you always plant the same thing, the soil gets tired: it loses nitrogen, fills with pests and the rain carries it away. By changing family and planting legumes, the soil recovers.")}</div></div>
     <section class="nitro">
-      <h3>${ic("nitrogeno", "ic-linea")} El secreto de las leguminosas</h3>
+      <h3>${ic("nitrogeno", "ic-linea")} ${t("El secreto de las leguminosas", "The secret of legumes")}</h3>
       <ol class="nitro-pasos">
-        <li><div class="nitro-dibujo aire"><span>N</span><span>N</span><span>N</span></div><b>1. El aire</b><p>tiene mucho nitrógeno, pero las plantas no lo pueden comer directo.</p></li>
-        <li><div class="nitro-dibujo">${icono("fijadores", "icono-nitro")}</div><b>2. Las raíces</b><p>de haba, chocho, fréjol o vicia tienen bolitas (nódulos) con bacterias que lo atrapan.</p></li>
-        <li><div class="nitro-dibujo">${icono("papa", "icono-nitro")}</div><b>3. El abono queda</b><p>en la tierra: la papa o el maíz que siembras después crecen más verdes.</p></li>
+        <li><div class="nitro-dibujo aire"><span>N</span><span>N</span><span>N</span></div><b>${t("1. El aire", "1. The air")}</b><p>${t("tiene mucho nitrógeno, pero las plantas no lo pueden comer directo.", "has lots of nitrogen, but plants can't eat it directly.")}</p></li>
+        <li><div class="nitro-dibujo">${icono("fijadores", "icono-nitro")}</div><b>${t("2. Las raíces", "2. The roots")}</b><p>${t("de haba, chocho, fréjol o vicia tienen bolitas (nódulos) con bacterias que lo atrapan.", "of fava bean, lupin, bean or vetch have little balls (nodules) with bacteria that trap it.")}</p></li>
+        <li><div class="nitro-dibujo">${icono("papa", "icono-nitro")}</div><b>${t("3. El abono queda", "3. The fertilizer stays")}</b><p>${t("en la tierra: la papa o el maíz que siembras después crecen más verdes.", "in the soil: the potato or corn you plant afterwards grows greener.")}</p></li>
       </ol>
     </section>
-    <div class="medidor"><span>Salud de tu tierra</span><div class="barra"><i style="width:${J.salud}%;background:${colorSuelo(J.salud)}"></i></div><b>${J.salud}</b></div>
-    <h3>Pachita te recomienda 3 rotaciones</h3>
+    <div class="medidor"><span>${t("Salud de tu tierra", "Your soil's health")}</span><div class="barra"><i style="width:${J.salud}%;background:${colorSuelo(J.salud)}"></i></div><b>${J.salud}</b></div>
+    <h3>${t("Pachita te recomienda 3 rotaciones", "Pachita recommends 3 rotations")}</h3>
     <div class="rotaciones">${rots.slice(0, 3).map((r, k) => `<article class="rotacion">
-      <p class="rot-titulo">Opción ${k + 1}${r.leguminosa ? ` · ${ic("nitrogeno", "ic-linea")} con ${esc(r.leguminosa.toLowerCase())}` : ""}</p>
-      <div class="rot-pasos">${r.pasos.map((s: any, j: number) => `${j ? '<span class="flecha">→</span>' : ""}<span class="rot-paso">${icono(s.id, "icono-mini")}<b>${esc(s.nombre)}</b><small>desde ${esc(s.desde)}</small></span>`).join("")}</div>
-      ${r.repite_familia ? `<p class="malo">${ic("alerta", "ic-linea")} Repite una familia</p>` : `<p class="bueno">${ic("check", "ic-linea")} Cambia de familia en cada paso</p>`}
-      <button class="btn-juego" data-rot="${k}">Elegir esta</button></article>`).join("") || "<p>No pude traer las rotaciones. Revisa la señal.</p>"}</div>
-    <p class="fuente">Rotaciones calculadas con los datos de tu parcela (NASA POWER, FAO-56) y el calendario del INIAP. La salud de la tierra son puntos del juego.</p>`);
+      <p class="rot-titulo">${t("Opción", "Option")} ${k + 1}${r.leguminosa ? ` · ${ic("nitrogeno", "ic-linea")} ${t("con", "with")} ${esc(nombreLeg(r.leguminosa).toLowerCase())}` : ""}</p>
+      <div class="rot-pasos">${r.pasos.map((s: any, j: number) => `${j ? '<span class="flecha">→</span>' : ""}<span class="rot-paso">${icono(s.id, "icono-mini")}<b>${esc(nombreDe(s.id, s.nombre))}</b><small>${t("desde", "from")} ${esc(mesApi(s.desde))}</small></span>`).join("")}</div>
+      ${r.repite_familia ? `<p class="malo">${ic("alerta", "ic-linea")} ${t("Repite una familia", "Repeats a family")}</p>` : `<p class="bueno">${ic("check", "ic-linea")} ${t("Cambia de familia en cada paso", "Changes family at every step")}</p>`}
+      <button class="btn-juego" data-rot="${k}">${t("Elegir esta", "Choose this one")}</button></article>`).join("") || `<p>${t("No pude traer las rotaciones. Revisa la señal.", "I couldn't get the rotations. Check your signal.")}</p>`}</div>
+    <p class="fuente">${t("Rotaciones calculadas con los datos de tu parcela (NASA POWER, FAO-56) y el calendario del INIAP. La salud de la tierra son puntos del juego.",
+      "Rotations computed with your plot's data (NASA POWER, FAO-56) and the INIAP calendar. Soil health is game points.")}</p>`);
   p.querySelectorAll<HTMLButtonElement>("[data-rot]").forEach((b) => b.addEventListener("click", () => {
     J.rotacion = rots[Number(b.dataset.rot)].pasos.map((s: any) => s.id);
     J.rotPaso = 0;   // el primer cultivo de la rotación es el que acabas de cosechar
@@ -982,9 +1043,12 @@ async function leccionRotacion() {
     certificado();
   }));
   decirVarias([
-    "Las plantas necesitan nitrógeno para crecer verdes y fuertes, como nosotros necesitamos comida. Si siembras papa tras papa, la tierra se queda sin nitrógeno y se llena de plagas.",
-    "El aire está lleno de nitrógeno, pero las plantas no lo pueden comer. Las leguminosas, como el haba, el chocho y el fréjol, tienen en sus raíces bolitas con bacterias amigas que lo atrapan.",
-    "Cuando cosechas, esas raíces se quedan en la tierra como abono natural. Por eso, después de una leguminosa, la papa o el maíz crecen mejor. ¡Eso es rotar! Elige una de estas tres rotaciones.",
+    t("Las plantas necesitan nitrógeno para crecer verdes y fuertes, como nosotros necesitamos comida. Si siembras papa tras papa, la tierra se queda sin nitrógeno y se llena de plagas.",
+      "Plants need nitrogen to grow green and strong, just like we need food. If you plant potato after potato, the soil runs out of nitrogen and fills with pests."),
+    t("El aire está lleno de nitrógeno, pero las plantas no lo pueden comer. Las leguminosas, como el haba, el chocho y el fréjol, tienen en sus raíces bolitas con bacterias amigas que lo atrapan.",
+      "The air is full of nitrogen, but plants can't eat it. Legumes, like fava beans, lupin and beans, have little balls with friendly bacteria in their roots that trap it."),
+    t("Cuando cosechas, esas raíces se quedan en la tierra como abono natural. Por eso, después de una leguminosa, la papa o el maíz crecen mejor. ¡Eso es rotar! Elige una de estas tres rotaciones.",
+      "When you harvest, those roots stay in the soil as natural fertilizer. That's why after a legume, potato or corn grow better. That's rotating! Choose one of these three rotations."),
   ]);
 }
 
@@ -996,7 +1060,7 @@ function rotacionPendiente(): { id: string; k: number; n: number } | null {
   const k = rotPaso() + 1;
   return k < J.rotacion.length ? { id: J.rotacion[k], k, n: J.rotacion.length } : null;
 }
-const nombreCultivo = (id: string) => cultivos.get(id)?.nombre || id;
+const nombreCultivo = (id: string) => nombreDe(id, cultivos.get(id)?.nombre || id);
 
 /** Al terminar la cosecha: sigue la rotación elegida; si no hay (o ya terminó), enseña a elegir una. */
 function rotarTierra() {
@@ -1037,7 +1101,7 @@ function rotacionCompleta() {
   abrirPanel(t("¡Rotación completa!", "Rotation complete!"), `
     <div class="leccion">${ic("medalla", "ic-leccion")}<div><b>${t("¡Lo lograste!", "You did it!")}</b> ${t("Sembraste y cosechaste toda la rotación: la tierra descansó, se alimentó y las plagas no se repitieron.", "You planted and harvested the whole rotation: the soil rested, was fed and pests did not repeat.")}</div></div>
     ${tiraRotacion()}
-    <div class="medidor"><span>Salud de tu tierra</span><div class="barra"><i style="width:${J.salud}%;background:${colorSuelo(J.salud)}"></i></div><b>${J.salud}</b></div>
+    <div class="medidor"><span>${t("Salud de tu tierra", "Your soil's health")}</span><div class="barra"><i style="width:${J.salud}%;background:${colorSuelo(J.salud)}"></i></div><b>${J.salud}</b></div>
     <div class="fila-botones"><button class="btn-juego grande" data-cert>${btn("medalla", t("Ver mi certificado", "See my certificate"))}</button></div>
     <div class="fila-botones"><button class="btn-juego borde" data-otra>${btn("rotar", t("Elegir una rotación nueva", "Choose a new rotation"))}</button></div>`, "centro");
   $("[data-cert]").addEventListener("click", () => { paso("certificado"); certificado(); });
@@ -1064,7 +1128,7 @@ function svgCertificado(vertical = certificadoVertical()): string {
   const hoy = new Date();
   const rot = (J.rotacion || []).map((id) => nombreCultivo(id));
   const W = vertical ? 560 : 800, Hh = vertical ? 800 : 560, cx = W / 2;
-  const mes = t(MESES[hoy.getMonth()], MESES_EN[hoy.getMonth()]);
+  const mes = nombreMes(hoy.getMonth());
   const fechaTxt = t(`${hoy.getDate()} de ${mes} de ${hoy.getFullYear()}`, `${mes} ${hoy.getDate()}, ${hoy.getFullYear()}`);
   const estrellas = Array.from({ length: 26 }, (_, k) => `<circle cx="${(k * 97) % (W - 20) + 10}" cy="${(k * 53) % (vertical ? 120 : 90) + 30}" r="${1 + (k % 3)}" fill="#fff" opacity=".8"/>`).join("");
   const medallas = (y: number) => J.medallas.map((m, k, todas) => icG(MEDALLAS[m]?.icono || "medalla", cx - todas.length * 20 + k * 40, y, 34)).join("");
@@ -1121,12 +1185,13 @@ function svgCertificado(vertical = certificadoVertical()): string {
 async function certificado() {
   ganar("cosmico");
   await cargarPachitaDatos();
-  const p = abrirPanel("¡Eres Granjero Cósmico!", `<div class="certificado">${svgCertificado()}</div>
-    <div class="fila-botones"><button class="btn-juego" data-bajar>${btn("descargar", "Descargar")}</button>
-      ${rotacionPendiente() ? `<button class="btn-juego borde" data-seguir>${btn("semilla", "Sembrar la rotación")}</button>` : ""}
-      <button class="btn-juego borde" data-nueva>${btn("cohete", "Nueva granja")}</button></div>`, "certificado-panel");
+  const p = abrirPanel(t("¡Eres Granjero Cósmico!", "You are a Cosmic Farmer!"), `<div class="certificado">${svgCertificado()}</div>
+    <div class="fila-botones"><button class="btn-juego" data-bajar>${btn("descargar", t("Descargar", "Download"))}</button>
+      ${rotacionPendiente() ? `<button class="btn-juego borde" data-seguir>${btn("semilla", t("Sembrar la rotación", "Plant the rotation"))}</button>` : ""}
+      <button class="btn-juego borde" data-nueva>${btn("cohete", t("Nueva granja", "New farm"))}</button></div>`, "certificado-panel");
   lanzarConfeti();
-  decir(`¡Felicitaciones, granja ${J.granja}! Aprendiste a leer los datos de la NASA, a regar cuando la tierra tiene sed y a rotar con leguminosas. Ganaste el certificado de Granjero Cósmico. ¡La tierra te lo agradece!`);
+  decir(t(`¡Felicitaciones, granja ${J.granja}! Aprendiste a leer los datos de la NASA, a regar cuando la tierra tiene sed y a rotar con leguminosas. Ganaste el certificado de Granjero Cósmico. ¡La tierra te lo agradece!`,
+    `Congratulations, farm ${J.granja}! You learned to read NASA data, to water when the soil is thirsty and to rotate with legumes. You won the Cosmic Farmer certificate. The land thanks you!`));
   p.querySelector("[data-bajar]")!.addEventListener("click", descargarCertificado);
   p.querySelector("[data-seguir]")?.addEventListener("click", nuevaTemporada);
   p.querySelector("[data-nueva]")!.addEventListener("click", reiniciar);
@@ -1184,6 +1249,7 @@ async function nuevaTemporada() {
 }
 
 function reiniciar() {
+  detenerAuto();
   J = nuevo();
   guardarJuego(J);
   ciclos.clear();
@@ -1202,19 +1268,19 @@ function ganar(id: string) {
   J.medallas.push(id);
   guardarJuego(J);
   const m = MEDALLAS[id];
-  const t = $("#medalla");
-  t.innerHTML = `<span>${ic(m.icono, "ic-medalla")}</span><div><b>${m.nombre}</b><p>${m.texto}</p></div>`;
-  t.hidden = false;
-  t.classList.remove("aparece"); void t.offsetWidth; t.classList.add("aparece");
-  setTimeout(() => (t.hidden = true), 3500);
+  const caja = $("#medalla");
+  caja.innerHTML = `<span>${ic(m.icono, "ic-medalla")}</span><div><b>${t(m.nombre, m.nombreEn)}</b><p>${t(m.texto, m.textoEn)}</p></div>`;
+  caja.hidden = false;
+  caja.classList.remove("aparece"); void caja.offsetWidth; caja.classList.add("aparece");
+  setTimeout(() => (caja.hidden = true), 3500);
 }
 
 function abrirLogros() {
-  abrirPanel("Mis medallas", `<div class="medallas">${Object.entries(MEDALLAS).map(([id, m]) =>
-    `<div class="medalla-carta ${J.medallas.includes(id) ? "ganada" : ""}"><span>${ic(m.icono, "ic-medalla")}</span><b>${m.nombre}</b><p>${m.texto}</p></div>`).join("")}</div>
-    <p class="ayuda">Granja ${esc(J.granja)} · cosechas: ${J.cosechas} · temporada ${J.temporada}</p>
-    ${J.paso === "certificado" ? `<button class="btn-juego" data-cert>${btn("medalla", "Ver mi certificado")}</button>` : ""}
-    <button class="btn-juego borde" data-reiniciar>${btn("cohete", "Empezar otra granja")}</button>`);
+  abrirPanel(t("Mis medallas", "My medals"), `<div class="medallas">${Object.entries(MEDALLAS).map(([id, m]) =>
+    `<div class="medalla-carta ${J.medallas.includes(id) ? "ganada" : ""}"><span>${ic(m.icono, "ic-medalla")}</span><b>${t(m.nombre, m.nombreEn)}</b><p>${t(m.texto, m.textoEn)}</p></div>`).join("")}</div>
+    <p class="ayuda">${t("Granja", "Farm")} ${esc(J.granja)} · ${t("cosechas", "harvests")}: ${J.cosechas} · ${t("temporada", "season")} ${J.temporada}</p>
+    ${J.paso === "certificado" ? `<button class="btn-juego" data-cert>${btn("medalla", t("Ver mi certificado", "See my certificate"))}</button>` : ""}
+    <button class="btn-juego borde" data-reiniciar>${btn("cohete", t("Empezar otra granja", "Start another farm"))}</button>`);
   document.querySelector("[data-cert]")?.addEventListener("click", certificado);
   $("[data-reiniciar]").addEventListener("click", reiniciar);
 }
@@ -1223,9 +1289,10 @@ function abrirLogros() {
 function pintarHud() {
   const lugarTxt = document.querySelector<HTMLElement>("#hud-lugar");
   if (!lugarTxt) return;
-  lugarTxt.textContent = J.granja || "Mi granja";
+  lugarTxt.textContent = J.granja || t("Mi granja", "My farm");
   const hoy = diaActual();
-  $("#hud-fecha").textContent = hoy ? fecha(hoy.fecha) : J.mes ? `Siembra en ${MESES[J.mes - 1]}` : lugar().nombre || "";
+  const lugarNombre = ["Mi chacra", "My farm"].includes(lugar().nombre || "") ? t("Mi chacra", "My farm") : lugar().nombre || "";
+  $("#hud-fecha").textContent = hoy ? fecha(hoy.fecha) : J.mes ? t(`Siembra en ${nombreMes(J.mes - 1)}`, `Planting in ${nombreMes(J.mes - 1)}`) : lugarNombre;
   $("#hud-tanque").style.width = `${J.tanqueMax ? (J.tanque / J.tanqueMax) * 100 : 0}%`;
   $("#hud-tanque-txt").textContent = J.tanqueMax ? litrosCortos(J.tanque) : "—";
   $("#hud-tanque-txt").title = J.tanqueMax ? agua(J.tanque) : "";
@@ -1237,9 +1304,9 @@ function pintarHud() {
   if (c && J.sembrado) {
     const d = c.dias[Math.min(J.dia, c.dias.length - 1)];
     const mesHoy = MESES_CORTOS[Number(d.fecha.slice(5, 7)) - 1];
-    sem.innerHTML = c.meses.map((m, k) => `<span class="sem ${c.estado_mes[k]} ${m.slice(0, 3) === mesHoy ? "hoy" : ""}" title="${m}">${m.slice(0, 3)}</span>`).join("")
-      + `<span class="sem-temp" title="Temperatura máxima de hoy">${ic("termometro", "ic-mini")} ${num(d.tmax)} °C</span>`;
-    sem.innerHTML = `<span class="sem-titulo">Agua por mes</span>` + sem.innerHTML;
+    sem.innerHTML = c.meses.map((m, k) => `<span class="sem ${c.estado_mes[k]} ${m.slice(0, 3) === mesHoy ? "hoy" : ""}" title="${mesDeApi(m)}">${mesApi(m)}</span>`).join("")
+      + `<span class="sem-temp" title="${t("Temperatura máxima de hoy", "Today's maximum temperature")}">${ic("termometro", "ic-mini")} ${num(d.tmax)} °C</span>`;
+    sem.innerHTML = `<span class="sem-titulo">${t("Agua por mes", "Water by month")}</span>` + sem.innerHTML;
     sem.hidden = false;
   } else sem.hidden = true;
   pintarCronologia();
@@ -1252,7 +1319,7 @@ const ETAPA_COLOR: Record<string, string> = { "recién sembrado": "#a1887f", cre
 const ETAPA_TXT: Record<string, [string, string]> = { "recién sembrado": ["Recién sembrada", "Just planted"], creciendo: ["Creciendo", "Growing"],
   "en plena producción": ["En plena producción", "In full production"], madurando: ["Madurando", "Ripening"],
   "listo para cosechar": ["¡Lista para cosechar!", "Ready to harvest!"], "antes de sembrar": ["Preparando", "Getting ready"] };
-const fechaCorta = (iso: string) => { const [, m, d] = iso.split("-").map(Number); return `${d} ${MESES_CORTOS[m - 1]}`; };
+const fechaCorta = (iso: string) => { const [, m, d] = iso.split("-").map(Number); return t(`${d} ${mesCorto(m - 1)}`, `${mesCorto(m - 1)} ${d}`); };
 
 /** Una barra por semilla sembrada: las etapas del cultivo, dónde va hoy y cuántos días faltan para la cosecha. */
 function pintarCronologia() {
@@ -1291,13 +1358,15 @@ function pintarCronologia() {
 }
 
 /** La rotación elegida, siempre a la vista: qué se hizo, qué toca ahora y qué sigue. */
+/** Nombre corto para la barra de rotación: en español la primera palabra; en inglés el nombre completo sin el paréntesis. */
+const nombreChip = (id: string) => (idioma() === "en" ? nombreCultivo(id).replace(/\s*\(.*\)/, "") : nombreCultivo(id).split(" ")[0]);
 function pintarRotHud() {
   const caja = $("#rot-hud");
   if (!J.rotacion || J.rotacion.length < 2) { caja.hidden = true; return; }
   const cur = rotPaso();
   caja.innerHTML = `<span class="rot-hud-t">${ic("rotar", "ic-chip")} ${t("Rotación", "Rotation")}</span>` + J.rotacion.map((id, k) => {
     const hecho = k < cur || (k === cur && J.sembrado && todoCosechado());
-    return `${k ? '<span class="flecha">›</span>' : ""}<span class="rot-chip ${hecho ? "hecho" : k === cur ? "ahora" : "luego"}" title="${esc(nombreCultivo(id))}">${icono(id, "icono-chip")}<b>${esc(nombreCultivo(id).split(" ")[0])}</b>${hecho ? '<i class="visto">✓</i>' : ""}</span>`;
+    return `${k ? '<span class="flecha">›</span>' : ""}<span class="rot-chip ${hecho ? "hecho" : k === cur ? "ahora" : "luego"}" title="${esc(nombreCultivo(id))}">${icono(id, "icono-chip")}<b>${esc(nombreChip(id))}</b>${hecho ? '<i class="visto">✓</i>' : ""}</span>`;
   }).join("");
   caja.hidden = false;
 }
@@ -1307,15 +1376,15 @@ function pintarControles() {
   const plantadas = J.parcelas.some((p) => p.crop);
   if (!J.sembrado) {
     if (J.paso === "sembrar" || J.paso === "agua") {
-      ctl.innerHTML = `<button class="t ancho" data-todas>${btn("semilla", "Sembrar todo")}</button>
-        ${plantadas ? `<button class="btn-juego" data-agua>${btn("gota", "¿Cuánta agua?")}</button>` : ""}`;
+      ctl.innerHTML = `<button class="t ancho" data-todas>${btn("semilla", t("Sembrar todo", "Plant all"))}</button>
+        ${plantadas ? `<button class="btn-juego" data-agua>${btn("gota", t("¿Cuánta agua?", "How much water?"))}</button>` : ""}`;
       ctl.querySelector("[data-todas]")!.addEventListener("click", sembrarTodas);
       ctl.querySelector("[data-agua]")?.addEventListener("click", panelAgua);
     } else ctl.innerHTML = "";
   } else if (todoCosechado()) {
     const pend = rotacionPendiente();
     const txt = pend ? t(`Seguir la rotación: ${nombreCorto(pend.id)}`, `Continue the rotation: ${nombreCorto(pend.id)}`)
-      : J.rotacion && J.rotacion.length > 1 ? t("Rotación completa", "Rotation complete") : "Rotar la tierra";
+      : J.rotacion && J.rotacion.length > 1 ? t("Rotación completa", "Rotation complete") : t("Rotar la tierra", "Rotate the soil");
     ctl.innerHTML = `<button class="btn-juego grande" data-rotar>${btn("rotar", txt)}</button>`;
     ctl.querySelector("[data-rotar]")!.addEventListener("click", () => { paso("rotacion"); rotarTierra(); });
   } else if (listas().length && J.dia >= diaFinal()) {
@@ -1323,10 +1392,10 @@ function pintarControles() {
     ctl.querySelector("[data-cosechar]")!.addEventListener("click", () => cosechar(semillasListas()));
   } else {
     ctl.innerHTML = `${listas().length ? `<button class="t cosechar" data-cosechar aria-label="${t("Cosechar todo", "Harvest all")}">${ic("azada")}<span>${t("Cosechar todo", "Harvest all")}</span></button>` : ""}
-      <button class="t" data-d="1" aria-label="Avanzar un día">+1 día</button>
-      <button class="t" data-d="7" aria-label="Avanzar una semana">+1 sem</button>
-      <button class="t" data-d="30" aria-label="Avanzar un mes">+1 mes</button>
-      <button class="t redondo" id="btn-auto" aria-label="Avance automático">${ic(auto ? "pausa" : "play")}</button>`;
+      <button class="t" data-d="1" aria-label="${t("Avanzar un día", "Advance one day")}">${t("+1 día", "+1 day")}</button>
+      <button class="t" data-d="7" aria-label="${t("Avanzar una semana", "Advance one week")}">${t("+1 sem", "+1 wk")}</button>
+      <button class="t" data-d="30" aria-label="${t("Avanzar un mes", "Advance one month")}">${t("+1 mes", "+1 mo")}</button>
+      <button class="t redondo" id="btn-auto" aria-label="${t("Avance automático", "Automatic advance")}">${ic(auto ? "pausa" : "play")}</button>`;
     ctl.querySelector("[data-cosechar]")?.addEventListener("click", () => cosechar(semillasListas()));
     ctl.querySelectorAll<HTMLButtonElement>("[data-d]").forEach((b) => b.addEventListener("click", () => avanzar(Number(b.dataset.d))));
     $("#btn-auto").addEventListener("click", iniciarAuto);
@@ -1342,6 +1411,38 @@ async function restaurar() {
 }
 
 // ---------------------------------------------------------------- arranque
+/** Textos fijos de la página (barra de acciones, HUD y créditos): cada uno trae su español y su inglés. */
+function aplicarEstatico() {
+  document.documentElement.lang = idioma();
+  document.querySelectorAll<HTMLElement>("[data-es]").forEach((el) => { el.textContent = t(el.dataset.es!, el.dataset.en!); });
+  document.querySelectorAll<HTMLElement>("[data-aria-es]").forEach((el) => el.setAttribute("aria-label", t(el.dataset.ariaEs!, el.dataset.ariaEn!)));
+  document.querySelectorAll<HTMLElement>("[data-title-es]").forEach((el) => el.setAttribute("title", t(el.dataset.titleEs!, el.dataset.titleEn!)));
+  document.title = t("Astro Granja", "Astro Farm");
+  const hud = $("#idioma");
+  hud.innerHTML = `<b>${idioma() === "es" ? "EN" : "ES"}</b>`;
+  hud.setAttribute("aria-label", t("Cambiar a inglés", "Switch to Spanish"));
+}
+
+/** Cambia entre español e inglés sin perder la partida: se vuelve a dibujar lo que se está viendo. */
+function cambiarIdioma() {
+  fijarIdioma(idioma() === "es" ? "en" : "es");
+  aplicarEstatico();
+  callar();   // calla lo que Pachita estaba diciendo en el otro idioma
+  if (pantalla === "menu") menuPrincipal();
+  else if (pantalla === "nombre") pantallaNombre();
+  else if (pantalla === "mapa" && mapaCtl) {
+    const c = mapaCtl.centro(), r = mapaCtl.radio();
+    mapaCtl.destruir();
+    pantallaMapa({ lat: c.lat, lon: c.lng, radio: r });
+  } else if (pantalla === "mundo") {
+    const abierto = !$("#panel").hidden;
+    pintarHud();
+    pintarControles();
+    if (abierto) seguirHistoria();
+    else decir(t("¡Ahora hablamos en español!", "Now we speak English!"));
+  }
+}
+
 export function arrancar() {
   $("#pachita").innerHTML = PACHITA_SVG;
   document.addEventListener("pointerdown", desbloquearAudio, { once: true });
@@ -1349,6 +1450,7 @@ export function arrancar() {
     silenciar(!estaSilenciado());
     $("#silencio").innerHTML = ic(estaSilenciado() ? "mudo" : "sonido");
   });
+  $("#idioma").addEventListener("click", cambiarIdioma);
   $("#btn-tierra").addEventListener("click", fichaTierra);
   $("#btn-semillas").addEventListener("click", abrirFamilias);
   $("#btn-calendario").addEventListener("click", abrirCalendario);
@@ -1360,6 +1462,7 @@ export function arrancar() {
   new MutationObserver(medirLayout).observe($("#escena"), { attributes: true, attributeFilter: ["hidden"] });
   new MutationObserver(medirLayout).observe($("#panel"), { attributes: true, attributeFilter: ["hidden", "class"] });
   medirLayout();
+  aplicarEstatico();
   menuPrincipal();
 }
 
