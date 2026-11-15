@@ -7,6 +7,8 @@ import { guardar, leer, tieneParcela } from "../lib/estado";
 import { cargar, colorSuelo, guardarJuego, MEDALLAS, N_PARCELAS, nuevo, type Juego, type Paso } from "./estado";
 import { icono } from "./iconos";
 import { crearMapa, RADIO_DEMO } from "./mapa";
+import { t } from "./i18n";
+import * as sonido from "./sonido";
 import { crearMundo2D } from "./mundo2d";
 import { ETAPAS, type Mundo, type Terreno, type VistaParcela } from "./mundo";
 import { decir, decirVarias, desbloquearAudio, estaSilenciado, PACHITA_SVG, silenciar, urlPose } from "./pachita";
@@ -23,8 +25,9 @@ type Ciclo = { cultivo: Cultivo; mes: number; anio: number; dias: Dia[]; taw_mm:
   en_epoca: boolean; epoca: string | null; veredicto: string; estado_mes: string[]; meses: string[]; litros_por_mm: number;
   tanque_litros: number; dias_secos: number; agua: Agua; m2: number };
 
+const MESES_EN = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 const DESCANSO: Cultivo = { id: "descanso", nombre: "Descanso con cobertura", emoji: "", foto: null, familia: "ninguna",
-  fija_n: false, ciclo_dias: 120, se_puede: true, apto: true, en_epoca: true };
+  fija_n: false, ciclo_dias: 120, se_puede: true, apto: true, en_epoca: true, meses: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], epoca_texto: "todo el año" };
 const VEREDICTO: Record<string, string> = { si: "La lluvia suele alcanzar", cuidado: "Hay que regar a veces", no: "Necesita riego" };
 
 // Familias botánicas: por qué importan para rotar
@@ -51,7 +54,7 @@ let J: Juego = cargar();
 let mundo: Mundo | null = null;
 let terreno: (Terreno & { pendiente_pct?: number; pendiente_clase?: string }) | null = null;
 let parcelaInfo: any = null;
-let semillasInfo: { meses_zona: number[]; siembra_por_mes: number[]; cultivos: Cultivo[] } | null = null;
+let semillasInfo: { meses_zona: number[]; siembra_por_mes: number[]; cultivos: Cultivo[]; lugar?: { elev: number } } | null = null;
 const ciclos = new Map<number, Ciclo>();
 const cultivos = new Map<string, Cultivo>([["descanso", DESCANSO]]);
 let auto: number | null = null;
@@ -174,15 +177,24 @@ function pantallaNombre() {
 async function aterrizaje() {
   const c = $("#intro");
   const quieto = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  sonido.preparar();  // se llama dentro del toque del jugador: así el celular deja sonar
   fondoMenu(c, `<div class="escena-aterrizaje"><div class="sombra-cohete"></div>
       <div class="cohete-baja">${COHETE}</div><div class="humo-caja"></div></div>`);
   document.body.classList.add("llegando");
+  const escena = c.querySelector<HTMLElement>(".escena-aterrizaje")!;
   const cohete = c.querySelector<HTMLElement>(".cohete-baja")!, humo = c.querySelector<HTMLElement>(".humo-caja")!;
   const sombra = c.querySelector<HTMLElement>(".sombra-cohete")!;
+  // el cohete aterriza sobre la tierra del paisaje: se busca ese punto del dibujo en la pantalla (sirve en cualquier tamaño)
+  const dibujo = c.querySelector<SVGSVGElement>(".paisaje-svg")!;
+  const m = dibujo.getScreenCTM();
+  const suelo = m ? new DOMPoint(SUELO_X, SUELO_Y).matrixTransform(m) : new DOMPoint(innerWidth * 0.55, innerHeight * 0.72);
+  escena.style.setProperty("--suelo-x", `${suelo.x}px`);
+  escena.style.setProperty("--suelo-y", `${suelo.y}px`);
   const bajar = quieto ? 2200 : 2600;
   {
     cohete.classList.add("encendido");
-    const chispas = window.setInterval(() => soltarHumo(humo, quieto ? 1 : 2, 0.5, true), quieto ? 160 : 90);
+    sonido.cohete(bajar / 1000);
+    const chispas = window.setInterval(() => soltarHumo(humo, quieto ? 1 : 2, 0.5, true, suelo), quieto ? 160 : 90);
     cohete.animate([
       { transform: "translate(-50%, -115vh) rotate(-8deg)" },
       { transform: "translate(-50%, -30vh) rotate(4deg)", offset: 0.55 },
@@ -195,10 +207,11 @@ async function aterrizaje() {
     cohete.classList.add("frenando");
     await espera(450);
     clearInterval(chispas);
-    soltarHumo(humo, quieto ? 12 : 26, quieto ? 1 : 1.4, false);
+    sonido.aterrizaje();
+    soltarHumo(humo, quieto ? 12 : 26, quieto ? 1 : 1.4, false, suelo);
     cohete.classList.remove("encendido", "frenando");
     cohete.classList.add("patas");
-    if (!quieto) c.querySelector(".escena-aterrizaje")!.animate(
+    if (!quieto) escena.animate(
       [{ transform: "translate(0,0)" }, { transform: "translate(-6px,4px)" }, { transform: "translate(5px,-3px)" }, { transform: "translate(-3px,2px)" }, { transform: "translate(0,0)" }],
       { duration: 420, easing: "ease-out" });
     await espera(700);
@@ -206,20 +219,23 @@ async function aterrizaje() {
   document.body.classList.remove("llegando");
   document.body.classList.add("bajo-cohete");
   cohete.classList.add("puerta-abierta");
-  await decir(`¡Llegué! Bienvenida, bienvenido a la granja ${J.granja}. Juntos vamos a aprender a cuidar la tierra con los datos que miden los satélites de la NASA.`);
+  await decir(t(`¡Llegué! Bienvenida, bienvenido a la granja ${J.granja}. Juntos vamos a aprender a cuidar la tierra con los datos que miden los satélites de la NASA.`,
+    `I've landed! Welcome to farm ${J.granja}. Together we'll learn to take care of the land with the data that NASA satellites measure.`));
   document.body.classList.remove("bajo-cohete");
   salirMenu();
   pantallaMapa();
 }
 
 /** Bocanadas de humo (o chispas de fuego) que salen de la tobera y se abren hacia los lados. */
-function soltarHumo(caja: HTMLElement, cuantas: number, fuerza: number, fuego: boolean) {
+function soltarHumo(caja: HTMLElement, cuantas: number, fuerza: number, fuego: boolean, suelo?: DOMPoint) {
   const r = caja.getBoundingClientRect();
   const tob = caja.parentElement!.querySelector(".cohete-baja")!.getBoundingClientRect();
   for (let k = 0; k < cuantas; k++) {
     const b = document.createElement("i");
     b.className = fuego ? "chispa" : "bocanada";
-    const x0 = tob.left + tob.width / 2 - r.left, y0 = tob.bottom - r.top - (fuego ? 6 : 10);
+    // el fuego sale de la tobera; el polvo del aterrizaje, del suelo donde se apoyan las patas
+    const x0 = (!fuego && suelo ? suelo.x : tob.left + tob.width / 2) - r.left;
+    const y0 = (!fuego && suelo ? suelo.y - 6 : tob.bottom - (fuego ? 6 : 10)) - r.top;
     b.style.left = `${x0}px`;
     b.style.top = `${y0}px`;
     caja.appendChild(b);
@@ -250,8 +266,10 @@ function pantallaMapa() {
     entrarMundo();
   });
   decirVarias([
-    "Ahora busca tu parcela en el mapa. Mueve el mapa con el dedo hasta que el pin rojo quede sobre tu chacra; los nombres de los pueblos te ayudan a ubicarte.",
-    "Con la barra agrandas o achicas el círculo amarillo hasta que cubra tu tierra. Si no tienes una, toca un pueblo de prueba como Calpi.",
+    t("Ahora busca tu chacra en el mapa. Te ubico donde estás: mueve el mapa con el dedo hasta que el pin rojo quede sobre tu tierra; los nombres de los pueblos te ayudan.",
+      "Now find your farm on the map. I'll start where you are: drag the map until the red pin is over your land; the town names will help you."),
+    t("Con la barra agrandas o achicas el círculo amarillo hasta que cubra tu tierra: llega a 10 hectáreas, y si tu chacra es más grande escribe el tamaño arriba.",
+      "Use the bar to make the yellow circle bigger or smaller until it covers your land: it goes up to 10 hectares, and if your farm is bigger, type the size above."),
   ]);
 }
 
@@ -264,9 +282,12 @@ async function entrarMundo() {
   try {
     terreno = await consultar("terreno", { n: 17 });
   } catch (err) {
-    cont.innerHTML = `<div class="cargando-mundo"><p>${esc((err as Error).message)}</p><button class="btn-juego" data-r>Intentar otra vez</button></div>`;
+    cont.innerHTML = `<div class="cargando-mundo"><p>${esc((err as Error).message)}</p>
+      <div class="fila-botones"><button class="btn-juego" data-r>${btn("rotar", t("Intentar otra vez", "Try again"))}</button>
+      <button class="btn-juego borde" data-otro>${btn("pin", t("Elegir otro lugar", "Choose another place"))}</button></div></div>`;
     $("[data-r]").addEventListener("click", entrarMundo);
-    decir("No pude traer la forma de tu parcela. Revisa la señal y toca de nuevo.", "preocupada");
+    $("[data-otro]").addEventListener("click", () => { $("#hud").hidden = true; $("#escena").hidden = true; pantallaMapa(); });
+    decir(t("No pude traer la forma de tu parcela. Revisa la señal y toca de nuevo, o elige otro lugar.", "I couldn't get the shape of your plot. Check your signal and try again, or choose another place."), "preocupada");
     return;
   }
   cont.innerHTML = "";
@@ -295,7 +316,7 @@ function seguirHistoria() {
     case "calendario": return abrirCalendario();
     case "sembrar": return pedirSiembra();
     case "agua": return panelAgua();
-    case "rotacion": return leccionRotacion();
+    case "rotacion": return rotarTierra();
     case "certificado": return certificado();
     default: return decir("¡Seguimos! Avanza el tiempo y cuida tu siembra.");
   }
@@ -313,7 +334,7 @@ async function fichaTierra() {
     return;
   }
   pintarHud();
-  const p = parcelaInfo, c = p.clima, t = p.tendencia, n = p.nasa || {};
+  const p = parcelaInfo, c = p.clima, tend = p.tendencia, n = p.nasa || {};
   const humedad: number[] = n.suelo_raiz_mes || [];
   const barras = humedad.map((h: number, i: number) =>
     `<span class="barra-h" style="--h:${Math.max(6, h * 100)}%;--c:${h >= 0.75 ? "#2e7d32" : h >= 0.6 ? "#f9a825" : "#c62828"}" title="${MESES[i]}: ${Math.round(h * 100)} %"><i></i><b>${MESES_CORTOS[i][0].toUpperCase()}</b></span>`).join("");
@@ -345,16 +366,17 @@ async function fichaTierra() {
   <div class="cartas">
     ${tarjetaLluvia}
     ${carta("sol", "Evaporación", `${num(c.et0_anual)} mm`, c.et0_anual > c.lluvia_anual ? "Se evapora más de lo que llueve" : "Se evapora menos de lo que llueve", "#e65100")}
-    ${carta("termometro", "Temperatura", `${num(c.tmin)} a ${num(c.tmax)} °C`, `Noches frías y días templados · días de calor fuerte: ${t.calor_dias}`, "#d84315")}
+    ${carta("termometro", "Temperatura", `${num(c.tmin)} a ${num(c.tmax)} °C`, `Noches frías y días templados · días de calor fuerte: ${tend.calor_dias}`, "#d84315")}
     ${n.radiacion_kwh ? carta("dia", "Energía del sol", `${num(n.radiacion_kwh, 1)} kWh/m²`, "Cada día, en cada metro cuadrado", "#f2a900") : ""}
     ${n.humedad_aire ? carta("nube", "Humedad del aire", `${n.humedad_aire} %`, `Viento: ${num(n.viento, 1)} m/s`, "#5c7da8") : ""}
-    ${carta("grafico", "Última década", `Lluvia ${t.cambio_lluvia_pct > 0 ? "+" : ""}${t.cambio_lluvia_pct} %`, `Temperatura ${t.cambio_temp_c > 0 ? "+" : ""}${num(t.cambio_temp_c, 1)} °C`, "#6a1b9a")}
+    ${carta("grafico", "Última década", `Lluvia ${tend.cambio_lluvia_pct > 0 ? "+" : ""}${tend.cambio_lluvia_pct} %`, `Temperatura ${tend.cambio_temp_c > 0 ? "+" : ""}${num(tend.cambio_temp_c, 1)} °C`, "#6a1b9a")}
+    ${tarjetaPendiente()}
     ${humedad.length ? `<article class="carta ancha" style="--color:#2e7d32"><div class="carta-cabeza"><div class="carta-icono">${ic("gota")}</div><h3>Humedad del suelo en las raíces, mes a mes</h3></div>
       <div class="barras-h">${barras}</div>
       <p class="leyenda-mini"><span style="--c:#2e7d32">húmedo</span><span style="--c:#f9a825">justo</span><span style="--c:#c62828">seco: hay que regar</span></p>
       <p class="carta-detalle">Satélites de la NASA (GWETROOT): 100 % es suelo empapado.</p></article>` : ""}
   </div>
-  <p class="fuente">NASA POWER ${esc(p.periodo)} (MERRA-2, CERES) · FAO-56.</p>
+  <p class="fuente">${t("Clima: NASA POWER", "Climate: NASA POWER")} ${esc(p.periodo)} (MERRA-2, CERES) · FAO-56.${terreno?.pendiente_pct !== undefined ? t(" Pendiente: relieve Copernicus DEM (vía Open-Meteo, 90 m).", " Slope: Copernicus DEM relief (via Open-Meteo, 90 m).") : ""}</p>
   <button class="btn-juego grande" data-sig>${btn("semilla", "Conocer las semillas")}</button>`, "cartas-panel");
   $("[data-sig]").addEventListener("click", () => { paso("semillas"); abrirFamilias(); });
   const anios = (() => { const [a0, a1] = String(p.periodo).split("–").map(Number); return a1 && a0 ? a1 - a0 + 1 : "muchos"; })();
@@ -364,17 +386,77 @@ async function fichaTierra() {
     `El sol y el viento evaporan ${num(c.et0_anual)} milímetros al año. Si se evapora más de lo que llueve, la tierra se seca y las plantas piden riego. Tu zona es ${estado[0]}.`,
     secos.length ? `Mira las barras de humedad: el suelo se seca más en ${secos.slice(0, 3).join(", ")}. Esos meses las raíces tienen sed y hay que regar.` : "Mira las barras de humedad: tu suelo guarda agua casi todo el año. ¡Qué suerte!",
     `La temperatura va de ${num(c.tmin)} grados en las noches frías a ${num(c.tmax)} en los días de sol fuerte. Cuando hace mucho calor, la tierra pierde agua más rápido.`,
+    ...(pendienteFrase() ? [pendienteFrase()] : []),
   ];
   decirVarias(frases);
 }
 
+/** Pendiente del terreno (del relieve de la parcela): porcentaje, clase y un dibujo del perfil de oeste a este. */
+const PENDIENTES: Record<string, { es: string; en: string; color: string; consejo: [string, string] }> = {
+  plano: { es: "plana", en: "flat", color: "#2e7d32", consejo: ["El agua se queda quieta: cuida que no se encharque.", "Water stays put: make sure it doesn't pool."] },
+  suave: { es: "suave", en: "gentle", color: "#7cb342", consejo: ["Es ideal para sembrar y regar con calma.", "It is great for planting and watering calmly."] },
+  moderada: { es: "inclinada", en: "sloped", color: "#e0a100", consejo: ["Siembra en curvas de nivel, como si dibujaras líneas de un mismo alto.", "Plant along the contour lines, as if drawing lines at the same height."] },
+  fuerte: { es: "muy inclinada", en: "very steep", color: "#c62828", consejo: ["La lluvia puede llevarse la tierra: cúbrela con plantas y siembra en curvas de nivel.", "Rain can wash the soil away: cover it with plants and plant along the contour lines."] },
+};
+function perfilTerreno(): string {
+  if (!terreno || terreno.sin_relieve) return "";
+  const fila = terreno.alturas[Math.floor(terreno.n / 2)];
+  const lo = Math.min(...fila), hi = Math.max(...fila), rango = Math.max(hi - lo, 1);
+  const pts = fila.map((z, k) => `${((k / (fila.length - 1)) * 200).toFixed(1)},${(50 - ((z - lo) / rango) * 36).toFixed(1)}`).join(" ");
+  return `<svg class="perfil" viewBox="0 0 200 60" preserveAspectRatio="none" role="img" aria-label="${t("Perfil del terreno de oeste a este", "Ground profile from west to east")}">
+    <polygon points="0,60 ${pts} 200,60" fill="#a5682a"/><polyline points="${pts}" fill="none" stroke="#3b2a1a" stroke-width="3" stroke-linejoin="round"/></svg>
+    <div class="perfil-ejes"><span>${t("oeste", "west")}</span><span>${t("este", "east")}</span></div>`;
+}
+function tarjetaPendiente(): string {
+  const pct = terreno?.pendiente_pct;
+  if (pct === undefined || terreno?.sin_relieve) return "";
+  const k = PENDIENTES[terreno?.pendiente_clase || "suave"] || PENDIENTES.suave;
+  return `<article class="carta ancha" style="--color:${k.color}">
+    <div class="carta-cabeza"><div class="carta-icono">${ic("montana")}</div><div><h3>${t("Pendiente del terreno", "Slope of the land")}</h3>
+      <p class="carta-valor">${num(pct, 1)} % <small>${t("terreno", "land")} ${t(k.es, k.en)}</small></p></div>
+      <span class="estado-tierra" style="--c:${k.color}">${t("Desnivel", "Height difference")} <b>${num(terreno!.desnivel_m, 0)} m</b></span></div>
+    ${perfilTerreno()}
+    <p class="carta-detalle">${t(k.consejo[0], k.consejo[1])}</p></article>`;
+}
+function pendienteFrase(): string {
+  const pct = terreno?.pendiente_pct;
+  if (pct === undefined || terreno?.sin_relieve) return "";
+  const k = PENDIENTES[terreno?.pendiente_clase || "suave"] || PENDIENTES.suave;
+  return t(`Tu terreno es ${k.es}: baja ${num(pct, 1)} metros por cada 100 que avanzas. ${k.consejo[0]}`,
+    `Your land is ${k.en}: it drops ${num(pct, 1)} meters for every 100 you move. ${k.consejo[1]}`);
+}
+
 // ---------------------------------------------------------------- 4. semillas por familia botánica
 async function cargarSemillas(mes: number) {
-  const s = await consultar<{ meses_zona: number[]; siembra_por_mes: number[]; cultivos: Cultivo[] }>("semillas", { mes });
+  const s = await consultar<{ meses_zona: number[]; siembra_por_mes: number[]; cultivos: Cultivo[]; lugar?: { elev: number } }>("semillas", { mes });
   semillasInfo = s;
   s.cultivos.forEach((c) => cultivos.set(c.id, { ...cultivos.get(c.id), ...c }));
   return s;
 }
+
+/** Semillas que Pachita explica pero que no se siembran solas en el juego: qué son y por qué no se pueden elegir. */
+const INFO_SEMILLAS: Record<string, { es: string; en: string; abre?: string; abreNombre?: [string, string] }> = {
+  vicia: {
+    es: "La vicia es una leguminosa trepadora: sus raíces atrapan nitrógeno del aire y dejan abono en la tierra. En esta granja no se siembra sola, pero viene mezclada en la «Avena con vicia», un forraje que sí puedes sembrar.",
+    en: "Vetch is a climbing legume: its roots trap nitrogen from the air and leave fertilizer in the soil. On this farm it is not planted alone, but it comes mixed into «Oats with vetch», a fodder you can plant.",
+    abre: "avena", abreNombre: ["Avena con vicia", "Oats with vetch"],
+  },
+  trebol: {
+    es: "El trébol es una leguminosa baja que cubre la tierra y la alimenta con nitrógeno. En el juego no se siembra solo: forma parte de la «Pastura mixta», una mezcla de gramíneas con tréboles que sí puedes sembrar.",
+    en: "Clover is a low-growing legume that covers the ground and feeds it with nitrogen. In the game it is not planted alone: it is part of the «Mixed pasture», a blend of grasses and clovers you can plant.",
+    abre: "pasto", abreNombre: ["Pastura mixta", "Mixed pasture"],
+  },
+  alfalfa: {
+    es: "La alfalfa es una leguminosa forrajera de raíces muy profundas que mejora el suelo. Todavía no está en el catálogo de esta granja porque no tenemos los datos de su ciclo ni de su agua para la sierra, así que por ahora no se puede sembrar.",
+    en: "Alfalfa is a fodder legume with very deep roots that improves the soil. It is not in this farm's catalog yet because we don't have its cycle and water data for the highlands, so it can't be planted for now.",
+  },
+  biomasa: {
+    es: "La biomasa son los restos de plantas (hojas, tallos y raíces) que quedan sobre y dentro de la tierra. Al pudrirse la alimentan y la protegen de la lluvia. No es una semilla: es lo que dejan tus cultivos.",
+    en: "Biomass is the plant remains (leaves, stems and roots) left on and in the soil. As they rot they feed the soil and protect it from the rain. It is not a seed: it is what your crops leave behind.",
+  },
+};
+const NOMBRE_EXTRA_EN: Record<string, string> = { vicia: "Vetch", trebol: "Clover", alfalfa: "Alfalfa", biomasa: "Biomass" };
+const nombreExtra = (k: string) => t(NOMBRE_EXTRA[k], NOMBRE_EXTRA_EN[k]);
 
 async function abrirFamilias() {
   if (J.sembrado) { decir("Ya sembraste. Espera la cosecha."); return; }
@@ -382,43 +464,83 @@ async function abrirFamilias() {
   catch { decir("No pude traer las semillas. Revisa la señal.", "preocupada"); return; }
   const lista = [...semillasInfo!.cultivos, ...(J.temporada > 1 ? [DESCANSO] : [])];
   const grupos = FAMILIAS.map((f) => ({ f, cs: lista.filter((c) => f.id.includes(c.familia)) })).filter((g) => g.cs.length);
+  const pend = rotacionPendiente();
   const p = abrirPanel("Semillas por familia", `
+    ${pend ? `<div class="aviso-rot">${ic("rotar", "ic-leccion")}<div><b>${t("Tu rotación sigue con", "Your rotation continues with")} ${esc(nombreCorto(pend.id))}</b>
+      <span>${t(`Paso ${pend.k + 1} de ${pend.n}. Busca la semilla marcada con la cinta amarilla.`, `Step ${pend.k + 1} of ${pend.n}. Look for the seed with the yellow ribbon.`)}</span></div></div>` : ""}
     <div class="leccion">${ic("foco", "ic-leccion")}<div><b>¿Por qué familias?</b> Las plantas de una misma familia se enferman de lo mismo y comen lo mismo del suelo.
       Si cambias de familia cada vez que siembras, la tierra descansa y las plagas se van. ¡Eso es <b>rotar</b>!
       Las <b>N+</b> son leguminosas: fabrican su propio abono con el nitrógeno del aire.</div></div>
     ${grupos.map(({ f, cs }) => `<section class="familia" style="--color:${f.color}">
       <h3>${icono(f.icono, "icono-familia")} ${f.nombre}</h3><p>${f.porque}</p>
-      <div class="sobres">${cs.map((c) => `<button type="button" class="sobre ${c.apto === false ? "bloqueado" : ""}" data-crop="${c.id}">
+      <div class="sobres">${cs.map((c) => `<button type="button" class="sobre ${c.apto === false ? "bloqueado" : ""} ${pend?.id === c.id ? "siguiente" : ""}" data-crop="${c.id}">
         ${icono(c.id, "icono-sobre")}${c.apto === false ? `<span class="candado">${ic("candado")}</span>` : ""}
-        <span class="sobre-nombre">${esc(c.nombre)}</span>${c.fija_n ? '<span class="sello-n">N+</span>' : ""}</button>`).join("")}
-        ${(f.tambien || []).map((k) => `<div class="sobre info">${icono(k, "icono-sobre")}<span class="sobre-nombre">${NOMBRE_EXTRA[k]}</span><span class="mini">también ayuda</span></div>`).join("")}
+        <span class="sobre-nombre">${esc(c.nombre)}</span>${c.fija_n ? '<span class="sello-n">N+</span>' : ""}
+        ${pend?.id === c.id ? `<span class="cinta-rot">${t("Tu rotación", "Your rotation")}</span>` : ""}</button>`).join("")}
+        ${(f.tambien || []).map((k) => `<button type="button" class="sobre info" data-info="${k}" aria-label="${nombreExtra(k)}: ${t("solo información", "information only")}">
+          ${icono(k, "icono-sobre")}<span class="sello-i">${ic("info", "ic-chip")}</span><span class="sobre-nombre">${nombreExtra(k)}</span>
+          <span class="mini">${t("solo información", "information only")}</span></button>`).join("")}
       </div></section>`).join("")}`, "semillas-panel");
   p.querySelectorAll<HTMLButtonElement>(".sobre[data-crop]").forEach((b) => b.addEventListener("click", () => detalleSemilla(b.dataset.crop!)));
+  p.querySelectorAll<HTMLButtonElement>(".sobre[data-info]").forEach((b) => b.addEventListener("click", () => detalleInfo(b.dataset.info!)));
   decirVarias([
     "Estas son las semillas de la sierra, ordenadas por familia. Las plantas de la misma familia son como primas: les gustan las mismas comidas y les dan las mismas plagas.",
-    "Las semillas con candado no crecen a la altura de tu granja o no es su época. Toca una semilla para conocerla y elegirla.",
+    pend ? t(`Tu rotación pide ${nombreCorto(pend.id)} ahora: es la semilla con la cinta amarilla.`, `Your rotation asks for ${nombreCorto(pend.id)} now: it is the seed with the yellow ribbon.`)
+      : "Las semillas con candado no crecen a la altura de tu granja. Las que tienen una «i» solo te las explico. Toca una semilla para conocerla y elegirla.",
   ]);
+}
+
+/** Semillas de solo información (vicia, trébol, alfalfa, biomasa): se explican y se dice por qué no se siembran. */
+function detalleInfo(k: string) {
+  const info = INFO_SEMILLAS[k];
+  if (!info) return;
+  const abre = info.abre ? cultivos.get(info.abre) : null;
+  abrirPanel(nombreExtra(k), `<div class="semilla-hero">
+      ${icono(k, "icono-grande")}
+      <div class="semilla-titulo"><span class="etiqueta info-etiqueta">${ic("info", "ic-chip")} ${t("Solo información", "Information only")}</span></div></div>
+    <div class="estado-semilla no-se-siembra">${ic("candado", "ic-linea")} ${t("No se puede sembrar sola en esta granja", "It can't be planted on its own on this farm")}</div>
+    <p class="texto-semilla">${esc(t(info.es, info.en))}</p>
+    <div class="fila-botones"><button class="btn-juego borde" data-volver>${btn("atras", "Otras semillas")}</button>
+      ${abre ? `<button class="btn-juego" data-abre>${btn("semilla", t(`Ver ${info.abreNombre![0]}`, `See ${info.abreNombre![1]}`))}</button>` : ""}</div>`, "centro");
+  $("[data-volver]").addEventListener("click", abrirFamilias);
+  document.querySelector("[data-abre]")?.addEventListener("click", () => detalleSemilla(info.abre!));
+  decir(t(info.es + " Por eso no la puedes elegir para sembrar.", info.en + " That's why you can't choose it for planting."), "pensando");
 }
 
 function detalleSemilla(id: string) {
   const c = cultivos.get(id)!;
   const f = familiaDe(c.familia);
-  abrirPanel(c.nombre, `<div class="detalle-semilla">
+  const meses = new Set(c.meses || []);
+  const elev = semillasInfo?.lugar?.elev;
+  const dentro = c.alt_min !== undefined && elev !== undefined ? elev >= c.alt_min && elev <= c.alt_max! : null;
+  const pend = rotacionPendiente();
+  abrirPanel(c.nombre, `<div class="semilla-hero" style="--color:${f?.color || "#555"}">
       ${icono(id, "icono-grande")}
-      <p class="etiqueta" style="--color:${f?.color || "#555"}">${f?.nombre || "Cobertura"}</p>
-      ${c.fija_n ? `<p class="bueno">${ic("nitrogeno", "ic-linea")} Alimenta la tierra con nitrógeno del aire</p>` : ""}
-      <ul class="datos">
-        ${c.ciclo_dias ? `<li>${ic("reloj", "ic-linea")} Tarda <b>${c.ciclo_dias} días</b> en estar lista</li>` : ""}
-        ${c.alt_min ? `<li>${ic("montana", "ic-linea")} Crece de <b>${num(c.alt_min)}</b> a <b>${num(c.alt_max!)} m</b> de altura</li>` : ""}
-        ${c.epoca_texto ? `<li>${ic("calendario", "ic-linea")} Aquí se siembra <b>${esc(c.epoca_texto)}</b></li>` : ""}
-        ${c.uso ? `<li>${ic("cesta", "ic-linea")} Sirve para: ${esc(c.uso)}</li>` : ""}
-      </ul>
-      ${c.apto === false ? `<p class="malo">${ic("candado", "ic-linea")} ${esc(c.razon || "")}</p>` : ""}
+      <div class="semilla-titulo"><span class="etiqueta" style="--color:${f?.color || "#555"}">${f?.nombre || "Cobertura"}</span>
+        ${c.fija_n ? `<span class="bueno-chip">${ic("nitrogeno", "ic-chip")} ${t("Alimenta la tierra con nitrógeno", "Feeds the soil with nitrogen")}</span>` : ""}</div></div>
+    <div class="estado-semilla ${c.apto === false ? "no-se-siembra" : "si-se-siembra"}">${c.apto === false
+      ? `${ic("candado", "ic-linea")} ${esc(c.razon || t("No se puede sembrar aquí", "It can't be planted here"))}`
+      : `${ic("check", "ic-linea")} ${t("Se puede sembrar en tu chacra", "It can be planted on your farm")}`}</div>
+    <div class="semilla-datos">
+      ${c.ciclo_dias ? `<div class="dato"><span class="dato-ic">${ic("reloj")}</span><b>${t("Tarda hasta la cosecha", "Time to harvest")}</b>
+        <span class="dato-v">${c.ciclo_dias} ${t("días", "days")}</span><small>${t(`unos ${Math.round(c.ciclo_dias / 30)} meses`, `about ${Math.round(c.ciclo_dias / 30)} months`)}</small></div>` : ""}
+      ${c.alt_min ? `<div class="dato"><span class="dato-ic">${ic("montana")}</span><b>${t("Altura donde crece", "Altitude where it grows")}</b>
+        <span class="dato-v">${num(c.alt_min)}–${num(c.alt_max!)} m</span>
+        <small class="${dentro === false ? "malo" : "bueno"}">${elev !== undefined ? `${t("Tu chacra: ", "Your farm: ")}${num(elev)} m ${dentro ? "✓" : "✗"}` : ""}</small></div>` : ""}
+      ${c.uso ? `<div class="dato"><span class="dato-ic">${ic("cesta")}</span><b>${t("Sirve para", "Used for")}</b><span class="dato-v chico">${esc(c.uso)}</span></div>` : ""}
+      <div class="dato ancho"><span class="dato-ic">${ic("calendario")}</span><b>${t("Época de siembra en tu zona", "Planting season in your area")}</b>
+        <div class="tira-meses">${MESES_CORTOS.map((m, k) => `<span class="mes-chip ${meses.has(k + 1) ? "on" : ""}" title="${MESES[k]}">${m[0].toUpperCase()}</span>`).join("")}</div>
+        <small>${c.epoca_texto ? esc(c.epoca_texto) : t("Todo el año", "All year")}</small></div>
     </div>
     <div class="fila-botones"><button class="btn-juego borde" data-volver>${btn("atras", "Otras semillas")}</button>
-      ${c.apto === false ? "" : `<button class="btn-juego" data-elegir>${btn("semilla", "Elegir esta semilla")}</button>`}</div>`, "centro");
+      ${c.apto === false ? "" : `<button class="btn-juego" data-elegir>${btn("semilla", "Elegir esta semilla")}</button>`}</div>`, "centro semilla-detalle");
   $("[data-volver]").addEventListener("click", abrirFamilias);
   document.querySelector("[data-elegir]")?.addEventListener("click", () => {
+    if (pend && pend.id !== id && J.temporada > 1) {
+      J.rotacion = null; J.rotPaso = 0;   // cambió de plan: la rotación anterior ya no se sigue
+      decir(t(`Elegiste ${nombreCorto(id)} y tu rotación pedía ${nombreCorto(pend.id)}. Está bien, cambiamos de plan: al cosechar te propongo una rotación nueva.`,
+        `You picked ${nombreCorto(id)} but your rotation asked for ${nombreCorto(pend.id)}. That's fine, we change the plan: after harvest I'll suggest a new rotation.`));
+    }
     J.crop = id;
     paso("calendario");
     abrirCalendario();
@@ -516,8 +638,10 @@ async function sembrar(i: number) {
   guardarTodo();
   pintarMundo();
   pintarControles();
+  sonido.siembra();
   const n = J.parcelas.filter((p) => p.crop).length;
-  decir(`¡Sembraste ${nombreCorto(J.crop)} en la parcela ${i + 1}!${n < N_PARCELAS ? " Puedes sembrar más parcelas, o dejar alguna con descanso." : " Ahora veamos cuánta agua va a necesitar."}`);
+  if (n >= N_PARCELAS) { empezarTemporada(); return; }  // las cuatro parcelas sembradas: el tiempo corre solo
+  decir(`¡Sembraste ${nombreCorto(J.crop)} en la parcela ${i + 1}! Puedes sembrar más parcelas, o dejar alguna con descanso.`);
 }
 
 async function sembrarTodas() {
@@ -529,7 +653,8 @@ function panelAgua() {
   const plant = J.parcelas.map((p, i) => [p, i] as const).filter(([p]) => p.crop);
   const c = plant.length ? ciclos.get(plant[0][1]) : null;
   if (!c) { pedirSiembra(); return; }
-  paso("agua");
+  const enCurso = J.sembrado;   // ya está creciendo: solo se consulta, no se reinicia la temporada
+  if (!enCurso) paso("agua");
   const k = plant.length; // parcelas sembradas (el ciclo trae litros por parcela)
   const a = c.agua;
   const L = (x: number) => x * k;
@@ -544,8 +669,8 @@ function panelAgua() {
     <p class="leyenda-mini"><span style="--c:#2e7d32">hay agua</span><span style="--c:#e0a100">justo</span><span style="--c:#c62828">falta agua</span></p>
     <p class="leyenda">${VEREDICTO[c.veredicto]}</p>
     <p class="fuente">${num(L(c.m2))} m² sembrados · NASA POWER 2001–2024 · FAO-56 · riego con 75 % de eficiencia</p>
-    <button class="btn-juego grande" data-crecer>${btn("sol", "¡A crecer!")}</button></div>`, "centro");
-  $("[data-crecer]").addEventListener("click", empezarTemporada);
+    ${enCurso ? "" : `<button class="btn-juego grande" data-crecer>${btn("sol", "¡A crecer!")}</button>`}</div>`, "centro");
+  document.querySelector("[data-crecer]")?.addEventListener("click", empezarTemporada);
   decirVarias([
     `Las plantas toman agua de la tierra con sus raíces y la sueltan por las hojas, como si sudaran. Cada metro cuadrado de tu ${c.cultivo.nombre.toLowerCase()} bebe ${num(a.gasto_mm)} litros en todo su ciclo: en toda tu parcela son ${agua(L(a.litros_cultivo))}.`,
     a.riego_mm >= 5 ? `La lluvia de un año normal no alcanza: hay que regar unos ${agua(L(a.litros_riego))}. Mira los meses en rojo: ahí la tierra se queda sin agua.`
@@ -584,8 +709,11 @@ function empezarTemporada() {
   cerrarPanel();
   pintarMundo();
   pintarControles();
-  decir(razones.length ? `Ojo: ${razones[0]}. Ahora avanza el tiempo con los botones de abajo; el botón de play pasa los días solo.`
-    : "¡Listo! Avanza el tiempo con los botones de abajo; el de play pasa los días solo. Mira cómo el sol cruza el cielo y cuida tu siembra de la sed, el calor y los aguaceros.");
+  const nota = t(" El tiempo ya corre solo: mira cómo crece. Con el botón de pausa lo detienes, y la gota de arriba te dice cuánta agua necesita.",
+    " Time is already running by itself: watch it grow. The pause button stops it, and the drop at the top tells you how much water it needs.");
+  decir(razones.length ? `Ojo: ${razones[0]}.${nota}` : `¡Listo, a sembrar!${nota}`);
+  detenerAuto();
+  iniciarAuto();   // directamente en play: el jugador no tiene que tocar nada
 }
 
 // ---------------------------------------------------------------- 8. crecer: tiempo, riego y estrés climático
@@ -645,15 +773,21 @@ function eventos(antes: VistaParcela[]): boolean {
   J.parcelas.forEach((p, i) => {
     if (!p.crop || p.cosechada || parar) return;
     const v = vista(i), a = antes[i], nom = nombreCorto(p.crop);
-    if (v.lista && !a.lista) { decir(`¡La ${nom} está lista para cosechar! Toca el botón de la canasta para recogerla.`); parar = true; return; }
-    if (v.marchita && !a.marchita) { decir(`¡Estrés por sequía! Hace días que no llueve y la tierra de la ${nom} se quedó sin agua. Sus hojas se doblan. Toca Regar para darle de beber.`, "preocupada"); parar = true; return; }
+    if (v.lista && !a.lista) { decir(t(`¡La ${nom} está lista para cosechar! Toca «Cosechar todo» o la parcela para usar la azada.`, `The ${nom} is ready to harvest! Tap "Harvest all" or the plot to use the hoe.`)); parar = true; return; }
+    if (v.marchita && !a.marchita) { decir(t(`¡Arrarray! ¡Qué sequía! Hace días que no llueve y la tierra de la ${nom} se quedó sin agua. Sus hojas se doblan. Toca Regar para darle de beber.`,
+      `Arrarray! What a drought! It hasn't rained for days and the soil of the ${nom} has run out of water. Its leaves are drooping. Tap Water to give it a drink.`), "preocupada"); parar = true; return; }
     if (v.etapa !== a.etapa && v.etapa === 2) decir(`¡La ${nom} ya está creciendo! Ahora saca hojas nuevas y sus raíces buscan agua más abajo.`);
     if (v.etapa !== a.etapa && v.etapa === 3) decir(`¡La ${nom} está floreciendo! Es cuando más agua toma: si le falta ahora, la cosecha sale pequeña.`);
   });
   if (hoy && !parar) {
     if (hoy.calor && !avisos.has(`c${hoy.fecha.slice(0, 7)}`)) {
       avisos.add(`c${hoy.fecha.slice(0, 7)}`);
-      decir(`¡Estrés por calor! Hoy hizo ${num(hoy.tmax)} grados. Con tanto sol la tierra pierde agua más rápido y las plantas se cansan.`, "preocupada");
+      decir(t(`¡Arrarray! ¡Qué calor! Hoy hizo ${num(hoy.tmax)} grados. Con tanto sol la tierra pierde agua más rápido y las plantas se cansan.`,
+        `Arrarray! So hot! Today it reached ${num(hoy.tmax)} degrees. With so much sun the soil loses water faster and plants get tired.`), "preocupada");
+    } else if (mesSeco(hoy) && !avisos.has(`s${hoy.fecha.slice(0, 7)}`)) {
+      avisos.add(`s${hoy.fecha.slice(0, 7)}`);
+      decir(t(`¡Arrarray! Empieza el tiempo seco: en ${MESES[Number(hoy.fecha.slice(5, 7)) - 1]} casi no llueve y el sol seca la tierra. Mira las barras de humedad y riega cuando haga falta.`,
+        `Arrarray! The dry season begins: in ${MESES_EN[Number(hoy.fecha.slice(5, 7)) - 1]} it hardly rains and the sun dries the soil. Watch the moisture bars and water when needed.`), "preocupada");
     } else if (hoy.lluvia >= 10 && J.dia - ultimoAguacero > 7) {
       ultimoAguacero = J.dia;
       decir(`¡Achachay! Un aguacero. Cayeron ${num(hoy.lluvia)} litros en cada metro cuadrado. La tierra cubierta de plantas no se lava; la tierra desnuda se va con el agua.`, "lluvia");
@@ -662,10 +796,18 @@ function eventos(antes: VistaParcela[]): boolean {
   return parar;
 }
 
+/** El mes de hoy es de los que "faltan agua" (rojo) para el cultivo principal. */
+function mesSeco(hoy: Dia): boolean {
+  const c = cicloPrincipal();
+  if (!c) return false;
+  const k = c.meses.findIndex((m) => m.slice(0, 3) === MESES_CORTOS[Number(hoy.fecha.slice(5, 7)) - 1]);
+  return k >= 0 && c.estado_mes[k] === "rojo";
+}
 let ultimoAguacero = -99;
 /** Play: el cultivo más largo termina en 10 segundos como mucho (un paso cada 100 ms). */
 function iniciarAuto() {
   if (auto) { detenerAuto(); return; }
+  if (!J.sembrado || todoCosechado()) return;
   $("#btn-auto").innerHTML = ic("pausa");
   const largo = Math.max(1, ...J.parcelas.map((p, i) => (p.crop && !p.cosechada && ciclos.has(i) ? ciclos.get(i)!.dias.length : 0)));
   const porPaso = Math.max(1, Math.ceil(largo / 100));
@@ -697,13 +839,13 @@ async function regar() {
   guardarTodo();
   pintarMundo();
   if (!regadas.length) decir(J.tanque <= 0 ? "El tanque está vacío. Hay que esperar la lluvia." : "La tierra todavía está húmeda. No hace falta regar.");
-  else decir(`Regamos la ${regadas[0]} con ${agua(gastado)} de agua. Ahora la tierra está húmeda y las raíces pueden beber.`);
+  else { sonido.riego(); decir(`Regamos la ${regadas[0]} con ${agua(gastado)} de agua. Ahora la tierra está húmeda y las raíces pueden beber.`); }
 }
 
 // ---------------------------------------------------------------- 9. cosecha
 function tocarParcela(i: number) {
   const p = J.parcelas[i];
-  if (vista(i).lista && !p.cosechada) { cosechar(i); return; }
+  if (vista(i).lista && !p.cosechada) { cosechar([p.crop!]); return; }
   if (!J.sembrado) { if (J.paso === "sembrar" || J.paso === "agua") sembrar(i); else seguirHistoria(); return; }
   if (!p.crop || p.cosechada) { decir("Esta parcela está vacía."); return; }
   const c = ciclos.get(i)!;
@@ -712,37 +854,95 @@ function tocarParcela(i: number) {
   decir(`${cap(nombreCorto(p.crop))}: ${d.etapa}. La tierra tiene ${h} de cada 100 partes del agua que puede guardar${h < 30 ? ": está muy seca, ¡riégala!" : h < 60 ? ": todavía aguanta." : ": está bien húmeda."}`);
 }
 
-function cosechar(i: number) {
-  const p = J.parcelas[i], c = ciclos.get(i)!;
-  mundo?.cosechar(i);
-  p.cosechada = true;
-  p.puntaje = c.puntaje;
-  p.historial.push(p.crop!);
-  if (p.crop !== "descanso") { J.cosechas++; J.puntajes.push(c.puntaje); ganar("primera"); if (c.estrellas === 3) ganar("agua"); }
-  const fams = p.historial.filter((x) => x !== "descanso").slice(-3).map((x) => cultivos.get(x)?.familia);
-  if (fams.length === 3 && new Set(fams).size === 3) ganar("rotacion");
+type Cosecha = { id: string; n: number; puntaje: number; estrellas: number; secos: number; dias: number; calor: number; anio: number;
+  veredicto: string; en_epoca: boolean; epoca: string | null };
+/** Las semillas distintas que ya están listas (una tarjeta de cosecha por semilla, no por parcela). */
+const semillasListas = () => [...new Set(listas().map((i) => J.parcelas[i].crop!))];
+let cosechando = false;
+
+/** Una azada golpea la tierra de cada parcela que se cosecha (se dibuja encima del mundo 3D o 2D). */
+async function animarCosecha(indices: number[]) {
+  const capa = document.createElement("div");
+  capa.className = "capa-cosecha";
+  capa.setAttribute("aria-hidden", "true");
+  indices.forEach((i, k) => {
+    const pos = mundo?.posicion(i) ?? { x: innerWidth / 2, y: innerHeight / 2 };
+    const g = document.createElement("div");
+    g.className = "azada-anim";
+    g.style.left = `${pos.x}px`;
+    g.style.top = `${pos.y}px`;
+    g.style.setProperty("--retraso", `${k * 0.12}s`);
+    g.innerHTML = `${ic("azada", "ic-azada")}${Array.from({ length: 7 }, (_, j) => `<i class="terron" style="--dx:${(j - 3) * 16 + (j % 2) * 6}px;--dy:${-30 - (j % 3) * 18}px"></i>`).join("")}`;
+    capa.appendChild(g);
+  });
+  document.body.appendChild(capa);
+  sonido.cosecha();
+  await espera(1250 + indices.length * 120);
+  capa.remove();
+}
+
+/** Cosecha todas las parcelas listas de las semillas dadas. Muestra una sola tarjeta por semilla. */
+async function cosechar(ids: string[]) {
+  if (cosechando) return;
+  const idx = listas().filter((i) => ids.includes(J.parcelas[i].crop!));
+  if (!idx.length) return;
+  cosechando = true;
+  detenerAuto();
+  cerrarPanel();
+  idx.forEach((i) => mundo?.cosechar(i));
+  decir(t("¡A cosechar con la azada!", "Time to harvest with the hoe!"));
+  await animarCosecha(idx);
+  const cola: Cosecha[] = [];
+  for (const id of ids) {
+    const is = idx.filter((i) => J.parcelas[i].crop === id);
+    if (!is.length) continue;
+    const cs = is.map((i) => ciclos.get(i)!);
+    const media = (f: (c: Ciclo) => number) => cs.reduce((acc, c) => acc + f(c), 0) / cs.length;
+    const puntaje = Math.round(media((c) => c.puntaje));
+    const estrellas = puntaje >= 85 ? 3 : puntaje >= 60 ? 2 : 1;
+    is.forEach((i) => {
+      const p = J.parcelas[i], c = ciclos.get(i)!;
+      p.cosechada = true;
+      p.puntaje = c.puntaje;
+      p.historial.push(p.crop!);
+      if (p.crop !== "descanso") { J.cosechas++; J.puntajes.push(c.puntaje); }
+      const fams = p.historial.filter((x) => x !== "descanso").slice(-3).map((x) => cultivos.get(x)?.familia);
+      if (fams.length === 3 && new Set(fams).size === 3) ganar("rotacion");
+    });
+    if (id !== "descanso") { ganar("primera"); if (estrellas === 3) ganar("agua"); }
+    cola.push({ id, n: is.length, puntaje, estrellas, secos: Math.round(media((c) => c.dias_secos)), dias: cs[0].dias.length,
+      calor: cs[0].dias.filter((x) => x.calor).length, anio: cs[0].anio, veredicto: cs[0].veredicto, en_epoca: cs[0].en_epoca, epoca: cs[0].epoca });
+  }
+  cosechando = false;
   guardarTodo();
   setTimeout(pintarMundo, 900);
+  pintarControles();
+  mostrarCosechas(cola, 0);
+}
+
+function mostrarCosechas(cola: Cosecha[], k: number) {
+  const c = cola[k], nom = nombreCorto(c.id);
   const msg = c.puntaje >= 85 ? "¡Excelente cosecha! Cuidaste muy bien el agua."
     : c.puntaje >= 60 ? "Buena cosecha. En algunos días le faltó agua."
     : "La planta pasó sed. La próxima vez riega cuando la tierra esté seca.";
   const epoca = c.en_epoca ? "" : ` Sembraste fuera de época: aquí se siembra ${c.epoca}.`;
+  const hay = k + 1 < cola.length;
   abrirPanel("¡Cosecha!", `<div class="cosecha">
-    <div class="cosecha-icono">${icono(p.crop!, "icono-grande")}</div>
+    <div class="cosecha-icono">${icono(c.id, "icono-grande")}</div>
+    <p class="cosecha-titulo">${c.n > 1 ? t(`${c.n} parcelas de ${esc(nom)}`, `${c.n} plots of ${esc(nom)}`) : t(`1 parcela de ${esc(nom)}`, `1 plot of ${esc(nom)}`)}</p>
     <div class="estrellas">${ic("estrella").repeat(c.estrellas)}${ic("estrellaVacia").repeat(3 - c.estrellas)}</div>
-    <p class="grande"><b>${c.puntaje}</b> puntos</p>
+    <p class="grande"><b>${c.puntaje}</b> puntos${c.n > 1 ? ` <small>${t("(promedio de las parcelas)", "(average of the plots)")}</small>` : ""}</p>
     <p>${esc(msg + epoca)}</p>
     <p class="veredicto">En los años de la NASA, para este mes: <b>${VEREDICTO[c.veredicto] || ""}</b></p>
-    <p class="fuente">Días con sed: ${c.dias_secos} de ${c.dias.length} · días de calor: ${c.dias.filter((x) => x.calor).length} · año ${c.anio} de NASA POWER</p>
-    <button class="btn-juego grande" data-ok>${btn("pulgar", "Seguir")}</button></div>`, "centro");
+    <p class="fuente">Días con sed: ${c.secos} de ${c.dias} · días de calor: ${c.calor} · año ${c.anio} de NASA POWER</p>
+    <button class="btn-juego grande" data-ok>${btn("pulgar", hay ? t("Siguiente cosecha", "Next harvest") : "Seguir")}</button></div>`, "centro");
   $("[data-ok]").addEventListener("click", () => {
     cerrarPanel();
-    const otra = listas()[0];
-    if (otra !== undefined) setTimeout(() => cosechar(otra), 300);
-    else if (todoCosechado()) { paso("rotacion"); leccionRotacion(); }
+    if (hay) setTimeout(() => mostrarCosechas(cola, k + 1), 250);
+    else if (todoCosechado()) { paso("rotacion"); rotarTierra(); }
+    else pintarControles();
   });
   decir(msg + epoca, c.puntaje >= 60 ? "feliz" : "preocupada");
-  pintarControles();
 }
 
 // ---------------------------------------------------------------- 10. rotación: 3 combinaciones que nutren la tierra
@@ -777,6 +977,7 @@ async function leccionRotacion() {
     <p class="fuente">Rotaciones calculadas con los datos de tu parcela (NASA POWER, FAO-56) y el calendario del INIAP. La salud de la tierra son puntos del juego.</p>`);
   p.querySelectorAll<HTMLButtonElement>("[data-rot]").forEach((b) => b.addEventListener("click", () => {
     J.rotacion = rots[Number(b.dataset.rot)].pasos.map((s: any) => s.id);
+    J.rotPaso = 0;   // el primer cultivo de la rotación es el que acabas de cosechar
     paso("certificado");
     certificado();
   }));
@@ -785,6 +986,64 @@ async function leccionRotacion() {
     "El aire está lleno de nitrógeno, pero las plantas no lo pueden comer. Las leguminosas, como el haba, el chocho y el fréjol, tienen en sus raíces bolitas con bacterias amigas que lo atrapan.",
     "Cuando cosechas, esas raíces se quedan en la tierra como abono natural. Por eso, después de una leguminosa, la papa o el maíz crecen mejor. ¡Eso es rotar! Elige una de estas tres rotaciones.",
   ]);
+}
+
+/** Posición del cultivo actual dentro de la rotación elegida (0 = el primero). */
+const rotPaso = () => J.rotPaso ?? 0;
+/** El cultivo que sigue en la rotación elegida, o null si ya se terminó (o no hay rotación). */
+function rotacionPendiente(): { id: string; k: number; n: number } | null {
+  if (!J.rotacion || J.rotacion.length < 2) return null;
+  const k = rotPaso() + 1;
+  return k < J.rotacion.length ? { id: J.rotacion[k], k, n: J.rotacion.length } : null;
+}
+const nombreCultivo = (id: string) => cultivos.get(id)?.nombre || id;
+
+/** Al terminar la cosecha: sigue la rotación elegida; si no hay (o ya terminó), enseña a elegir una. */
+function rotarTierra() {
+  if (rotacionPendiente()) siguienteRotacion();
+  else if (J.rotacion && J.rotacion.length > 1) rotacionCompleta();
+  else leccionRotacion();
+}
+
+/** Los pasos de la rotación elegida con lo que ya se hizo. */
+function tiraRotacion(): string {
+  const cur = rotPaso();
+  const hecho = (k: number) => k < cur || (k === cur && J.sembrado && todoCosechado());
+  return `<div class="rot-pasos grande">${(J.rotacion || []).map((id, k) => `${k ? '<span class="flecha">→</span>' : ""}<span class="rot-paso ${hecho(k) ? "hecho" : k === cur ? "ahora" : "luego"}">
+    ${icono(id, "icono-mini")}<b>${esc(nombreCultivo(id))}</b><small>${hecho(k) ? t("✓ hecho", "✓ done") : k === cur ? t("ahora", "now") : t("sigue", "next")}</small></span>`).join("")}</div>`;
+}
+
+/** Tu rotación continúa: se muestra el paso siguiente y se siembra con un toque. */
+function siguienteRotacion() {
+  const pend = rotacionPendiente();
+  if (!pend) { rotacionCompleta(); return; }
+  const previo = cultivos.get(J.rotacion![rotPaso()]), nuevoC = cultivos.get(pend.id);
+  const razon = previo?.fija_n ? t("Lo que cosechaste dejó nitrógeno en la tierra: ahora crecerá más verde.", "What you harvested left nitrogen in the soil: the next crop will grow greener.")
+    : previo && nuevoC && previo.familia !== nuevoC.familia ? t("Cambia de familia: así se cortan las plagas y la tierra descansa.", "It changes family: that breaks pest cycles and lets the soil rest.") : "";
+  abrirPanel(t("Sigue tu rotación", "Your rotation continues"), `
+    <div class="leccion">${ic("rotar", "ic-leccion")}<div><b>${t(`Paso ${pend.k + 1} de ${pend.n}`, `Step ${pend.k + 1} of ${pend.n}`)}:</b>
+      ${t(`la rotación que elegiste sigue con ${esc(nombreCultivo(pend.id).toLowerCase())}.`, `the rotation you chose continues with ${esc(nombreCultivo(pend.id).toLowerCase())}.`)} ${razon}</div></div>
+    ${tiraRotacion()}
+    <div class="fila-botones"><button class="btn-juego grande" data-sembrar-rot>${btn("semilla", t(`Sembrar ${nombreCultivo(pend.id).toLowerCase()}`, `Plant ${nombreCultivo(pend.id).toLowerCase()}`))}</button></div>
+    <div class="fila-botones"><button class="btn-juego borde" data-otra>${btn("rotar", t("Elegir otra rotación", "Choose another rotation"))}</button></div>`, "centro");
+  $("[data-sembrar-rot]").addEventListener("click", nuevaTemporada);
+  $("[data-otra]").addEventListener("click", () => { J.rotacion = null; J.rotPaso = 0; guardarTodo(); leccionRotacion(); });
+  decir(t(`¡Muy bien! Tu rotación sigue con ${nombreCultivo(pend.id).toLowerCase()}, paso ${pend.k + 1} de ${pend.n}. ${razon} Toca Sembrar para continuar.`,
+    `Well done! Your rotation continues with ${nombreCultivo(pend.id).toLowerCase()}, step ${pend.k + 1} of ${pend.n}. ${razon} Tap Plant to continue.`));
+}
+
+/** Se cosechó el último cultivo de la rotación elegida. */
+function rotacionCompleta() {
+  abrirPanel(t("¡Rotación completa!", "Rotation complete!"), `
+    <div class="leccion">${ic("medalla", "ic-leccion")}<div><b>${t("¡Lo lograste!", "You did it!")}</b> ${t("Sembraste y cosechaste toda la rotación: la tierra descansó, se alimentó y las plagas no se repitieron.", "You planted and harvested the whole rotation: the soil rested, was fed and pests did not repeat.")}</div></div>
+    ${tiraRotacion()}
+    <div class="medidor"><span>Salud de tu tierra</span><div class="barra"><i style="width:${J.salud}%;background:${colorSuelo(J.salud)}"></i></div><b>${J.salud}</b></div>
+    <div class="fila-botones"><button class="btn-juego grande" data-cert>${btn("medalla", t("Ver mi certificado", "See my certificate"))}</button></div>
+    <div class="fila-botones"><button class="btn-juego borde" data-otra>${btn("rotar", t("Elegir una rotación nueva", "Choose a new rotation"))}</button></div>`, "centro");
+  $("[data-cert]").addEventListener("click", () => { paso("certificado"); certificado(); });
+  $("[data-otra]").addEventListener("click", () => { J.rotacion = null; J.rotPaso = 0; guardarTodo(); leccionRotacion(); });
+  decir(t("¡Completaste toda la rotación! Mira cómo mejoró la salud de tu tierra. Ya puedes ver tu certificado o elegir una rotación nueva.",
+    "You completed the whole rotation! See how your soil's health improved. You can now see your certificate or choose a new rotation."));
 }
 
 // ---------------------------------------------------------------- 11. certificado de Granjero Cósmico
@@ -797,31 +1056,65 @@ async function cargarPachitaDatos() {
   } catch { /* sin imagen */ }
 }
 
-function svgCertificado(): string {
-  const prom = J.puntajes.length ? Math.round(J.puntajes.reduce((a, b) => a + b, 0) / J.puntajes.length) : 0;
+/** El certificado se dibuja apaisado en pantallas anchas y vertical en celulares, para que llene toda la pantalla. */
+const certificadoVertical = () => innerHeight > innerWidth * 1.05;
+
+function svgCertificado(vertical = certificadoVertical()): string {
+  const prom = J.puntajes.length ? Math.round(J.puntajes.reduce((acc, x) => acc + x, 0) / J.puntajes.length) : 0;
   const hoy = new Date();
-  const rot = (J.rotacion || []).map((id) => cultivos.get(id)?.nombre || id);
-  const estrellas = Array.from({ length: 26 }, (_, k) => `<circle cx="${(k * 97) % 800}" cy="${(k * 53) % 90 + 30}" r="${1 + (k % 3)}" fill="#fff" opacity=".8"/>`).join("");
-  const pachita = pachitaDatos ? `<image href="${pachitaDatos}" width="104" height="224"/>` : "";
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 560" class="certificado-svg" font-family="Nunito, Arial, sans-serif">
-    <rect width="800" height="560" rx="28" fill="#fffaf0"/>
-    <path d="M24 40 Q24 24 40 24 H760 Q776 24 776 40 V124 H24 Z" fill="#1d3b6a"/>${estrellas}
-    <rect x="12" y="12" width="776" height="536" rx="22" fill="none" stroke="#e6b33a" stroke-width="6"/>
-    <rect x="24" y="24" width="752" height="512" rx="16" fill="none" stroke="#2e7d4f" stroke-width="2" stroke-dasharray="8 6"/>
-    <g transform="translate(712 30) scale(.42)">${COHETE.replace('class="cohete-svg"', 'width="120" height="200"')}</g>
-    <text x="380" y="80" text-anchor="middle" font-size="31" font-weight="900" fill="#fff">CERTIFICADO DE GRANJERO CÓSMICO</text>
-    <text x="380" y="108" text-anchor="middle" font-size="16" fill="#ffd34d">Astro Granja · NASA Space Apps 2026</text>
-    <text x="400" y="172" text-anchor="middle" font-size="20" fill="#5b4a3a">Pachita certifica que la granja</text>
-    <text x="400" y="222" text-anchor="middle" font-size="44" font-weight="900" fill="#2e7d4f">${esc(J.granja)}</text>
-    <text x="400" y="262" text-anchor="middle" font-size="18" fill="#3b2a1a">aprendió a sembrar, regar con datos de la NASA y rotar para cuidar la tierra.</text>
-    <text x="400" y="306" text-anchor="middle" font-size="19" fill="#3b2a1a">Cosechas: <tspan font-weight="900">${J.cosechas}</tspan>  ·  Puntaje promedio: <tspan font-weight="900">${prom}</tspan>  ·  Salud de la tierra: <tspan font-weight="900">${J.salud}</tspan></text>
-    ${rot.length ? `<text x="400" y="346" text-anchor="middle" font-size="17" fill="#5b4a3a">Rotación elegida: <tspan font-weight="800" fill="#2e7d4f">${esc(rot.join(" → "))}</tspan></text>` : ""}
-    ${J.medallas.map((m, k, todas) => icG(MEDALLAS[m]?.icono || "medalla", 400 - todas.length * 20 + k * 40, 360, 34)).join("")}
-    <g transform="translate(60 316)">${pachita}</g>
-    <line x1="520" y1="482" x2="720" y2="482" stroke="#3b2a1a" stroke-width="1.5"/>
-    <text x="620" y="474" text-anchor="middle" font-size="26" font-style="italic" fill="#2b4a7a">Pachita</text>
-    <text x="620" y="502" text-anchor="middle" font-size="14" fill="#5b4a3a">Granjera de la sierra</text>
-    <text x="400" y="528" text-anchor="middle" font-size="13" fill="#8a7a6a">${hoy.getDate()} de ${MESES[hoy.getMonth()]} de ${hoy.getFullYear()} · Datos: NASA POWER, FAO-56, INIAP</text>
+  const rot = (J.rotacion || []).map((id) => nombreCultivo(id));
+  const W = vertical ? 560 : 800, Hh = vertical ? 800 : 560, cx = W / 2;
+  const mes = t(MESES[hoy.getMonth()], MESES_EN[hoy.getMonth()]);
+  const fechaTxt = t(`${hoy.getDate()} de ${mes} de ${hoy.getFullYear()}`, `${mes} ${hoy.getDate()}, ${hoy.getFullYear()}`);
+  const estrellas = Array.from({ length: 26 }, (_, k) => `<circle cx="${(k * 97) % (W - 20) + 10}" cy="${(k * 53) % (vertical ? 120 : 90) + 30}" r="${1 + (k % 3)}" fill="#fff" opacity=".8"/>`).join("");
+  const medallas = (y: number) => J.medallas.map((m, k, todas) => icG(MEDALLAS[m]?.icono || "medalla", cx - todas.length * 20 + k * 40, y, 34)).join("");
+  const nombreTam = Math.max(24, Math.min(vertical ? 46 : 44, (vertical ? 470 : 700) / (Math.max(J.granja.length, 1) * 0.56)));
+  const pie = t("Datos: NASA POWER, FAO-56, INIAP", "Data: NASA POWER, FAO-56, INIAP");
+  const cohete = (x: number) => `<g transform="translate(${x} 30) scale(.42)">${COHETE.replace('class="cohete-svg"', 'width="120" height="200"')}</g>`;
+  const cabeza = vertical
+    ? `<path d="M24 40 Q24 24 40 24 H520 Q536 24 536 40 V170 H24 Z" fill="#1d3b6a"/>${estrellas}${cohete(452)}
+       <text x="${cx - 24}" y="82" text-anchor="middle" font-size="26" font-weight="900" fill="#fff">${t("CERTIFICADO DE", "CERTIFICATE OF")}</text>
+       <text x="${cx - 24}" y="120" text-anchor="middle" font-size="36" font-weight="900" fill="#fff">${t("GRANJERO CÓSMICO", "COSMIC FARMER")}</text>
+       <text x="${cx}" y="152" text-anchor="middle" font-size="15" fill="#ffd34d">Astro Granja · NASA Space Apps 2026</text>`
+    : `<path d="M24 40 Q24 24 40 24 H760 Q776 24 776 40 V124 H24 Z" fill="#1d3b6a"/>${estrellas}${cohete(712)}
+       <text x="380" y="80" text-anchor="middle" font-size="31" font-weight="900" fill="#fff">${t("CERTIFICADO DE GRANJERO CÓSMICO", "COSMIC FARMER CERTIFICATE")}</text>
+       <text x="380" y="108" text-anchor="middle" font-size="16" fill="#ffd34d">Astro Granja · NASA Space Apps 2026</text>`;
+  const frase = t("aprendió a sembrar, regar con datos de la NASA y rotar para cuidar la tierra.", "learned to plant, to water with NASA data and to rotate crops to care for the land.");
+  const partes = vertical ? frase.split(/(?<=,)\s|\s(?=y rotar|and to rotate)/).slice(0, 3) : [frase];
+  const estad = [[t("Cosechas", "Harvests"), J.cosechas], [t("Puntaje promedio", "Average score"), prom], [t("Salud de la tierra", "Soil health"), J.salud]];
+  const cuerpo = vertical
+    ? `<text x="${cx}" y="236" text-anchor="middle" font-size="20" fill="#5b4a3a">${t("Pachita certifica que la granja", "Pachita certifies that the farm")}</text>
+       <text x="${cx}" y="296" text-anchor="middle" font-size="${nombreTam}" font-weight="900" fill="#2e7d4f">${esc(J.granja)}</text>
+       ${partes.map((x, k) => `<text x="${cx}" y="${340 + k * 26}" text-anchor="middle" font-size="18" fill="#3b2a1a">${esc(x)}</text>`).join("")}
+       ${estad.map(([n, v], k) => `<text x="${cx}" y="${434 + k * 32}" text-anchor="middle" font-size="21" fill="#3b2a1a">${n}: <tspan font-weight="900">${v}</tspan></text>`).join("")}
+       ${rot.length ? `<text x="${cx}" y="548" text-anchor="middle" font-size="16" fill="#5b4a3a">${t("Rotación elegida", "Chosen rotation")}:</text>
+         <text x="${cx}" y="572" text-anchor="middle" font-size="${Math.min(18, 500 / Math.max(rot.join(" → ").length * 0.55, 1))}" font-weight="800" fill="#2e7d4f">${esc(rot.join(" → "))}</text>` : ""}
+       ${medallas(588)}`
+    : `<text x="400" y="172" text-anchor="middle" font-size="20" fill="#5b4a3a">${t("Pachita certifica que la granja", "Pachita certifies that the farm")}</text>
+       <text x="400" y="222" text-anchor="middle" font-size="${nombreTam}" font-weight="900" fill="#2e7d4f">${esc(J.granja)}</text>
+       <text x="400" y="262" text-anchor="middle" font-size="18" fill="#3b2a1a">${esc(frase)}</text>
+       <text x="400" y="306" text-anchor="middle" font-size="19" fill="#3b2a1a">${estad.map(([n, v]) => `${n}: <tspan font-weight="900">${v}</tspan>`).join("  ·  ")}</text>
+       ${rot.length ? `<text x="400" y="346" text-anchor="middle" font-size="17" fill="#5b4a3a">${t("Rotación elegida", "Chosen rotation")}: <tspan font-weight="800" fill="#2e7d4f">${esc(rot.join(" → "))}</tspan></text>` : ""}
+       ${medallas(360)}`;
+  const pachita = pachitaDatos ? `<image href="${pachitaDatos}" width="${vertical ? 96 : 104}" height="${vertical ? 207 : 224}"/>` : "";
+  const firma = vertical
+    ? `<g transform="translate(46 566)">${pachita}</g>
+       <line x1="290" y1="716" x2="508" y2="716" stroke="#3b2a1a" stroke-width="1.5"/>
+       <text x="399" y="708" text-anchor="middle" font-size="28" font-style="italic" fill="#2b4a7a">Pachita</text>
+       <text x="399" y="738" text-anchor="middle" font-size="14" fill="#5b4a3a">${t("Granjera de la sierra", "Highland farmer")}</text>
+       <text x="${W - 30}" y="772" text-anchor="end" font-size="12" fill="#8a7a6a">${fechaTxt} · ${pie}</text>`
+    : `<g transform="translate(60 316)">${pachita}</g>
+       <line x1="520" y1="482" x2="720" y2="482" stroke="#3b2a1a" stroke-width="1.5"/>
+       <text x="620" y="474" text-anchor="middle" font-size="26" font-style="italic" fill="#2b4a7a">Pachita</text>
+       <text x="620" y="502" text-anchor="middle" font-size="14" fill="#5b4a3a">${t("Granjera de la sierra", "Highland farmer")}</text>
+       <text x="400" y="528" text-anchor="middle" font-size="13" fill="#8a7a6a">${fechaTxt} · ${pie}</text>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${Hh}" class="certificado-svg${vertical ? " vertical" : ""}" data-w="${W}" data-h="${Hh}" font-family="Nunito, Arial, sans-serif">
+    <rect width="${W}" height="${Hh}" rx="28" fill="#fffaf0"/>
+    ${cabeza}
+    <rect x="12" y="12" width="${W - 24}" height="${Hh - 24}" rx="22" fill="none" stroke="#e6b33a" stroke-width="6"/>
+    <rect x="24" y="24" width="${W - 48}" height="${Hh - 48}" rx="16" fill="none" stroke="#2e7d4f" stroke-width="2" stroke-dasharray="8 6"/>
+    ${cuerpo}
+    ${firma}
   </svg>`;
 }
 
@@ -830,27 +1123,29 @@ async function certificado() {
   await cargarPachitaDatos();
   const p = abrirPanel("¡Eres Granjero Cósmico!", `<div class="certificado">${svgCertificado()}</div>
     <div class="fila-botones"><button class="btn-juego" data-bajar>${btn("descargar", "Descargar")}</button>
-      <button class="btn-juego borde" data-seguir>${btn("semilla", "Sembrar la rotación")}</button>
+      ${rotacionPendiente() ? `<button class="btn-juego borde" data-seguir>${btn("semilla", "Sembrar la rotación")}</button>` : ""}
       <button class="btn-juego borde" data-nueva>${btn("cohete", "Nueva granja")}</button></div>`, "certificado-panel");
   lanzarConfeti();
   decir(`¡Felicitaciones, granja ${J.granja}! Aprendiste a leer los datos de la NASA, a regar cuando la tierra tiene sed y a rotar con leguminosas. Ganaste el certificado de Granjero Cósmico. ¡La tierra te lo agradece!`);
   p.querySelector("[data-bajar]")!.addEventListener("click", descargarCertificado);
-  p.querySelector("[data-seguir]")!.addEventListener("click", nuevaTemporada);
+  p.querySelector("[data-seguir]")?.addEventListener("click", nuevaTemporada);
   p.querySelector("[data-nueva]")!.addEventListener("click", reiniciar);
 }
 
 function descargarCertificado() {
+  const vertical = certificadoVertical();
+  const w = vertical ? 1120 : 1600, h = vertical ? 1600 : 1120;
   const img = new Image();
   img.onload = () => {
     const c = document.createElement("canvas");
-    c.width = 1600; c.height = 1120;
-    c.getContext("2d")!.drawImage(img, 0, 0, 1600, 1120);
+    c.width = w; c.height = h;
+    c.getContext("2d")!.drawImage(img, 0, 0, w, h);
     const a = document.createElement("a");
-    a.download = `certificado-${J.granja.replace(/[^\p{L}\p{N}]+/gu, "-").toLowerCase()}.png`;
+    a.download = `${t("certificado", "certificate")}-${J.granja.replace(/[^\p{L}\p{N}]+/gu, "-").toLowerCase()}.png`;
     a.href = c.toDataURL("image/png");
     a.click();
   };
-  img.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svgCertificado());
+  img.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svgCertificado(vertical));
 }
 
 function lanzarConfeti() {
@@ -873,7 +1168,9 @@ async function nuevaTemporada() {
   J.dia = 0;
   J.sembrado = false;
   J.parcelas.forEach((p) => { p.crop = null; p.riegos = []; p.cosechada = false; p.puntaje = undefined; });
-  const siguiente = J.rotacion && J.rotacion.length > 1 ? J.rotacion[1] : null;
+  const pend = rotacionPendiente();
+  const siguiente = pend ? pend.id : null;
+  if (pend) J.rotPaso = pend.k;   // ahora toca el paso siguiente de la rotación (no siempre el segundo)
   J.crop = siguiente;
   ciclos.clear();
   try { await cargarSemillas(proximo); } catch { /* se reintenta luego */ }
@@ -882,7 +1179,7 @@ async function nuevaTemporada() {
   if (siguiente && cultivos.get(siguiente)?.apto !== false) {
     paso("calendario");
     abrirCalendario();
-    decir(`Tu rotación sigue con ${nombreCorto(siguiente)}. ¡Elige el mes!`);
+    decir(t(`Tu rotación sigue con ${nombreCorto(siguiente)}, paso ${rotPaso() + 1} de ${J.rotacion!.length}. ¡Elige el mes!`, `Your rotation continues with ${nombreCorto(siguiente)}, step ${rotPaso() + 1} of ${J.rotacion!.length}. Choose the month!`));
   } else { paso("semillas"); abrirFamilias(); }
 }
 
@@ -945,6 +1242,64 @@ function pintarHud() {
     sem.innerHTML = `<span class="sem-titulo">Agua por mes</span>` + sem.innerHTML;
     sem.hidden = false;
   } else sem.hidden = true;
+  pintarCronologia();
+  pintarRotHud();
+}
+
+// ---------------------------------------------------------------- cronología: cuánto falta para cosechar
+const ETAPA_COLOR: Record<string, string> = { "recién sembrado": "#a1887f", creciendo: "#7cb342", "en plena producción": "#f2b705",
+  madurando: "#ef8f2e", "listo para cosechar": "#ffc93c", "antes de sembrar": "#d7ccc8" };
+const ETAPA_TXT: Record<string, [string, string]> = { "recién sembrado": ["Recién sembrada", "Just planted"], creciendo: ["Creciendo", "Growing"],
+  "en plena producción": ["En plena producción", "In full production"], madurando: ["Madurando", "Ripening"],
+  "listo para cosechar": ["¡Lista para cosechar!", "Ready to harvest!"], "antes de sembrar": ["Preparando", "Getting ready"] };
+const fechaCorta = (iso: string) => { const [, m, d] = iso.split("-").map(Number); return `${d} ${MESES_CORTOS[m - 1]}`; };
+
+/** Una barra por semilla sembrada: las etapas del cultivo, dónde va hoy y cuántos días faltan para la cosecha. */
+function pintarCronologia() {
+  const caja = $("#cronologia");
+  if (!J.sembrado || todoCosechado()) { caja.hidden = true; return; }
+  const vistos = new Set<string>();
+  const filas: string[] = [];
+  J.parcelas.forEach((p, i) => {
+    const c = ciclos.get(i);
+    if (!p.crop || p.cosechada || !c || vistos.has(p.crop)) return;
+    vistos.add(p.crop);
+    const n = c.dias.length, d = Math.min(J.dia, n - 1), faltan = n - 1 - d;
+    const segs: { e: string; k: number }[] = [];
+    c.dias.forEach((x) => { const u = segs[segs.length - 1]; if (u && u.e === x.etapa) u.k++; else segs.push({ e: x.etapa, k: 1 }); });
+    const etapa = ETAPA_TXT[c.dias[d].etapa] || [c.dias[d].etapa, c.dias[d].etapa];
+    const meses = faltan > 45 ? t(` (unos ${Math.round(faltan / 30)} meses)`, ` (about ${Math.round(faltan / 30)} months)`) : "";
+    filas.push(`<button class="crono-fila" type="button" data-crono="${p.crop}">
+      <span class="crono-cab">${icono(p.crop, "icono-crono")}<b>${esc(cap(nombreCorto(p.crop)))}</b><span class="crono-etapa">${t(etapa[0], etapa[1])}</span>
+        <span class="crono-falta">${faltan > 0 ? t(`Faltan ${num(faltan)} días`, `${num(faltan)} days left`) : t("¡Lista!", "Ready!")}</span></span>
+      <span class="crono-barra" style="--p:${(d / Math.max(n - 1, 1)) * 100}%" role="img" aria-label="${t(`Faltan ${faltan} días para cosechar`, `${faltan} days until harvest`)}">
+        <span class="crono-segs">${segs.map((x) => `<i style="flex:${x.k};background:${ETAPA_COLOR[x.e] || "#bbb"}"></i>`).join("")}</span><b class="crono-marca"></b></span>
+      <span class="crono-pie"><span>${t("Siembra", "Planted")}: ${fechaCorta(c.dias[0].fecha)}</span><span>${t("Cosecha", "Harvest")}: ${fechaCorta(c.dias[n - 1].fecha)}${meses}</span></span></button>`);
+  });
+  caja.innerHTML = filas.slice(0, 2).join("") +
+    `<button class="crono-agua" type="button" data-agua-info>${ic("gota", "ic-chip")} ${t("¿Cuánta agua necesita?", "How much water does it need?")}</button>`;
+  caja.hidden = !filas.length;
+  caja.querySelectorAll<HTMLButtonElement>("[data-crono]").forEach((b) => b.addEventListener("click", () => {
+    const id = b.dataset.crono!, i = J.parcelas.findIndex((p) => p.crop === id && !p.cosechada), c = ciclos.get(i);
+    if (!c) return;
+    const faltan = c.dias.length - 1 - Math.min(J.dia, c.dias.length - 1);
+    decir(faltan > 0 ? t(`La ${nombreCorto(id)} va en la etapa «${(ETAPA_TXT[c.dias[Math.min(J.dia, c.dias.length - 1)].etapa] || ["", ""])[0].toLowerCase()}». Faltan ${num(faltan)} días para cosechar, el ${fecha(c.dias[c.dias.length - 1].fecha)}.`,
+        `The ${nombreCorto(id)} is in the "${(ETAPA_TXT[c.dias[Math.min(J.dia, c.dias.length - 1)].etapa] || ["", ""])[1].toLowerCase()}" stage. ${num(faltan)} days left to harvest, on ${fecha(c.dias[c.dias.length - 1].fecha)}.`)
+      : t(`¡La ${nombreCorto(id)} ya está lista!`, `The ${nombreCorto(id)} is ready!`));
+  }));
+  caja.querySelector("[data-agua-info]")?.addEventListener("click", panelAgua);
+}
+
+/** La rotación elegida, siempre a la vista: qué se hizo, qué toca ahora y qué sigue. */
+function pintarRotHud() {
+  const caja = $("#rot-hud");
+  if (!J.rotacion || J.rotacion.length < 2) { caja.hidden = true; return; }
+  const cur = rotPaso();
+  caja.innerHTML = `<span class="rot-hud-t">${ic("rotar", "ic-chip")} ${t("Rotación", "Rotation")}</span>` + J.rotacion.map((id, k) => {
+    const hecho = k < cur || (k === cur && J.sembrado && todoCosechado());
+    return `${k ? '<span class="flecha">›</span>' : ""}<span class="rot-chip ${hecho ? "hecho" : k === cur ? "ahora" : "luego"}" title="${esc(nombreCultivo(id))}">${icono(id, "icono-chip")}<b>${esc(nombreCultivo(id).split(" ")[0])}</b>${hecho ? '<i class="visto">✓</i>' : ""}</span>`;
+  }).join("");
+  caja.hidden = false;
 }
 
 function pintarControles() {
@@ -958,18 +1313,21 @@ function pintarControles() {
       ctl.querySelector("[data-agua]")?.addEventListener("click", panelAgua);
     } else ctl.innerHTML = "";
   } else if (todoCosechado()) {
-    ctl.innerHTML = `<button class="btn-juego grande" data-rotar>${btn("rotar", "Rotar la tierra")}</button>`;
-    ctl.querySelector("[data-rotar]")!.addEventListener("click", () => { paso("rotacion"); leccionRotacion(); });
+    const pend = rotacionPendiente();
+    const txt = pend ? t(`Seguir la rotación: ${nombreCorto(pend.id)}`, `Continue the rotation: ${nombreCorto(pend.id)}`)
+      : J.rotacion && J.rotacion.length > 1 ? t("Rotación completa", "Rotation complete") : "Rotar la tierra";
+    ctl.innerHTML = `<button class="btn-juego grande" data-rotar>${btn("rotar", txt)}</button>`;
+    ctl.querySelector("[data-rotar]")!.addEventListener("click", () => { paso("rotacion"); rotarTierra(); });
   } else if (listas().length && J.dia >= diaFinal()) {
-    ctl.innerHTML = `<button class="btn-juego grande" data-cosechar>${btn("cesta", "¡A cosechar!")}</button>`;
-    ctl.querySelector("[data-cosechar]")!.addEventListener("click", () => cosechar(listas()[0]));
+    ctl.innerHTML = `<button class="btn-juego grande" data-cosechar>${btn("azada", t("Cosechar todo", "Harvest all"))}</button>`;
+    ctl.querySelector("[data-cosechar]")!.addEventListener("click", () => cosechar(semillasListas()));
   } else {
-    ctl.innerHTML = `${listas().length ? `<button class="t cosechar" data-cosechar aria-label="Cosechar">${ic("cesta")}</button>` : ""}
+    ctl.innerHTML = `${listas().length ? `<button class="t cosechar" data-cosechar aria-label="${t("Cosechar todo", "Harvest all")}">${ic("azada")}<span>${t("Cosechar todo", "Harvest all")}</span></button>` : ""}
       <button class="t" data-d="1" aria-label="Avanzar un día">+1 día</button>
       <button class="t" data-d="7" aria-label="Avanzar una semana">+1 sem</button>
       <button class="t" data-d="30" aria-label="Avanzar un mes">+1 mes</button>
       <button class="t redondo" id="btn-auto" aria-label="Avance automático">${ic(auto ? "pausa" : "play")}</button>`;
-    ctl.querySelector("[data-cosechar]")?.addEventListener("click", () => cosechar(listas()[0]));
+    ctl.querySelector("[data-cosechar]")?.addEventListener("click", () => cosechar(semillasListas()));
     ctl.querySelectorAll<HTMLButtonElement>("[data-d]").forEach((b) => b.addEventListener("click", () => avanzar(Number(b.dataset.d))));
     $("#btn-auto").addEventListener("click", iniciarAuto);
   }
@@ -1006,6 +1364,8 @@ export function arrancar() {
 }
 
 // ---------------------------------------------------------------- dibujos de la historia (SVG propios)
+/** Punto del dibujo del paisaje (800 × 600) donde aterriza el cohete: sobre el campo, delante de la casa. */
+const SUELO_X = 430, SUELO_Y = 482;
 const COHETE = `<svg viewBox="0 0 160 260" class="cohete-svg" aria-hidden="true">
   <defs>
     <linearGradient id="cuerpoC" x1="0" x2="1"><stop offset="0" stop-color="#c9ccd6"/><stop offset=".35" stop-color="#ffffff"/><stop offset=".7" stop-color="#e9ebf1"/><stop offset="1" stop-color="#a9adbb"/></linearGradient>

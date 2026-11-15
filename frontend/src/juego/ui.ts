@@ -45,6 +45,9 @@ const D: Record<string, string> = {
   tanque: `<path d="M12 12 H36 L34 41 H14Z" fill="#7fd3ff" ${s()}/><path d="M12 12 Q24 7 36 12" fill="none" ${s(2.4)}/><path d="M13 22 Q24 26 35 22" fill="none" stroke="#2b8fc4" stroke-width="2.4"/><path d="M8 18 Q4 22 9 25" fill="none" ${s(2.4)}/>`,
   mas: `<path d="M24 10 V38 M10 24 H38" ${s(5)}/>`,
   dia: `<circle cx="24" cy="24" r="8" fill="#ffc93c" ${s(2.2)}/><path d="M24 6 V11 M24 37 V42 M6 24 H11 M37 24 H42" ${s(2.8)}/>`,
+  azada: `<path d="M9 42 L30 14" fill="none" stroke="#a5682a" stroke-width="5.5" stroke-linecap="round"/><path d="M9 42 L30 14" fill="none" stroke="${T}" stroke-width="1.6" stroke-linecap="round" opacity=".5"/><path d="M24 9 Q34 4 42 12 L36 24 Q29 19 22 18Z" fill="#c9ced8" ${s()}/><path d="M28 11 Q34 9 38 13" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" opacity=".8"/>`,
+  info: `<circle cx="24" cy="24" r="17" fill="#4fb3e8" ${s()}/><circle cx="24" cy="15.5" r="2.6" fill="#fff"/><path d="M24 22 V33" stroke="#fff" stroke-width="4.4" stroke-linecap="round"/>`,
+  globo: `<circle cx="24" cy="24" r="17" fill="#fff6e3" ${s()}/><path d="M7 24 H41 M24 7 Q14 24 24 41 M24 7 Q34 24 24 41" fill="none" ${s(2.2)}/>`,
 };
 
 /** Ícono de interfaz en SVG (por nombre). */

@@ -28,6 +28,8 @@ export interface Mundo {
   parcelaEn(x: number, y: number): number | null;
   resaltar(i: number | null): void;
   cosechar(i: number): void;
+  /** Dónde se ve el centro de la parcela en la pantalla (para poner la azada encima). */
+  posicion(i: number): { x: number; y: number } | null;
   regar(i: number): void;
   destruir(): void;
 }

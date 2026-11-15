@@ -1,6 +1,8 @@
 // Pachita: granjera de la sierra que guía al jugador con globos cortos y voz (/api/voz).
 // Ilustraciones del equipo (generadas con asistencia de IA y marcadas con "IA").
 
+import { esc } from "../lib/api";
+
 export type Animo = "feliz" | "pensando" | "preocupada" | "lluvia";
 const POSE: Record<Animo, string> = { feliz: "saluda", pensando: "piensa", preocupada: "piensa", lluvia: "paraguas" };
 export const POSES = ["saluda", "piensa", "paraguas"];
@@ -89,7 +91,11 @@ export function decir(texto: string, animo: Animo = "feliz"): Promise<void> {
   if (!caja || !globo) return Promise.resolve();
   const anterior = alTerminar; alTerminar = null; anterior?.();
   const mio = ++turno;
-  globo.textContent = texto;
+  // el globo tiene la cinta con el nombre y las palabras aparecen una tras otra, al ritmo de la voz
+  const palabras = texto.split(/\s+/).filter(Boolean);
+  const ritmo = Math.min(70, Math.max(18, 4200 / Math.max(palabras.length, 1)));
+  globo.style.setProperty("--ritmo", `${Math.round(ritmo)}ms`);
+  globo.innerHTML = `<span class="globo-nombre">Pachita</span><span class="globo-texto">${palabras.map((w, k) => `<span style="--i:${k}">${esc(w)}</span>`).join(" ")}</span>`;
   globo.hidden = false;
   globo.classList.remove("aparece");
   void globo.offsetWidth;
