@@ -49,6 +49,7 @@ python -m pytest -q tests                # 20 pruebas
 
 ## 5.5 Límites honestos (decirlos antes de que pregunten)
 - La celda de NASA POWER es gruesa (≈ 55 × 70 km). Se corrige con ECMWF IFS 9 km, pero no reemplaza una estación; hay validación contra INAMHI en la documentación.
+- MERRA-2 duplica la lluvia de la sierra centro (San Juan: 658 mm observados frente a 1.415); el juego la corrige con ECMWF IFS, pero la validación no mostró mejora con IFS en 7 estaciones. Úsalo para comparar meses y años, no para predecir milímetros exactos. La hoja de ruta (IMERG + calibración INAMHI) está en [06-Investigacion.md](06-Investigacion.md).
 - La humedad del suelo es un **modelo de balance**, no una medición satelital (SMAP no resuelve parcelas pequeñas).
 - Kc de chocho, melloco y oca son estimados.
 - El relieve (Copernicus DEM vía Open-Meteo), SoilGrids y ECMWF **no son de la NASA** y así se indica en el juego.
