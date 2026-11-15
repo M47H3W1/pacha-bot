@@ -23,5 +23,8 @@ Juego en vivo: https://pacha-chat.vercel.app · Código: este repositorio (MIT)
 - **85 estaciones del INAMHI**, **24 de 24 endpoints** verificados y **2.340 puntos** de suelo (GAEZ vs MAG) respaldan las decisiones de datos.
 - **0 modelos de lenguaje dentro del juego**: todo número sale del motor agro-físico (FAO-56), reproducible y con 20 pruebas automáticas.
 
+## Video demo (30 s, español)
+[Demo_Astro_Granja_ES_30s.mp4](Demo_Astro_Granja_ES_30s.mp4): 7 escenas grabadas del juego real (cohete, mapa, ficha NASA, semillas, tiempo y riego, cosecha con hoz, rotación y certificado).
+
 ## Imágenes listas para usar
 Capturas reales (ES/EN) en [`../docs/entregables/capturas/`](../docs/entregables/capturas/) y presentaciones en [`../docs/entregables/`](../docs/entregables/).
