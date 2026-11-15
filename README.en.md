@@ -18,7 +18,12 @@ multiplies pests. Satellite data exist, but they come as tables, technical units
 them most (older farmers, people with low literacy or Kichwa speakers) cannot use them.
 
 ## The solution
-Pacha is a chat assistant (the app's language is Spanish) that answers **with drawings, one-to-three-line messages
+A **web and mobile app** (Astro, installable on the phone) with six screens: Welcome → Location (parish or GPS
+and plot size) → **My plot** → **What to plant** (top 3 crops and in **how many out of 10 years** each one wins,
+month by month and rotations) → **Irrigation** this week → **Data** (NASA and Ecuadorian sources, validation and
+credits). Every number shows its source and can be read aloud. The app's language is Spanish.
+
+The previous chat remains at `/chat/` as "Ask Pacha": a chat assistant (the app's language is Spanish) that answers **with drawings, one-to-three-line messages
 and audio**, like a messaging conversation. The farmer sends **a point and a circle** with the size of their land,
 and Pacha offers:
 
@@ -65,11 +70,13 @@ slope of the circle). Planting calendar, varieties and rotation cases: INIAP and
 
 ## Architecture
 ```
-Phone (HTML + JS, Leaflet map, voice recording)
-   │  POST /api/accion · /api/pregunta · /api/voz · /api/transcribir
-   ▼
+Astro app (frontend/, static PWA)            Chat (frontend/public/chat/, HTML + JS, Leaflet, voice)
+   │  GET /api/parroquias · /api/fuentes          │  POST /api/accion · /api/pregunta · /api/voz · /api/transcribir
+   │  POST /api/app/{parcela|recomendacion|cultivo|riego|probadas}
+   ▼                                              ▼
 FastAPI on Vercel (Python 3.12)
-   ├─ web/servicio.py   builds each answer: image + text + audio
+   ├─ web/app_api.py    JSON answers for the app (including "wins X of N years")
+   ├─ web/servicio.py   chat answers: image + text + audio
    ├─ app/engine.py     site, corrected climate, FAO-56, soil balance, rotations
    ├─ app/charts.py     drawings (fact cards, traffic lights, crop cards)
    ├─ app/clients.py    NASA POWER, ECMWF IFS, SoilGrids, elevation (cached)
@@ -82,9 +89,13 @@ uses the same engine.
 ## Run and reproduce
 ```bash
 pip install -r requirements.txt uvicorn
-uvicorn api.index:app --port 8765        # open http://localhost:8765
-python -m pytest -q tests                # engine tests
+cd frontend && npm install && npm run build && cd ..   # builds the Astro app into frontend/dist
+uvicorn api.index:app --port 8765        # open http://localhost:8765 (app) and /chat/ (chat)
+python -m pytest -q tests                # engine and API tests
 ```
+To edit the interface with live reload: `cd frontend && npm run dev` (http://localhost:4321, uses the API on 8765).
+Vercel builds `frontend/` as set in `vercel.json` and serves the Python API at `/api`.
+The Calpi example (the one in the mock) ships with stored data in `app/semillas/` so the demo does not depend on the network.
 Optional variables (in `.env` or Vercel, never in code): `OPENROUTER_API_KEY` enables free questions; everything else
 works with buttons. The Telegram bot needs `TELEGRAM_BOT_TOKEN` (see [`.env.example`](.env.example) and
 `docker compose up -d --build`).

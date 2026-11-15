@@ -164,7 +164,7 @@
     const nota = notaDeVoz("pacha", texto);
     historial.push({ role: "assistant", content: texto });
     try {
-      const r = await fetch("api/voz", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ texto }) });
+      const r = await fetch("/api/voz", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ texto }) });
       if (!r.ok) throw new Error("voz");
       nota.listo(URL.createObjectURL(await r.blob()));
       encolar(nota);
@@ -262,7 +262,7 @@
     Object.assign(estado, extra);
     escribiendo(true);
     try {
-      const r = await fetch("api/accion", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ accion, estado }) });
+      const r = await fetch("/api/accion", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ accion, estado }) });
       const res = await r.json();
       escribiendo(false);
       await mostrar(res);
@@ -277,7 +277,7 @@
     ocupado = true;
     escribiendo(true);
     try {
-      const r = await fetch("api/pregunta", { method: "POST", headers: { "Content-Type": "application/json" },
+      const r = await fetch("/api/pregunta", { method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...cuerpo, estado, historial: historial.slice(-8) }) });
       const res = await r.json();
       escribiendo(false);
@@ -376,7 +376,7 @@
       let texto = await transcrito;
       if (!texto) {
         try {
-          const r = await fetch("api/transcribir", { method: "POST", headers: { "Content-Type": "application/json" },
+          const r = await fetch("/api/transcribir", { method: "POST", headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ audio: await aWav16k(blob) }) });
           texto = (await r.json()).texto;
         } catch { texto = null; }

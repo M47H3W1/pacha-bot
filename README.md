@@ -18,7 +18,12 @@ suelo y multiplica plagas. Los datos satelitales existen, pero llegan en tablas,
 quien más los necesita (personas mayores, con poca lectura o que hablan kichwa) no puede usarlos.
 
 ## La solución
-Pacha es un asistente de chat que responde **con dibujos, mensajes de una a tres líneas y audio**, como una
+**Aplicación web y móvil** (Astro, instalable en el celular) con seis pantallas: Bienvenida → Ubicación
+(parroquia o GPS y tamaño de la parcela) → **Mi parcela** → **Qué sembrar** (los 3 mejores cultivos y en
+**cuántos de cada 10 años** gana cada uno, mes a mes y rotaciones) → **Riego** de esta semana → **Datos** (fuentes
+NASA y de Ecuador, validación y créditos). Cada cifra muestra su fuente y se puede escuchar en voz alta.
+
+El chat anterior sigue en `/chat/` como "Preguntar a Pacha": un asistente que responde **con dibujos, mensajes de una a tres líneas y audio**, como una
 conversación de mensajería. El agricultor manda **un punto y un círculo** con el tamaño de su tierra, y Pacha:
 
 1. **📋 Ver mi tierra**: altura, pendiente, suelo, temperatura, lluvia de un año normal y de un año seco,
@@ -67,11 +72,13 @@ rotación: INIAP y estudios de campo recopilados por el equipo ([Documentacion-I
 
 ## Arquitectura
 ```
-Celular (HTML + JS, mapa Leaflet, grabación de voz)
-   │  POST /api/accion · /api/pregunta · /api/voz · /api/transcribir
-   ▼
+App Astro (frontend/, PWA estática)          Chat (frontend/public/chat/, HTML + JS, Leaflet, voz)
+   │  GET /api/parroquias · /api/fuentes          │  POST /api/accion · /api/pregunta · /api/voz · /api/transcribir
+   │  POST /api/app/{parcela|recomendacion|cultivo|riego|probadas}
+   ▼                                              ▼
 FastAPI en Vercel (Python 3.12)
-   ├─ web/servicio.py   arma cada respuesta: imagen + texto + audio
+   ├─ web/app_api.py    respuestas JSON para la app (incluye "gana X de N años")
+   ├─ web/servicio.py   respuestas del chat: imagen + texto + audio
    ├─ app/engine.py     sitio, clima corregido, FAO-56, balance de suelo, rotaciones
    ├─ app/charts.py     dibujos (fichas, semáforos, tarjetas de cultivos)
    ├─ app/clients.py    NASA POWER, ECMWF IFS, SoilGrids, elevación (con caché)
@@ -84,9 +91,13 @@ El bot de Telegram ([`app/bot.py`](app/bot.py)) usa el mismo motor.
 ## Ejecutar y reproducir
 ```bash
 pip install -r requirements.txt uvicorn
-uvicorn api.index:app --port 8765        # abre http://localhost:8765
-python -m pytest -q tests                # pruebas del motor
+cd frontend && npm install && npm run build && cd ..   # compila la app Astro en frontend/dist
+uvicorn api.index:app --port 8765        # abre http://localhost:8765 (app) y /chat/ (chat)
+python -m pytest -q tests                # pruebas del motor y de la API
 ```
+Para editar la interfaz con recarga: `cd frontend && npm run dev` (http://localhost:4321, usa la API del 8765).
+Vercel compila `frontend/` según `vercel.json` y publica la API de Python en `/api`.
+El ejemplo de Calpi (el del mock) trae datos guardados en `app/semillas/` para que la demo no dependa de la red.
 Variables opcionales (en `.env` o en Vercel, nunca en el código): `OPENROUTER_API_KEY` activa las preguntas
 libres; sin ella todo lo demás funciona con botones. El bot de Telegram necesita `TELEGRAM_BOT_TOKEN`
 (ver [`.env.example`](.env.example) y `docker compose up -d --build`).

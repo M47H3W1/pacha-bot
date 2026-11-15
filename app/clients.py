@@ -91,8 +91,16 @@ def soil(lat: float, lon: float) -> dict | None:
             out[layer["name"]] = sum(vals) / len(vals) / factor
         return out
 
-    data = _cached(_key("soil", lat, lon), fetch)
+    clave = _key("soil", lat, lon)
+    if clave in _SUELO_FALLIDO:  # SoilGrids ya falló en este proceso: no esperar otra vez su tiempo de espera
+        return None
+    data = _cached(clave, fetch)
+    if not data.get("ok"):
+        _SUELO_FALLIDO.add(clave)
     return data if data.get("ok") else None
+
+
+_SUELO_FALLIDO: set[str] = set()
 
 
 def forecast_week(lat: float, lon: float) -> dict:
