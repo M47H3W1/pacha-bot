@@ -6,7 +6,7 @@ NASA Space Apps Challenge 2026 · Sangolquí local event (ESPE) · Challenge **"
 
 | | |
 |---|---|
-| **Live demo** | https://pacha-chat.vercel.app (no account needed, built for phones) |
+| **Live game** | https://pacha-chat.vercel.app (Astro Granja, no account needed, built for phones) |
 | **Telegram bot** | [@Pacha_EC_Bot](https://t.me/Pacha_EC_Bot) |
 | **License** | [MIT](LICENSE) |
 | **Core data** | [NASA POWER](https://power.larc.nasa.gov/) (AG community, daily, 2001–2024) |
@@ -18,14 +18,12 @@ multiplies pests. Satellite data exist, but they come as tables, technical units
 them most (older farmers, people with low literacy or Kichwa speakers) cannot use them.
 
 ## The solution
-A **web and mobile app** (Astro, installable on the phone) with six screens: Welcome → Location (parish or GPS
-and plot size) → **My plot** → **What to plant** (top 3 crops and in **how many out of 10 years** each one wins,
-month by month and rotations) → **Irrigation** this week → **Data** (NASA and Ecuadorian sources, validation and
-credits). Every number shows its source and can be read aloud. The app's language is Spanish.
+**Astro Granja**, a casual farming game for browsers and phones (Astro + three.js, installable), where **Pachita**
+teaches how to plant, water and rotate crops on a real highland plot with NASA data. The website is only the game; the
+story and screens are in [Astro Granja game](#astro-granja-game-kids-aged-8-to-12). The game is in Spanish.
 
-The previous chat remains at `/chat/` as "Ask Pacha": a chat assistant (the app's language is Spanish) that answers **with drawings, one-to-three-line messages
-and audio**, like a messaging conversation. The farmer sends **a point and a circle** with the size of their land,
-and Pacha offers:
+The **Telegram bot** ([@Pacha_EC_Bot](https://t.me/Pacha_EC_Bot)) uses the same engine for farming families: the
+farmer sends **a point and a circle** with the size of their land and Pacha answers with drawings, short messages and audio:
 
 1. **📋 See my land**: elevation, slope, soil, temperature, rainfall in a normal and a dry year, evaporation,
    **month-by-month soil moisture** and how much rainfall changed over the last decade.
@@ -35,7 +33,6 @@ and Pacha offers:
    **📚 field-proven rotations** in Ecuador (Sicalpa, Illangama, Paute River, Santa Catalina, Tumbaco).
 4. **💧 How much to water**: which days this week to irrigate and how much water, counted in **buckets, tanks or
    water trucks** for the real area of the land.
-5. **Free questions** typed or as voice notes, answered by open models that only use the numbers computed for that land.
 
 ## NASA data and how they are used
 | Variable | Product | Use |
@@ -66,38 +63,35 @@ slope of the circle). Planting calendar, varieties and rotation cases: INIAP and
 6. **Land traits**: days above 25 °C, days above 10 mm, monthly soil moisture and the 2013–2024 vs 2001–2012 comparison.
 7. **Agronomic rules**: suitable elevation per crop, planting windows per zone (INIAP), botanical families for rotation
    and nitrogen-fixing legumes.
-8. **Answer**: matplotlib image, short text and audio (Ecuadorian Spanish neural voice).
+8. **Answer**: in the game, JSON that the browser draws in 3D; in the bot, a matplotlib image, short text and audio
+   (Ecuadorian Spanish neural voice).
 
 ## Architecture
 ```
-Astro app (frontend/, static PWA)            Chat (frontend/public/chat/, HTML + JS, Leaflet, voice)
-   │  GET /api/parroquias · /api/fuentes          │  POST /api/accion · /api/pregunta · /api/voz · /api/transcribir
-   │  POST /api/app/{parcela|recomendacion|cultivo|riego|probadas}
-   ▼                                              ▼
+Astro Granja game (frontend/, Astro + three.js + Leaflet, static PWA)
+   │  POST /api/app/{parcela|terreno|semillas|cultivo|ciclo} · POST /api/voz
+   ▼
 FastAPI on Vercel (Python 3.12)
-   ├─ web/app_api.py    JSON answers for the app (including "wins X of N years")
-   ├─ web/servicio.py   chat answers: image + text + audio
+   ├─ web/app_api.py    JSON answers for the game (relief, land sheet, seeds, daily cycle, rotations)
+   ├─ web/servicio.py   cached site and climate, areas and water wording
    ├─ app/engine.py     site, corrected climate, FAO-56, soil balance, rotations
-   ├─ app/charts.py     drawings (fact cards, traffic lights, crop cards)
    ├─ app/clients.py    NASA POWER, ECMWF IFS, SoilGrids, elevation (cached)
-   ├─ app/voz.py        text to speech (edge-tts, gTTS fallback)
-   └─ web/openrouter.py free questions with cascading open models
+   └─ app/voz.py        text to speech (edge-tts, gTTS fallback)
 ```
-The server stores no farmer data: the phone sends the state on every call. The Telegram bot ([`app/bot.py`](app/bot.py))
-uses the same engine.
+The server stores no player data: the browser sends the location on every call. The Telegram bot
+([`app/bot.py`](app/bot.py)) uses the same engine and draws with `app/charts.py`.
 
 ## Run and reproduce
 ```bash
 pip install -r requirements.txt uvicorn
-cd frontend && npm install && npm run build && cd ..   # builds the Astro app into frontend/dist
-uvicorn api.index:app --port 8765        # open http://localhost:8765 (app) and /chat/ (chat)
+cd frontend && npm install && npm run build && cd ..   # builds the game into frontend/dist
+uvicorn api.index:app --port 8765        # open http://localhost:8765 (game)
 python -m pytest -q tests                # engine and API tests
 ```
-To edit the interface with live reload: `cd frontend && npm run dev` (http://localhost:4321, uses the API on 8765).
+To edit the game with live reload: `cd frontend && npm run dev` (http://localhost:4321, uses the API on 8765).
 Vercel builds `frontend/` as set in `vercel.json` and serves the Python API at `/api`.
-The Calpi example (the one in the mock) ships with stored data in `app/semillas/` so the demo does not depend on the network.
-Optional variables (in `.env` or Vercel, never in code): `OPENROUTER_API_KEY` enables free questions; everything else
-works with buttons. The Telegram bot needs `TELEGRAM_BOT_TOKEN` (see [`.env.example`](.env.example) and
+Demo sites ship with stored data in `app/semillas/` so the game does not depend on the network.
+The Telegram bot needs `TELEGRAM_BOT_TOKEN` in `.env` (never in code; see [`.env.example`](.env.example) and
 `docker compose up -d --build`).
 
 ## Known limitations
@@ -117,7 +111,7 @@ works with buttons. The Telegram bot needs `TELEGRAM_BOT_TOKEN` (see [`.env.exam
 
 ## Astro Granja game (kids aged 8 to 12)
 
-**Play:** https://pacha-chat.vercel.app/juego/ (on a phone; `?sin3d=1` forces the non-3D mode)
+**Play:** https://pacha-chat.vercel.app (on a phone; `?sin3d=1` forces the non-3D mode)
 
 An original casual farming app to learn how to plant and care for highland soil with real data, in Spanish. It is guided
 by **Pachita**, a farmer from the Andes (felt hat, poncho and anaco skirt), with short speech bubbles and voice. The story:
@@ -139,7 +133,7 @@ by **Pachita**, a farmer from the Andes (felt hat, poncho and anaco skirt), with
    (days above 25 °C) and heavy rain; watering uses litres from the tank and the server recomputes the cycle.
 9. **Harvest:** score computed on the server from the water deficit and the season, with the engine's verdict.
 10. **Rotate:** Pachita explains why rotation prevents soil degradation and recommends **3 rotations** computed for the
-    plot (`/api/app/cultivo`), plus field-proven cases (`/api/app/probadas`).
+    plot (`/api/app/cultivo`).
 11. **Cosmic Farmer certificate:** with the farm name, harvests, score, chosen rotation and medals; downloadable as an
     image. No purchases or ads.
 
@@ -147,18 +141,17 @@ The 18 3D crop icons (`frontend/public/img/cultivos3d/`) were cut from the team'
 
 | File | Purpose |
 |---|---|
-| `frontend/src/pages/juego.astro` | Game page |
+| `frontend/src/pages/index.astro` | Game page (site home) |
 | `frontend/src/juego/` | Controller, 3D and 2D worlds, map, Pachita and state |
-| `web/app_api.py` | `terreno`, `semillas` and `ciclo` (every number comes from here) |
+| `web/app_api.py` | `parcela`, `terreno`, `semillas`, `cultivo` and `ciclo` (every number comes from here) |
 | `tests/test_juego.py` | Offline tests for `/api/app/terreno` |
 
 ## AI use statement
 - **Development:** code, documentation and analysis were assisted by **Claude Code (Anthropic)**. The team defined the
   problem, scientific method, crops, calendar and field cases, and reviewed every change through Pull Requests.
-- **Inside the app:** free questions are answered by open models through [OpenRouter](https://openrouter.ai/)
-  (Google Gemma, NVIDIA Nemotron), restricted to the numbers computed by the engine. Voice is generated with
-  edge-tts / gTTS, and voice notes are transcribed with the browser's speech recognition.
-- **Images:** app drawings are generated by code from the data; crop photos come from Wikimedia Commons with
+- **Inside the game:** no language models; every number comes from the engine. Pachita's voice is generated with
+  edge-tts / gTTS. The Telegram bot uses Gemini (Google AI Studio) to explain results and answer free questions.
+- **Images:** the bot's drawings are generated by code from the data; its crop photos come from Wikimedia Commons with
   author and license in [`app/imagenes/cultivos/README.md`](app/imagenes/cultivos/README.md). In the Astro Granja
   game, Pachita's illustrations (three poses) and the 18 3D crop icons, provided by the team and AI-generated, carry an "IA" mark; the 3D models were
   coded with AI assistance. Pachita's voice is edge-tts with a child-like pitch.

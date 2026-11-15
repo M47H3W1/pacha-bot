@@ -41,12 +41,6 @@ export async function consultar<T = any>(nombre: string, extra: Partial<Estado> 
   }
 }
 
-export async function obtener<T = any>(ruta: string): Promise<T> {
-  const r = await fetch(ruta);
-  if (!r.ok) throw new ErrorApi("No pudimos traer los datos.");
-  return r.json();
-}
-
 export const MESES = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre",
   "octubre", "noviembre", "diciembre"];
 export const MESES_CORTOS = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
@@ -56,28 +50,4 @@ export const num = (x: number, d = 0) =>
 
 export function esc(s: unknown): string {
   return String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!));
-}
-
-/** Pinta el estado de carga o de error en un contenedor. */
-export function cargando(el: HTMLElement, texto = "Consultando los datos de la NASA…") {
-  el.innerHTML = `<div class="cargando" role="status"><div class="girar"></div><p>${esc(texto)}</p></div>`;
-}
-
-export function mostrarError(el: HTMLElement, err: unknown, reintentar?: () => void) {
-  const msg = err instanceof Error ? err.message : "Algo salió mal.";
-  el.innerHTML = `<div class="tarjeta error" role="alert"><h3>No se pudo cargar</h3><p>${esc(msg)}</p>
-    ${reintentar ? '<button class="btn btn-borde" type="button" data-reintentar>Intentar otra vez</button>' : ""}</div>`;
-  el.querySelector("[data-reintentar]")?.addEventListener("click", () => reintentar?.());
-}
-
-/** Lee el texto en voz alta con la voz del teléfono (gratis y sin red). */
-export function hablar(texto: string) {
-  if (!("speechSynthesis" in window)) return;
-  speechSynthesis.cancel();
-  const u = new SpeechSynthesisUtterance(texto);
-  u.lang = "es-EC";
-  const voz = speechSynthesis.getVoices().find((v) => v.lang.startsWith("es"));
-  if (voz) u.voice = voz;
-  u.rate = 0.95;
-  speechSynthesis.speak(u);
 }

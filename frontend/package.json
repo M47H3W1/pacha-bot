@@ -4,8 +4,6 @@
   "type": "module",
   "version": "0.1.0",
   "scripts": {
-    "prebuild": "node scripts/copiar-fotos.mjs",
-    "predev": "node scripts/copiar-fotos.mjs",
     "dev": "astro dev",
     "build": "astro build",
     "preview": "astro preview"
