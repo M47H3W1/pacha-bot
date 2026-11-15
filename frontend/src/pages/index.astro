@@ -37,6 +37,8 @@ import { ic } from "../juego/ui";
         <div class="medidor-mini" title="Salud de la tierra: sube al rotar y sembrar leguminosas (puntos del juego)"><Fragment set:html={ic("tierra", "ic-mini")} /><div class="medidor-cuerpo"><span class="medidor-nombre">Salud del suelo</span><div class="barra"><i id="hud-salud"></i></div></div><small id="hud-salud-txt">60</small></div>
       </div>
       <div id="semaforo" class="semaforo" hidden aria-label="Agua mes a mes del cultivo"></div>
+      <div id="cronologia" class="cronologia" hidden></div>
+      <div id="rot-hud" class="rot-hud" hidden></div>
     </header>
     <nav class="acciones" aria-label="Acciones del juego">
       <button id="btn-tierra" type="button"><Fragment set:html={ic("ficha", "ic-accion")} />Mi tierra</button>

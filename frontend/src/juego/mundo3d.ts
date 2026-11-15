@@ -539,6 +539,12 @@ export function crearMundo3D(cont: HTMLElement, t: Terreno, elev: number): Mundo
       anillos.forEach((a, k) => (a.visible = k === i || listas[k]));
     },
     cosechar(i) { cosechando.set(i, reloj.elapsedTime); anillos[i].visible = false; },
+    posicion(i) {
+      const [xc, zc] = centros[i];
+      const v = new THREE.Vector3(xc, H(xc, zc) + tam * 1.5, zc).project(camara);
+      const r = renderer.domElement.getBoundingClientRect();
+      return { x: r.left + ((v.x + 1) / 2) * r.width, y: r.top + ((1 - v.y) / 2) * r.height };
+    },
     regar(i) {
       const p = new THREE.Points(geoChorro, matChorro.clone());
       const [xc, zc] = centros[i];

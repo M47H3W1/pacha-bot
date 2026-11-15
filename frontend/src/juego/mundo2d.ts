@@ -74,6 +74,7 @@ export function crearMundo2D(cont: HTMLElement, desnivel: number): Mundo {
     },
     resaltar(i) { botones.forEach((b, k) => b.classList.toggle("resaltada", k === i)); },
     regar(i) { botones[i].classList.add("regando"); setTimeout(() => botones[i].classList.remove("regando"), 1200); },
+    posicion(i) { const r = botones[i].getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; },
     cosechar(i) { botones[i].classList.add("cosechando"); setTimeout(() => botones[i].classList.remove("cosechando"), 800); },
     destruir() { vivo = false; caja.remove(); },
   };

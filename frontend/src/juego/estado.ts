@@ -18,6 +18,7 @@ export interface Juego {
   paso: Paso;                // momento de la historia
   crop: string | null;       // semilla elegida en esta temporada
   rotacion: string[] | null; // rotación elegida al final
+  rotPaso?: number;          // posición del cultivo actual dentro de la rotación (0 = el primero); falta en partidas guardadas antes
   puntajes: number[];        // puntaje de cada cosecha
   temporada: number;         // 1, 2, 3...
   mes: number | null;        // mes de siembra de la temporada
