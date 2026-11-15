@@ -15,7 +15,7 @@ sys.path.insert(0, str(RAIZ))
 
 import logging  # noqa: E402
 
-from fastapi import FastAPI  # noqa: E402
+from fastapi import FastAPI, Query  # noqa: E402
 from fastapi.responses import JSONResponse, Response  # noqa: E402
 from pydantic import BaseModel, Field  # noqa: E402
 
@@ -82,6 +82,18 @@ def consulta(nombre: str, c: Consulta):
 @app.get("/api/salud")
 def salud():
     return {"ok": True}
+
+
+# GET cacheable: la misma frase con la misma voz es siempre el mismo MP3, así que el CDN de Vercel la guarda
+# y las frases que se repiten en el juego salen al instante para todos.
+@app.get("/api/voz")
+async def hablar_get(texto: str = Query(max_length=1500), estilo: str = Query("normal", pattern="^(normal|nina)$"),
+                     lang: str = Query("es", pattern="^(es|en)$")):
+    datos = await voz.audio(texto, estilo, lang)
+    if not datos:
+        return JSONResponse({"error": "sin voz"}, status_code=503, headers={"Cache-Control": "no-store"})
+    return Response(datos, media_type="audio/mpeg",
+                    headers={"Cache-Control": "public, max-age=31536000, s-maxage=31536000, immutable"})
 
 
 @app.post("/api/voz")

@@ -48,3 +48,15 @@ def test_terreno_sin_red_devuelve_plano(monkeypatch):
 def test_terreno_fuera_del_ecuador():
     r = cliente.post("/api/app/terreno", json={"estado": {"lat": 40.0, "lon": -3.7, "radio": 80}})
     assert r.status_code == 422
+
+
+def test_voz_get_cacheable(monkeypatch):
+    from app import voz
+
+    async def falso(texto, estilo="normal", lang="es"):
+        return b"ID3" + texto.encode()
+    monkeypatch.setattr(voz, "audio", falso)
+    r = cliente.get("/api/voz", params={"texto": "¡Achachay! Un aguacero.", "estilo": "nina", "lang": "es"})
+    assert r.status_code == 200 and r.headers["content-type"] == "audio/mpeg"
+    assert "immutable" in r.headers["cache-control"]
+    assert cliente.get("/api/voz", params={"texto": "x", "estilo": "otro"}).status_code == 422

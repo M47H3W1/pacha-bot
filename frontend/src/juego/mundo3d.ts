@@ -84,25 +84,53 @@ export function crearMundo3D(cont: HTMLElement, t: Terreno, elev: number): Mundo
   const geo = new THREE.PlaneGeometry(ancho, ancho, seg, seg);
   geo.rotateX(-Math.PI / 2);
   const pos = geo.attributes.position as THREE.BufferAttribute;
-  const colores = new Float32Array(pos.count * 3);
-  const franjas = [0x8bc34a, 0xc5d86d, 0xe9c46a, 0x6aa84f, 0xd4a373, 0xa7c957].map((c) => new THREE.Color(c));
-  const pasto = new THREE.Color(0x7cb342), tmp = new THREE.Color();
-  for (let k = 0; k < pos.count; k++) {
-    const x = pos.getX(k), z = pos.getZ(k);
-    pos.setY(k, H(x, z));
-    const r = Math.hypot(x, z);
-    if (r <= L / 2) {
-      // franjas con borde suave (se funden una con otra en lugar de cortarse en escalones)
-      const u = (z + x * 0.3) / (L / 8), k = Math.floor(u), f = u - k;
-      const c0 = franjas[((k % 6) + 6) % 6], c1 = franjas[(((k + 1) % 6) + 6) % 6];
-      tmp.copy(c0).lerp(c1, escalon(0.82, 1, f));
-      tmp.lerp(pasto, escalon(L / 2 - L * 0.06, L / 2, r));
-    } else tmp.copy(pasto).offsetHSL(0.01 * Math.sin(x * 0.05), 0, 0.04 * Math.sin(x * 0.03 + z * 0.04));
-    colores.set([tmp.r, tmp.g, tmp.b], k * 3);
-  }
-  geo.setAttribute("color", new THREE.BufferAttribute(colores, 3));
+  for (let k = 0; k < pos.count; k++) pos.setY(k, H(pos.getX(k), pos.getZ(k)));
   geo.computeVertexNormals();
-  const suelo = new THREE.Mesh(geo, new THREE.MeshToonMaterial({ vertexColors: true, gradientMap: gradiente }));
+  // Textura nítida de 2048 px: pasto con detalle fuera, y dentro de la parcela franjas de chacra con bordes limpios y surcos.
+  // (Antes eran colores por vértice que se mezclaban y la parcela se veía borrosa, como si no hubiera cargado.)
+  const TX = 2048, px = TX / ancho;
+  const lienzo = document.createElement("canvas");
+  lienzo.width = lienzo.height = TX;
+  const cx2 = lienzo.getContext("2d")!;
+  cx2.fillStyle = "#7cb342";
+  cx2.fillRect(0, 0, TX, TX);
+  let semilla = 7;
+  const azar = () => ((semilla = (semilla * 16807) % 2147483647) / 2147483647);
+  for (let k = 0; k < 9000; k++) {  // matitas de pasto
+    cx2.fillStyle = azar() < 0.5 ? "rgba(70,120,40,.35)" : "rgba(170,210,110,.35)";
+    const x = azar() * TX, y = azar() * TX;
+    cx2.fillRect(x, y, 2 + azar() * 3, 5 + azar() * 7);
+  }
+  cx2.save();
+  cx2.beginPath();
+  cx2.arc(TX / 2, TX / 2, (L / 2) * px, 0, Math.PI * 2);
+  cx2.clip();
+  const colFranja = ["#8bc34a", "#c5d86d", "#e9c46a", "#6aa84f", "#d4a373", "#a7c957"];
+  cx2.translate(TX / 2, TX / 2);
+  cx2.rotate(Math.atan2(-0.3, 1));
+  const banda = ((L / 8) / Math.hypot(1, 0.3)) * px;
+  for (let b = -12; b <= 12; b++) {
+    const y0 = b * banda;
+    cx2.fillStyle = colFranja[((b % 6) + 6) % 6];
+    cx2.fillRect(-TX, y0, TX * 2, banda + 1);
+    cx2.strokeStyle = "rgba(60,40,20,.16)";  // surcos finos dentro de cada franja
+    cx2.lineWidth = 2;
+    for (let f = 1; f < 7; f++) { cx2.beginPath(); cx2.moveTo(-TX, y0 + (f * banda) / 7); cx2.lineTo(TX, y0 + (f * banda) / 7); cx2.stroke(); }
+    cx2.fillStyle = "rgba(60,40,20,.35)";  // linde entre franjas
+    cx2.fillRect(-TX, y0, TX * 2, 3);
+  }
+  cx2.restore();
+  cx2.strokeStyle = "rgba(90,60,30,.45)";  // borde de la parcela
+  cx2.lineWidth = 6;
+  cx2.beginPath();
+  cx2.arc(TX / 2, TX / 2, (L / 2) * px, 0, Math.PI * 2);
+  cx2.stroke();
+  const texSuelo = new THREE.CanvasTexture(lienzo);
+  texSuelo.colorSpace = THREE.SRGBColorSpace;
+  texSuelo.anisotropy = renderer.capabilities.getMaxAnisotropy();
+  texSuelo.generateMipmaps = true;
+  texSuelo.minFilter = THREE.LinearMipmapLinearFilter;
+  const suelo = new THREE.Mesh(geo, new THREE.MeshToonMaterial({ map: texSuelo, gradientMap: gradiente }));
   suelo.receiveShadow = true;
   escena.add(suelo);
 
@@ -203,6 +231,31 @@ export function crearMundo3D(cont: HTMLElement, t: Terreno, elev: number): Mundo
     matVentana.emissiveIntensity = 1.4 * (1 - dia);
   }
 
+  // textura de tierra arada para las camas (gris claro con surcos: se multiplica por el color de la tierra)
+  const lienzoCama = document.createElement("canvas");
+  lienzoCama.width = lienzoCama.height = 512;
+  const cc = lienzoCama.getContext("2d")!;
+  cc.fillStyle = "#ffffff";
+  cc.fillRect(0, 0, 512, 512);
+  for (let f = 0; f < 12; f++) {
+    const y = (f + 0.5) * (512 / 12);
+    const gr = cc.createLinearGradient(0, y - 21, 0, y + 21);
+    gr.addColorStop(0, "rgba(0,0,0,.22)"); gr.addColorStop(0.5, "rgba(255,255,255,0)"); gr.addColorStop(1, "rgba(0,0,0,.22)");
+    cc.fillStyle = gr;
+    cc.fillRect(0, y - 21, 512, 42);
+  }
+  let sem2 = 11;
+  const az2 = () => ((sem2 = (sem2 * 16807) % 2147483647) / 2147483647);
+  for (let k = 0; k < 1500; k++) {
+    cc.fillStyle = az2() < 0.5 ? "rgba(0,0,0,.18)" : "rgba(255,255,255,.25)";
+    cc.beginPath();
+    cc.arc(az2() * 512, az2() * 512, 1 + az2() * 2.5, 0, Math.PI * 2);
+    cc.fill();
+  }
+  const texCama = new THREE.CanvasTexture(lienzoCama);
+  texCama.colorSpace = THREE.SRGBColorSpace;
+  texCama.anisotropy = renderer.capabilities.getMaxAnisotropy();
+
   // --- cuatro parcelas cuadradas (2 x 2) con surcos y bordes redondeados ---
   const Q = (S / 2) * 0.84;                  // lado de cada parcela
   const parcelas: THREE.Mesh[] = [];
@@ -224,7 +277,7 @@ export function crearMundo3D(cont: HTMLElement, t: Terreno, elev: number): Mundo
       p.setY(k, H(x + xc, z + zc) + (0.25 * tam + surco) * Math.max(0, orilla));
     }
     g.computeVertexNormals();
-    const m = new THREE.MeshToonMaterial({ color: 0x8a5a33, gradientMap: gradiente });
+    const m = new THREE.MeshToonMaterial({ color: 0x8a5a33, gradientMap: gradiente, map: texCama });
     const malla = new THREE.Mesh(g, m);
     malla.position.set(xc, 0, zc);
     malla.userData.i = i;
@@ -568,6 +621,8 @@ export function crearMundo3D(cont: HTMLElement, t: Terreno, elev: number): Mundo
       });
       gradiente.dispose();
       texSombra.dispose();
+      texSuelo.dispose();
+      texCama.dispose();
       texturas.forEach((tx) => tx.dispose());
       matsPlanta.forEach((m) => m.dispose());
       renderer.dispose();
