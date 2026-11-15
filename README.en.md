@@ -119,27 +119,32 @@ works with buttons. The Telegram bot needs `TELEGRAM_BOT_TOKEN` (see [`.env.exam
 
 **Play:** https://pacha-chat.vercel.app/juego/ (on a phone; `?sin3d=1` forces the non-3D mode)
 
-An original casual farming game to learn how to plant and care for highland soil with real data, in Spanish.
-It is guided by **Pachita**, a farmer from the Andes (felt hat, poncho and anaco skirt), who speaks in short
-speech bubbles and out loud.
+An original casual farming app to learn how to plant and care for highland soil with real data, in Spanish. It is guided
+by **Pachita**, a farmer from the Andes (felt hat, poncho and anaco skirt), with short speech bubbles and voice. The story:
 
-1. **Location:** satellite map with a pin and a 20–600 m circle. Four demo sites (Calpi, Guano, Cayambe,
-   Saquisilí) ship with cached data so the game works offline.
-2. **3D world** (three.js, lazy-loaded): real relief of the circle (`/api/app/terreno`, n×n grid), metric scale
-   with gentle vertical exaggeration, sky and light by altitude, decorative volcano.
-3. **My land:** collectible cards with elevation, soil, rain, evaporation, monthly soil moisture and last-decade
-   change (`/api/app/parcela` and `/api/accion` tierra).
-4. **Calendar:** 12-month wheel; each month shows how many crops are planted in the zone (`/api/app/semillas`).
-5. **Seed bank:** the team's 13 crops as seed packets with photos; crops unsuitable for the altitude or season are
-   locked and Pachita explains why.
-6. **Planting:** tap a seed and then a strip, or drag it. "How to plant" guide based on the slope.
-7. **Time passes:** day, week, month or auto. Each day uses the real weather of one NASA POWER year and the
-   engine's soil water balance (`/api/app/ciclo`); plants change through the FAO-56 stages and wilt when water is
-   short. Watering uses litres from the tank and the server recomputes the cycle.
-8. **Harvest:** score computed on the server from the water deficit and the season, with the engine's verdict.
-9. **Rotate and heal the soil:** rotation advice (`/api/accion` rotacion), field-proven cases (`/api/app/probadas`),
-   legumes, fallow, cover and organic manure. "Soil health" is game points (not a measurement) shown as soil colour.
-10. **Achievements:** simple medals. No purchases or ads.
+1. **Farm name:** from her rocket, Pachita asks for the name of your farm.
+2. **Arrival:** the rocket lands next to the volcano, Pachita welcomes you and asks you to pick your plot on a satellite
+   map with a point and a variable-radius circle (20–600 m).
+3. **This is your land:** the plot appears in 3D with its real relief (`/api/app/terreno`) and a technical sheet with the
+   parameters prioritised in the team's research: elevation, **slope** (%, computed from the height grid), soil texture,
+   organic matter, soil water holding, **monthly soil moisture**, normal and dry-year rain, evaporation, temperature and
+   hot days, and last-decade change (`/api/app/parcela`). Pachita explains it in simple sentences.
+4. **Seeds by botanical family:** the 13 crops as animated icons grouped into legumes, nightshades, grasses, amaranths,
+   Andean tubers and pasture/cover, with why each family matters for rotation. Crops unsuitable for the altitude are
+   locked with the reason (`/api/app/semillas`).
+5. **Calendar:** 12-month wheel with the crop's planting window for the zone (INIAP); Pachita warns when out of season.
+6. **Planting:** tap the strips of the plot (or plant them all).
+7. **How much water?:** litres the crop drinks over its cycle (per square metre and for the whole plot), what rain
+   provides and what must be irrigated in a normal and a dry year, with the monthly traffic light (`/api/app/ciclo`).
+8. **Growing:** time advances with the real weather of one NASA POWER year. Drought stress (plants wilt), heat stress
+   (days above 25 °C) and heavy rain; watering uses litres from the tank and the server recomputes the cycle.
+9. **Harvest:** score computed on the server from the water deficit and the season, with the engine's verdict.
+10. **Rotate:** Pachita explains why rotation prevents soil degradation and recommends **3 rotations** computed for the
+    plot (`/api/app/cultivo`), plus field-proven cases (`/api/app/probadas`).
+11. **Cosmic Farmer certificate:** with the farm name, harvests, score, chosen rotation and medals; downloadable as an
+    image. No purchases or ads.
+
+The 18 crop icons (`frontend/src/juego/iconos.ts`) are SVGs redrawn from the team's icon sheet.
 
 | File | Purpose |
 |---|---|

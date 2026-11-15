@@ -28,6 +28,7 @@ def test_terreno_grilla_y_area(monkeypatch):
     assert t["lado_m"] == 160 and abs(t["paso_m"] - 10) < 0.01
     assert t["alturas"][0][8] > t["alturas"][16][8]            # fila 0 es el norte
     assert abs(t["desnivel_m"] - 160) < 1 and not t["sin_relieve"]
+    assert abs(t["pendiente_pct"] - 100) < 1 and t["pendiente_clase"] == "fuerte"   # rampa de 1 m por metro
 
 
 def test_terreno_n_impar_y_limitado(monkeypatch):

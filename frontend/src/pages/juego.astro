@@ -1,5 +1,5 @@
 ---
-// Astro Granja: juego de granja para niños de 8 a 12 años con datos reales de la NASA. Todo corre en el navegador;
+// Astro Granja: la historia de Pachita, juego de granja para niños de 8 a 12 años con datos reales de la NASA. Todo corre en el navegador;
 // los números vienen de la API de Pacha (/api/app/*, /api/accion, /api/voz).
 import "../styles/global.css";
 import "../juego/juego.css";
@@ -18,6 +18,7 @@ import "../juego/juego.css";
   <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;800;900&family=Nunito+Sans:wght@400;600;700;800&display=swap" rel="stylesheet" />
 </head>
 <body class="juego">
+  <div id="intro" class="intro" hidden></div>
   <div id="mapa" class="pantalla-mapa" hidden></div>
 
   <div id="escena" class="escena" hidden>
@@ -36,10 +37,9 @@ import "../juego/juego.css";
     </header>
     <nav class="acciones" aria-label="Acciones del juego">
       <button id="btn-tierra" type="button"><span>📋</span>Mi tierra</button>
-      <button id="btn-calendario" type="button"><span>📅</span>Mes</button>
       <button id="btn-semillas" type="button"><span>🌱</span>Semillas</button>
+      <button id="btn-calendario" type="button"><span>📅</span>Mes</button>
       <button id="btn-regar" type="button"><span>💧</span>Regar</button>
-      <button id="btn-abono" type="button"><span>💩</span>Abono</button>
       <button id="btn-logros" type="button"><span>🏅</span>Logros</button>
     </nav>
     <div id="tiempo" class="tiempo"></div>
