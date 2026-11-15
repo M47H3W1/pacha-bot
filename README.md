@@ -114,40 +114,46 @@ y `docker compose up -d --build`).
 
 ## Juego Astro Granja (niños de 8 a 12 años)
 
-**Jugar:** https://pacha-chat.vercel.app (en el celular; `?sin3d=1` fuerza el modo sin 3D)
+**Jugar:** https://pacha-chat.vercel.app (en el celular; `?sin3d=1` fuerza el modo sin 3D). **Español e inglés:** el botón ES/EN está en el menú, el mapa y la barra de arriba; la voz de Pachita cambia con el idioma.
 
 Aplicación de granja casual, original, para aprender a sembrar y cuidar la tierra de la sierra con datos reales.
 La guía **Pachita**, una granjera de la sierra (sombrero, poncho y anaco), con globos cortos y voz. La historia:
 
 1. **Nombre de la granja:** Pachita, desde su cohete, pide el nombre de tu granja.
-2. **Llegada:** el cohete aterriza junto al volcán, Pachita da la bienvenida y pide elegir la parcela en un mapa
-   satelital con un punto y un círculo de radio variable (20–600 m).
+2. **Llegada:** el cohete baja con fuego y sonido, aterriza sobre el campo y Pachita da la bienvenida. Luego pide
+   elegir la parcela en un mapa satelital que **se abre en tu ubicación** (sin sitios de ejemplo): un círculo cuyo tamaño
+   va de 0,1 a 10 hectáreas con el deslizador, y se puede escribir más (hasta 100 ha).
 3. **Así es tu tierra:** la parcela aparece en 3D con su relieve real (`/api/app/terreno`) y una ficha técnica con los
    datos que vienen solo de NASA POWER: lluvia de un año normal y seco, evaporación, temperatura y días de calor, sol (CERES),
    humedad del aire y viento, **humedad del suelo en las raíces mes a mes** (GWETROOT) y cambio de la última década
-   (`/api/app/parcela`).
-   Pachita lo explica con frases simples.
+   (`/api/app/parcela`), más la **pendiente del terreno** con el perfil de la parcela (relieve Copernicus DEM de
+   Open-Meteo, que no es dato de la NASA y así se indica). Pachita lo explica con frases simples.
 4. **Semillas por familia botánica:** los 13 cultivos como íconos animados, agrupados en leguminosas, solanáceas,
-   gramíneas, amarantáceas, tubérculos andinos y pastos/cobertura, con el porqué de cada familia para rotar. Los que no
-   sirven por altura aparecen con candado y su razón (`/api/app/semillas`).
+   gramíneas, amarantáceas, tubérculos andinos y pastos/cobertura, con el porqué de cada familia para rotar. Cada semilla
+   abre una ficha con su ciclo, la altura donde crece, para qué sirve y los meses de siembra. Las que no sirven por altura
+   aparecen con candado y su razón (`/api/app/semillas`); vicia, trébol, alfalfa y biomasa son «solo información»: Pachita
+   explica por qué no se siembran solas.
 5. **Calendario:** rueda de 12 meses con la época de siembra del cultivo en la zona (INIAP); fuera de época, Pachita avisa.
-6. **Sembrar:** tocar las franjas de la parcela (o sembrar todo).
+6. **Sembrar:** tocar las parcelas (o «Sembrar todo»). Al llenar las cuatro, **el tiempo corre solo**.
 7. **¿Cuánta agua necesita?:** litros que bebe el cultivo en su ciclo (por metro cuadrado y en toda la parcela), lo que
    da la lluvia y lo que hay que regar en un año normal y en uno seco, con el semáforo mes a mes (`/api/app/ciclo`).
-8. **Crecer:** el tiempo avanza con el clima real de un año de NASA POWER. Estrés por sequía (la planta se marchita),
-   por calor (días sobre 25 °C) y aguaceros; regar descuenta litros del tanque y el servidor recalcula el ciclo.
-9. **Cosecha:** puntaje calculado en el servidor según el agua que faltó y la época, con el veredicto del motor.
+8. **Crecer:** el tiempo avanza con el clima real de un año de NASA POWER. Una **cronología** muestra las etapas del
+   cultivo y los días que faltan para cosechar. Estrés por sequía y por calor (¡Arrarray!), y aguaceros (¡Achachay!);
+   regar descuenta litros del tanque y el servidor recalcula el ciclo.
+9. **Cosecha:** «Cosechar todo» con una azada animada; una sola tarjeta por semilla (promedio de sus parcelas), con el
+   puntaje calculado en el servidor según el agua que faltó y la época.
 10. **Rotar:** Pachita explica por qué rotar evita la degradación del suelo y recomienda **3 rotaciones** calculadas
-    para la parcela (`/api/app/cultivo`).
-11. **Certificado de Granjero Cósmico:** con el nombre de la granja, cosechas, puntaje, rotación elegida y medallas;
-    se puede descargar como imagen. Sin compras ni anuncios.
+    para la parcela (`/api/app/cultivo`). **La app sigue la rotación elegida paso a paso** (por ejemplo arveja → papa →
+    mixtura) y la muestra siempre en la barra de arriba, hasta completarla.
+11. **Certificado de Granjero Cósmico:** a pantalla completa (apaisado en escritorio, vertical en celular), con el
+    nombre de la granja, cosechas, puntaje, rotación elegida y medallas; se puede descargar como imagen. Sin compras ni anuncios.
 
 Los 18 íconos 3D de cultivos (`frontend/public/img/cultivos3d/`) se recortaron de la lámina del equipo con `scripts/recortar_cultivos.py`; los íconos de interfaz son SVG propios (`frontend/src/juego/ui.ts`), sin emojis. El cielo del mundo 3D pasa del día a la noche, el mapa muestra los nombres de pueblos y vías, y el botón de play termina el cultivo más largo en 10 segundos.
 
 | Archivo | Qué hace |
 |---|---|
 | `frontend/src/pages/index.astro` | Página del juego (portada del sitio) |
-| `frontend/src/juego/` | Controlador, mundo 3D y 2D, mapa, Pachita y estado |
+| `frontend/src/juego/` | Controlador, mundo 3D y 2D, mapa, Pachita, sonidos (Web Audio), idioma ES/EN y estado |
 | `web/app_api.py` | `parcela`, `terreno`, `semillas`, `cultivo` y `ciclo` (todo número sale de aquí) |
 | `tests/test_juego.py` | Pruebas de `/api/app/terreno` sin red |
 
@@ -156,7 +162,7 @@ Los 18 íconos 3D de cultivos (`frontend/public/img/cultivos3d/`) se recortaron 
   El equipo definió el problema, la metodología científica, los cultivos, el calendario y los casos de campo,
   y revisó cada cambio por Pull Request.
 - **Dentro del juego:** no hay modelos de lenguaje; todo número sale del motor. La voz de Pachita se genera con
-  edge-tts / gTTS. El bot de Telegram usa Gemini (Google AI Studio) para explicar resultados y preguntas libres.
+  edge-tts / gTTS (en inglés, la voz infantil `en-US-AnaNeural`); los sonidos del cohete se sintetizan en el navegador. El bot de Telegram usa Gemini (Google AI Studio) para explicar resultados y preguntas libres.
 - **Imágenes:** los dibujos del bot se generan por código a partir de los datos; sus fotos de cultivos son de
   Wikimedia Commons con autor y licencia en [`app/imagenes/cultivos/README.md`](app/imagenes/cultivos/README.md).
   En el juego Astro Granja, las ilustraciones de Pachita (tres poses) y los 18 íconos 3D de cultivos, entregados por el equipo y

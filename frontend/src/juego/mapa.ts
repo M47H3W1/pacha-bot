@@ -48,7 +48,7 @@ export function crearMapa(cont: HTMLElement, inicial: { lat: number; lon: number
         <input type="range" min="0" max="${PASOS}" step="1" aria-label="${t("Tamaño de la chacra", "Farm size")}">
         <button type="button" class="tam-paso" data-mas aria-label="${t("Más grande", "Bigger")}">+</button>
       </div>
-      <div class="tam-marcas" aria-hidden="true"><span>0,1 ha</span><span>1</span><span>10 ha</span></div>
+      <div class="tam-marcas" aria-hidden="true"><span>${(0.1).toLocaleString(locale())} ha</span><span>1</span><span>10 ha</span></div>
       <div class="tam-chips">${PRESETS.map((h) => `<button type="button" class="chip" data-ha="${h}">${h.toLocaleString(locale())} ha</button>`).join("")}</div>
       <p class="tam-ayuda">${t("El deslizador llega a 10 hectáreas. ¿Tu chacra es más grande? Escribe el tamaño arriba.", "The slider goes up to 10 hectares. Is your farm bigger? Type the size above.")}</p>
       <p class="mapa-aviso" hidden></p>

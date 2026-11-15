@@ -2,6 +2,7 @@
 import type { Mundo, VistaParcela } from "./mundo";
 import { N_PARCELAS } from "./estado";
 import { icono } from "./iconos";
+import { t } from "./i18n";
 import { ic } from "./ui";
 
 const TAM = ["", "26px", "34px", "44px", "48px"];
@@ -22,7 +23,7 @@ export function crearMundo2D(cont: HTMLElement, desnivel: number): Mundo {
       <rect class="noche2d" width="400" height="220" fill="#101c3f" opacity="0" pointer-events="none"/>
     </svg>
     <div class="franjas2d">${Array.from({ length: N_PARCELAS }, (_, i) =>
-      `<button class="franja2d" data-i="${i}" aria-label="Parcela ${i + 1}"><span class="plantas2d"></span></button>`).join("")}</div>`;
+      `<button class="franja2d" data-i="${i}" aria-label="${t("Parcela", "Plot")} ${i + 1}"><span class="plantas2d"></span></button>`).join("")}</div>`;
   cont.appendChild(caja);
   let alTocar: (i: number) => void = () => {};
   const botones = [...caja.querySelectorAll<HTMLButtonElement>(".franja2d")];

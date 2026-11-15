@@ -2,6 +2,7 @@
 // Ilustraciones del equipo (generadas con asistencia de IA y marcadas con "IA").
 
 import { esc } from "../lib/api";
+import { idioma } from "./i18n";
 
 export type Animo = "feliz" | "pensando" | "preocupada" | "lluvia";
 const POSE: Record<Animo, string> = { feliz: "saluda", pensando: "piensa", preocupada: "piensa", lluvia: "paraguas" };
@@ -51,20 +52,23 @@ function limpiarParaVoz(t: string) {
 export function precargar(textos: string[]) { textos.forEach((t) => void urlVoz(limpiarParaVoz(t))); }
 
 async function urlVoz(texto: string): Promise<string | null> {
-  if (!audios.has(texto)) {
-    audios.set(texto, fetch("/api/voz", {
-      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ texto, estilo: "nina" }),
+  if (!texto) return null;
+  const lang = idioma(), clave = `${lang}|${texto}`;
+  if (!audios.has(clave)) {
+    audios.set(clave, fetch("/api/voz", {
+      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ texto, estilo: "nina", lang }),
     }).then(async (r) => (r.ok ? URL.createObjectURL(await r.blob()) : null)).catch(() => null));
   }
-  return audios.get(texto)!;
+  return audios.get(clave)!;
 }
 
 function vozDelTelefono(texto: string) {
   if (!("speechSynthesis" in window)) return;
   speechSynthesis.cancel();
   const u = new SpeechSynthesisUtterance(texto);
-  u.lang = "es-EC";
-  const v = speechSynthesis.getVoices().find((x) => x.lang.startsWith("es"));
+  const en = idioma() === "en";
+  u.lang = en ? "en-US" : "es-EC";
+  const v = speechSynthesis.getVoices().find((x) => x.lang.startsWith(en ? "en" : "es"));
   if (v) u.voice = v;
   u.pitch = 1.5;  // respaldo sin red: voz del teléfono más aguda, como de niña
   u.rate = 1.05;
@@ -72,6 +76,17 @@ function vozDelTelefono(texto: string) {
 }
 
 let turno = 0;
+
+/** Pachita se calla: se corta el audio y se esconde el globo (por ejemplo, al cambiar de idioma). */
+export function callar() {
+  turno++;
+  reproductor?.pause();
+  if ("speechSynthesis" in window) speechSynthesis.cancel();
+  document.querySelector("#pachita")?.classList.remove("habla");
+  const g = document.querySelector<HTMLElement>("#globo");
+  if (g) g.hidden = true;
+  alTerminar = null;
+}
 let ocultar: number | undefined;
 let alTerminar: (() => void) | null = null;
 

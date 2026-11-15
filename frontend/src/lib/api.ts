@@ -1,3 +1,4 @@
+import { locale } from "../juego/i18n";
 import { leer, radio, type Estado } from "./estado";
 
 export class ErrorApi extends Error {}
@@ -46,7 +47,7 @@ export const MESES = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "ju
 export const MESES_CORTOS = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
 
 export const num = (x: number, d = 0) =>
-  x.toLocaleString("es-EC", { minimumFractionDigits: d, maximumFractionDigits: d });
+  x.toLocaleString(locale(), { minimumFractionDigits: d, maximumFractionDigits: d });
 
 export function esc(s: unknown): string {
   return String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!));

@@ -31,6 +31,7 @@ app = FastAPI(title="Astro Granja", docs_url=None, redoc_url=None)
 class Texto(BaseModel):
     texto: str = Field(max_length=1500)
     estilo: str = Field(default="normal", pattern="^(normal|nina)$")  # "nina": voz de Pachita en el juego
+    lang: str = Field(default="es", pattern="^(es|en)$")
 
 
 def _limpiar_estado(st: dict) -> dict:
@@ -85,7 +86,7 @@ def salud():
 
 @app.post("/api/voz")
 async def hablar(t: Texto):
-    datos = await voz.audio(t.texto, t.estilo)
+    datos = await voz.audio(t.texto, t.estilo, t.lang)
     if not datos:
         return JSONResponse({"error": "sin voz"}, status_code=503)
     return Response(datos, media_type="audio/mpeg", headers={"Cache-Control": "public, max-age=86400"})
