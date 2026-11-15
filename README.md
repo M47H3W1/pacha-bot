@@ -117,6 +117,39 @@ libres; sin ella todo lo demás funciona con botones. El bot de Telegram necesit
   la resolución lo permita.
 - **Costo de operación:** función serverless gratuita, NASA POWER sin costo y modelos de lenguaje abiertos.
 
+## Juego Astro Granja (niños de 8 a 12 años)
+
+**Jugar:** https://pacha-chat.vercel.app/juego/ (en el celular; `?sin3d=1` fuerza el modo sin 3D)
+
+Juego de granja casual, original, para aprender a sembrar y cuidar la tierra de la sierra con datos reales.
+Lo guía **Pachita**, una granjera de la sierra (sombrero, poncho y anaco), que habla en globos cortos y con voz.
+
+1. **Ubicación:** mapa satelital con un pin y un círculo de 20 a 600 m. Cuatro sitios de demostración
+   (Calpi, Guano, Cayambe, Saquisilí) traen sus datos guardados para jugar sin señal.
+2. **Mundo 3D** (three.js, carga diferida): relieve real del círculo (`/api/app/terreno`, grilla n×n),
+   escala en metros con exageración vertical suave, cielo y luz según la altura y volcán decorativo.
+3. **Mi tierra:** cartas coleccionables con altura, suelo, lluvia, evaporación, humedad del suelo mes a mes y
+   cambio de la última década (`/api/app/parcela` y `/api/accion` tierra).
+4. **Calendario:** rueda de 12 meses; cada mes muestra cuántos cultivos se siembran en la zona (`/api/app/semillas`).
+5. **Banco de semillas:** los 13 cultivos del equipo como sobres con foto; los que no sirven por altura o época
+   aparecen con candado y Pachita explica por qué.
+6. **Sembrar:** tocar la semilla y luego una franja, o arrastrarla. Guía "Cómo sembrar" según la pendiente.
+7. **El tiempo pasa:** día, semana, mes o automático. Cada día usa el clima real de un año de NASA POWER
+   y el balance de suelo del motor (`/api/app/ciclo`); las plantas cambian por las etapas FAO-56 y se
+   marchitan si falta agua. Regar descuenta litros del tanque y el servidor recalcula el ciclo.
+8. **Cosecha:** puntaje calculado en el servidor según el agua que faltó y la época, con el veredicto del motor.
+9. **Rotar y curar la tierra:** consejo de rotación (`/api/accion` rotacion), casos probados en campo
+   (`/api/app/probadas`), leguminosas, descanso, cobertura y abono. La "salud de la tierra" son puntos del juego
+   (no una medición) y se ve en el color del suelo.
+10. **Logros:** medallas sencillas. Sin compras ni anuncios.
+
+| Archivo | Qué hace |
+|---|---|
+| `frontend/src/pages/juego.astro` | Página del juego |
+| `frontend/src/juego/` | Controlador, mundo 3D y 2D, mapa, Pachita y estado |
+| `web/app_api.py` | `terreno`, `semillas` y `ciclo` (todo número sale de aquí) |
+| `tests/test_juego.py` | Pruebas de `/api/app/terreno` sin red |
+
 ## Declaración de uso de inteligencia artificial
 - **Desarrollo:** el código, la documentación y el análisis contaron con asistencia de **Claude Code (Anthropic)**.
   El equipo definió el problema, la metodología científica, los cultivos, el calendario y los casos de campo,
@@ -125,9 +158,10 @@ libres; sin ella todo lo demás funciona con botones. El bot de Telegram necesit
   [OpenRouter](https://openrouter.ai/) (Gemma de Google, Nemotron de NVIDIA), limitados a los números
   calculados por el motor. La voz se genera con edge-tts / gTTS y las notas de voz se transcriben con el
   reconocimiento de voz del navegador.
-- **Imágenes:** ninguna imagen fue generada con IA. Los dibujos se generan por código a partir de los datos;
-  las fotos de cultivos son de Wikimedia Commons con autor y licencia en
-  [`app/imagenes/cultivos/README.md`](app/imagenes/cultivos/README.md).
+- **Imágenes:** los dibujos de la app se generan por código a partir de los datos; las fotos de cultivos son de
+  Wikimedia Commons con autor y licencia en [`app/imagenes/cultivos/README.md`](app/imagenes/cultivos/README.md).
+  En el juego Astro Granja, la ilustración de Pachita (SVG) y los modelos 3D low-poly se hicieron con asistencia
+  de IA: Pachita lleva la marca "IA" y el juego lo indica en sus créditos.
 - No se usan logotipos de la NASA.
 
 ## Créditos y licencia

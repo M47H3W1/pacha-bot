@@ -5,9 +5,11 @@ export class ErrorApi extends Error {}
 const memo = new Map<string, Promise<any>>();
 
 /** Llama a /api/app/<nombre> con el estado de la parcela. Guarda en memoria y en sessionStorage. */
-export async function consultar<T = any>(nombre: string, extra: Partial<Estado> = {}): Promise<T> {
+export async function consultar<T = any>(nombre: string, extra: Partial<Estado> & Record<string, unknown> = {}): Promise<T> {
   const e = { ...leer(), ...extra };
-  const estado = { lat: e.lat, lon: e.lon, radio: radio(e), mes: e.mes, crop: e.crop, dias: e.dias };
+  // n, anio, m2 y riegos los usa el juego Astro Granja (terreno y ciclo diario)
+  const juego = Object.fromEntries(["n", "anio", "m2", "riegos"].filter((k) => k in extra).map((k) => [k, extra[k]]));
+  const estado = { lat: e.lat, lon: e.lon, radio: radio(e), mes: e.mes, crop: e.crop, dias: e.dias, ...juego };
   const clave = `pacha.api.${nombre}.${JSON.stringify(estado)}`;
   try {
     const guardado = sessionStorage.getItem(clave);
