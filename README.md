@@ -139,7 +139,7 @@ La guía **Pachita**, una granjera de la sierra (sombrero, poncho y anaco), con 
    da la lluvia y lo que hay que regar en un año normal y en uno seco, con el semáforo mes a mes (`/api/app/ciclo`).
 8. **Crecer:** el tiempo avanza con el clima real de un año de NASA POWER. Una **cronología** muestra las etapas del
    cultivo y los días que faltan para cosechar. Estrés por sequía y por calor (¡Arrarray!), y aguaceros (¡Achachay!);
-   regar descuenta litros del tanque y el servidor recalcula el ciclo.
+   regar descuenta litros del tanque y el servidor recalcula el ciclo. **Cuando Pachita habla, el tiempo espera**: si pide regar o cosechar, el botón late hasta que lo hagas; si solo cuenta algo, el play sigue solo al terminar. Una pantalla de carga con consejos aparece si algo tarda, y los datos de la parcela se piden a la vez para esperar menos.
 9. **Cosecha:** «Cosechar todo» con una azada animada; una sola tarjeta por semilla (promedio de sus parcelas), con el
    puntaje calculado en el servidor según el agua que faltó y la época.
 10. **Rotar:** Pachita explica por qué rotar evita la degradación del suelo y recomienda **3 rotaciones** calculadas

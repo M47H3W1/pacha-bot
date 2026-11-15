@@ -12,8 +12,9 @@ import { epocaTexto, mesCorto, mesDeApi, nombreDe, nombreMes, razonAltura, usoDe
 import * as sonido from "./sonido";
 import { crearMundo2D } from "./mundo2d";
 import { ETAPAS, type Mundo, type Terreno, type VistaParcela } from "./mundo";
-import { callar, decir, decirVarias, desbloquearAudio, estaSilenciado, PACHITA_SVG, silenciar, urlPose } from "./pachita";
+import { callar, decir, decirVarias, turnoActual, desbloquearAudio, estaSilenciado, PACHITA_SVG, silenciar, urlPose, type Animo } from "./pachita";
 import { ic, icG } from "./ui";
+import { urlIcono } from "./iconos";
 
 type Cultivo = { id: string; nombre: string; emoji: string; foto: string | null; familia: string; fija_n: boolean;
   ciclo_dias: number; uso?: string; aporte?: string; riesgo?: string; apto?: boolean; en_epoca?: boolean; se_puede?: boolean;
@@ -81,6 +82,38 @@ const espera = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const litrosCortos = (l: number) => (l < 1000 ? `${num(Math.round(l))} L` : l < 1e6 ? t(`${num(l / 1000, 1)} mil L`, `${num(l / 1000, 1)}k L`) : t(`${num(l / 1e6, 1)} mill. L`, `${num(l / 1e6, 1)}M L`));
 const btn = (icono: string, texto: string) => `${ic(icono, "ic-btn")}<span>${texto}</span>`;
 
+// ---------------------------------------------------------------- pantalla de carga
+const CONSEJOS: [string, string][] = [
+  ["Un milímetro de lluvia es un litro de agua en cada metro cuadrado.", "One millimeter of rain is one liter of water on each square meter."],
+  ["Las leguminosas atrapan nitrógeno del aire y abonan la tierra.", "Legumes trap nitrogen from the air and fertilize the soil."],
+  ["Rotar los cultivos corta las plagas y deja descansar el suelo.", "Rotating crops breaks pest cycles and lets the soil rest."],
+  ["Los satélites de la NASA miden la lluvia y el sol todos los días.", "NASA satellites measure rain and sunshine every day."],
+  ["La papa nació en los Andes: hay miles de variedades.", "The potato was born in the Andes: there are thousands of varieties."],
+  ["Una tierra cubierta de plantas no se lava con los aguaceros.", "Soil covered with plants isn't washed away by downpours."],
+];
+let cargaCuenta = 0, cargaConsejo: number | undefined;
+function abrirCarga(mensaje: string) {
+  const el = $("#carga");
+  let k = Math.floor(Math.random() * CONSEJOS.length);
+  const pintarConsejo = () => { const c = CONSEJOS[k++ % CONSEJOS.length]; el.querySelector<HTMLElement>(".carga-consejo")!.textContent = t(c[0], c[1]); };
+  el.innerHTML = `<div class="carga-caja"><div class="carga-planta" aria-hidden="true">${ic("brote")}<i></i></div>
+    <p class="carga-msg" role="status">${esc(mensaje)}</p><div class="carga-barra" aria-hidden="true"><i></i></div>
+    <p class="carga-sabias">${t("¿Sabías que…?", "Did you know…?")}</p><p class="carga-consejo"></p></div>`;
+  pintarConsejo();
+  el.hidden = false;
+  clearInterval(cargaConsejo);
+  cargaConsejo = window.setInterval(pintarConsejo, 4200);
+}
+/** Si el trabajo tarda más de un instante, muestra una pantalla de carga con consejos; si es rápido, no se ve. */
+async function conCarga<T>(mensaje: string, trabajo: () => Promise<T>): Promise<T> {
+  const id = window.setTimeout(() => { cargaCuenta++; abrirCarga(mensaje); }, 350);
+  try { return await trabajo(); }
+  finally {
+    clearTimeout(id);
+    if (cargaCuenta > 0 && !--cargaCuenta) { $("#carga").hidden = true; clearInterval(cargaConsejo); }
+  }
+}
+
 // ---------------------------------------------------------------- paneles
 function abrirPanel(titulo: string, html: string, clase = "") {
   const p = $("#panel");
@@ -102,14 +135,20 @@ function medirLayout() {
   const globo = $("#globo"), pachita = $("#pachita"), panel = $("#panel");
   // medidas de diseño (sin transformaciones): el globo entra con una animación de escala que engaña a getBoundingClientRect
   const caja = pachita.parentElement!.getBoundingClientRect();
-  const topeGlobo = globo.hidden ? alto : caja.bottom - parseFloat(getComputedStyle(globo).marginBottom || "0") - globo.offsetHeight;
+  const topeGlobo = globo.hidden ? alto : caja.bottom - parseFloat(getComputedStyle(globo).marginBottom || "0") - globo.offsetHeight - 24;   // 24: la cinta con el nombre sobresale del globo
   const topePachita = caja.bottom - pachita.offsetHeight + 24;
   // el panel solo se achica si Pachita o su globo quedan debajo de él; si están a un lado, usa todo el alto
   const pr = panel.hidden ? null : panel.getBoundingClientRect();
   const choca = (izq: number, der: number) => !!pr && der > pr.left && izq < pr.right;
   let techo = alto;
-  if (!globo.hidden && choca(caja.left, caja.right)) techo = Math.min(techo, topeGlobo);
-  if (choca(caja.right - pachita.offsetWidth, caja.right)) techo = Math.min(techo, topePachita);
+  // en pantallas anchas el panel se angosta para no pisar a Pachita y su globo: así usa todo el alto y no se encoge cuando el globo crece
+  const libre = caja.left - 16 - 104;
+  const ancho = window.innerWidth >= 900 && libre >= 420;
+  document.body.style.setProperty("--panel-w", ancho ? `${Math.round(Math.min(760, libre))}px` : "");
+  if (!ancho) {
+    if (!globo.hidden && choca(caja.left, caja.right)) techo = Math.min(techo, topeGlobo);
+    if (choca(caja.right - pachita.offsetWidth, caja.right)) techo = Math.min(techo, topePachita);
+  }
   const dock = (t: number) => `${Math.round(Math.min(Math.max(16, alto - t + 8), alto * 0.5))}px`;
   document.body.style.setProperty("--hud-alto", `${Math.round(arriba)}px`);
   document.body.style.setProperty("--dock", dock(techo));
@@ -210,19 +249,37 @@ async function aterrizaje() {
     cohete.classList.add("encendido");
     sonido.cohete(bajar / 1000);
     const chispas = window.setInterval(() => soltarHumo(humo, quieto ? 1 : 2, 0.5, true, suelo), quieto ? 160 : 90);
+    const estela = window.setInterval(() => soltarHumo(humo, 1, 0.5, false, undefined, true), quieto ? 220 : 65);   // la estela de humo que deja al bajar
+    // baja frenando y balanceándose un poco, como un cohete que corrige su rumbo con los propulsores
     cohete.animate([
-      { transform: "translate(-50%, -115vh) rotate(-8deg)" },
-      { transform: "translate(-50%, -30vh) rotate(4deg)", offset: 0.55 },
-      { transform: "translate(-50%, -6vh) rotate(-2deg)", offset: 0.85 },
+      { transform: "translate(-50%, -115vh) rotate(-7deg)" },
+      { transform: "translate(-50%, -72vh) rotate(4deg)", offset: 0.22 },
+      { transform: "translate(-50%, -42vh) rotate(-3deg)", offset: 0.45 },
+      { transform: "translate(-50%, -20vh) rotate(2deg)", offset: 0.66 },
+      { transform: "translate(-50%, -6vh) rotate(-1deg)", offset: 0.85 },
       { transform: "translate(-50%, 0) rotate(0deg)" },
-    ], { duration: bajar, easing: "cubic-bezier(.2,.75,.35,1)", fill: "forwards" });
+    ], { duration: bajar, easing: "cubic-bezier(.22,.7,.3,1)", fill: "forwards" });
     sombra.animate([{ transform: "translateX(-50%) scale(.2)", opacity: 0 }, { transform: "translateX(-50%) scale(1)", opacity: 0.45 }],
       { duration: bajar, easing: "ease-in", fill: "forwards" });
     await espera(bajar - 450);
     cohete.classList.add("frenando");
     await espera(450);
     clearInterval(chispas);
+    clearInterval(estela);
     sonido.aterrizaje();
+    // al tocar tierra: onda de polvo en el suelo, el cohete rebota sobre sus patas y se aplasta un instante
+    const onda = document.createElement("i");
+    onda.className = "onda-polvo";
+    onda.style.left = `${suelo.x}px`;
+    onda.style.top = `${suelo.y - 4}px`;
+    escena.appendChild(onda);
+    setTimeout(() => onda.remove(), 1400);
+    if (!quieto) {
+      cohete.animate([{ transform: "translate(-50%, 0)" }, { transform: "translate(-50%, -12px)", offset: 0.3 }, { transform: "translate(-50%, 0)", offset: 0.55 },
+        { transform: "translate(-50%, -3px)", offset: 0.75 }, { transform: "translate(-50%, 0)" }], { duration: 650, easing: "ease-out" });
+      cohete.querySelector<SVGElement>(".cohete-svg")!.animate([{ transform: "scale(1.05, .93)" }, { transform: "scale(.98, 1.03)", offset: 0.5 }, { transform: "scale(1)" }],
+        { duration: 450, easing: "ease-out", transformOrigin: "50% 77%" } as KeyframeAnimationOptions);
+    }
     soltarHumo(humo, quieto ? 12 : 26, quieto ? 1 : 1.4, false, suelo);
     cohete.classList.remove("encendido", "frenando");
     cohete.classList.add("patas");
@@ -242,7 +299,7 @@ async function aterrizaje() {
 }
 
 /** Bocanadas de humo (o chispas de fuego) que salen de la tobera y se abren hacia los lados. */
-function soltarHumo(caja: HTMLElement, cuantas: number, fuerza: number, fuego: boolean, suelo?: DOMPoint) {
+function soltarHumo(caja: HTMLElement, cuantas: number, fuerza: number, fuego: boolean, suelo?: DOMPoint, estela = false) {
   const r = caja.getBoundingClientRect();
   const tob = caja.parentElement!.querySelector(".cohete-baja")!.getBoundingClientRect();
   for (let k = 0; k < cuantas; k++) {
@@ -255,11 +312,11 @@ function soltarHumo(caja: HTMLElement, cuantas: number, fuerza: number, fuego: b
     b.style.top = `${y0}px`;
     caja.appendChild(b);
     const lado = (Math.random() - 0.5) * 2;
-    const dx = fuego ? lado * 30 : lado * 190 * fuerza, dy = fuego ? 40 + Math.random() * 50 : -10 - Math.random() * 70 * fuerza;
-    const tam = fuego ? 0.6 + Math.random() * 0.6 : 0.8 + Math.random() * 1.6 * fuerza;
-    const dur = fuego ? 420 : 1400 + Math.random() * 900;
+    const dx = fuego ? lado * 30 : estela ? lado * 22 : lado * 190 * fuerza, dy = fuego ? 40 + Math.random() * 50 : estela ? -16 - Math.random() * 26 : -10 - Math.random() * 70 * fuerza;
+    const tam = fuego ? 0.6 + Math.random() * 0.6 : estela ? 0.5 + Math.random() * 0.5 : 0.8 + Math.random() * 1.6 * fuerza;
+    const dur = fuego ? 420 : estela ? 1500 + Math.random() * 700 : 1400 + Math.random() * 900;
     b.animate([
-      { transform: "translate(-50%,-50%) scale(.3)", opacity: fuego ? 1 : 0.95 },
+      { transform: "translate(-50%,-50%) scale(.3)", opacity: fuego ? 1 : estela ? 0.55 : 0.95 },
       { transform: `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px)) scale(${tam * (fuego ? 0.4 : 2.4)})`, opacity: 0 },
     ], { duration: dur, easing: "cubic-bezier(.15,.8,.3,1)", fill: "forwards" }).onfinish = () => b.remove();
   }
@@ -300,31 +357,43 @@ async function entrarMundo() {
   $("#escena").hidden = false;
   $("#hud").hidden = false;
   const cont = $("#mundo");
-  cont.innerHTML = `<div class="cargando-mundo"><div class="girar"></div><p>${t(`Dibujando la granja ${esc(J.granja)}…`, `Drawing farm ${esc(J.granja)}…`)}</p></div>`;
-  try {
-    terreno = await consultar("terreno", { n: 17 });
-  } catch (err) {
-    cont.innerHTML = `<div class="cargando-mundo"><p>${esc((err as Error).message)}</p>
-      <div class="fila-botones"><button class="btn-juego" data-r>${btn("rotar", t("Intentar otra vez", "Try again"))}</button>
-      <button class="btn-juego borde" data-otro>${btn("pin", t("Elegir otro lugar", "Choose another place"))}</button></div></div>`;
-    $("[data-r]").addEventListener("click", entrarMundo);
-    $("[data-otro]").addEventListener("click", () => { $("#hud").hidden = true; $("#escena").hidden = true; pantallaMapa(); });
-    decir(t("No pude traer la forma de tu parcela. Revisa la señal y toca de nuevo, o elige otro lugar.", "I couldn't get the shape of your plot. Check your signal and try again, or choose another place."), "preocupada");
-    return;
-  }
   cont.innerHTML = "";
-  mundo?.destruir();
-  try {
-    if (new URLSearchParams(location.search).has("sin3d")) throw new Error("modo 2D pedido");
-    const m3d = await import("./mundo3d");
-    if (!m3d.hayWebGL()) throw new Error("sin WebGL");
-    mundo = m3d.crearMundo3D(cont, terreno!, terreno!.centro);
-  } catch {
-    mundo = crearMundo2D(cont, terreno!.desnivel_m);
-    $("#aviso2d").hidden = false;
-  }
-  mundo.alTocar(tocarParcela);
-  await restaurar();
+  let ok = false;
+  await conCarga(t(`Dibujando la granja ${J.granja}…`, `Drawing farm ${J.granja}…`), async () => {
+    // todo lo que se va a necesitar se pide a la vez: el relieve, el clima de la ficha, las semillas y el motor 3D
+    const mes = J.mes ?? (new Date().getMonth() + 1) % 12 + 1;
+    parcelaInfo = null; semillasInfo = null;   // se pide de nuevo: puede ser otro lugar
+    const pTerreno = consultar("terreno", { n: 17 });
+    const pParcela = consultar("parcela").then((x) => { parcelaInfo = x; return x; }).catch(() => null);
+    const pSemillas = cargarSemillas(mes).catch(() => null);
+    const pMotor = new URLSearchParams(location.search).has("sin3d") ? Promise.reject(new Error("modo 2D pedido")) : import("./mundo3d");
+    pMotor.catch(() => null);
+    try {
+      terreno = await pTerreno;
+    } catch (err) {
+      cont.innerHTML = `<div class="cargando-mundo"><p>${esc((err as Error).message)}</p>
+        <div class="fila-botones"><button class="btn-juego" data-r>${btn("rotar", t("Intentar otra vez", "Try again"))}</button>
+        <button class="btn-juego borde" data-otro>${btn("pin", t("Elegir otro lugar", "Choose another place"))}</button></div></div>`;
+      $("[data-r]").addEventListener("click", entrarMundo);
+      $("[data-otro]").addEventListener("click", () => { $("#hud").hidden = true; $("#escena").hidden = true; pantallaMapa(); });
+      decir(t("No pude traer la forma de tu parcela. Revisa la señal y toca de nuevo, o elige otro lugar.", "I couldn't get the shape of your plot. Check your signal and try again, or choose another place."), "preocupada");
+      return;
+    }
+    mundo?.destruir();
+    try {
+      const m3d = await pMotor;
+      if (!m3d.hayWebGL()) throw new Error("sin WebGL");
+      mundo = m3d.crearMundo3D(cont, terreno!, terreno!.centro);
+    } catch {
+      mundo = crearMundo2D(cont, terreno!.desnivel_m);
+      $("#aviso2d").hidden = false;
+    }
+    mundo.alTocar(tocarParcela);
+    await Promise.all([pParcela, pSemillas]);
+    await restaurar();
+    ok = true;
+  });
+  if (!ok) return;
   pintarMundo();
   pintarControles();
   seguirHistoria();
@@ -349,7 +418,7 @@ async function fichaTierra() {
   const titulo = t("Así es tu tierra", "This is your land");
   abrirPanel(titulo, `<div class="cargando-mundo chico"><div class="girar"></div><p>${t("Leyendo los datos de la NASA…", "Reading NASA data…")}</p></div>`, "cartas-panel");
   try {
-    parcelaInfo = await consultar("parcela");
+    parcelaInfo = parcelaInfo || await conCarga(t("Leyendo los datos de la NASA…", "Reading NASA data…"), () => consultar("parcela"));
     guardar({ provincia: parcelaInfo.lugar.provincia });
   } catch {
     abrirPanel(titulo, `<p>${t("No pude leer tu tierra. Revisa la señal.", "I couldn't read your land. Check your signal.")}</p><button class="btn-juego" data-r>${t("Intentar otra vez", "Try again")}</button>`);
@@ -674,7 +743,7 @@ async function sembrar(i: number) {
   pc.crop = J.crop;
   pc.riegos = [];
   try {
-    const c = await pedirCiclo(i);
+    const c = await conCarga(t("Sembrando…", "Planting…"), () => pedirCiclo(i));
     if (!J.anio) J.anio = c.anio;
   } catch {
     pc.crop = antes;
@@ -761,11 +830,10 @@ function empezarTemporada() {
   cerrarPanel();
   pintarMundo();
   pintarControles();
-  const nota = t(" El tiempo ya corre solo: mira cómo crece. Con el botón de pausa lo detienes, y la gota de arriba te dice cuánta agua necesita.",
-    " Time is already running by itself: watch it grow. The pause button stops it, and the drop at the top tells you how much water it needs.");
-  decir(razones.length ? t(`Ojo: ${razones[0]}.${nota}`, `Careful: ${razones[0]}.${nota}`) : t(`¡Listo, a sembrar!${nota}`, `All set, let's plant!${nota}`));
-  detenerAuto();
-  iniciarAuto();   // directamente en play: el jugador no tiene que tocar nada
+  const nota = t(" Mira cómo crece: el tiempo corre solo. La gota de arriba te dice cuánta agua necesita.",
+    " Watch it grow: time runs by itself. The drop at the top tells you how much water it needs.");
+  autoPendiente = true;   // el play se enciende solo cuando Pachita termina de hablar
+  hablarAviso({ texto: razones.length ? t(`Ojo: ${razones[0]}.${nota}`, `Careful: ${razones[0]}.${nota}`) : t(`¡Listo, a sembrar!${nota}`, `All set, let's plant!${nota}`) });
 }
 
 // ---------------------------------------------------------------- 8. crecer: tiempo, riego y estrés climático
@@ -819,34 +887,69 @@ function avanzar(dias: number) {
   pintarControles();
 }
 
+/** Lo que Pachita tiene que decir durante el tiempo. `accion`: pide algo al jugador (regar o cosechar) y el tiempo no sigue hasta entonces. */
+type Aviso = { texto: string; animo?: Animo; accion?: "regar" | "cosechar" };
+/** Si el jugador tiene que hacer algo antes de que siga el tiempo (y si el play estaba encendido). */
+let esperando: { accion: "regar" | "cosechar"; venia: boolean } | null = null;
+/** El play estaba encendido y se reanuda solo cuando Pachita termine de hablar. */
+let autoPendiente = false;
+
 function eventos(antes: VistaParcela[]): boolean {
   const hoy = diaActual();
-  let parar = false;
+  let aviso: Aviso | null = null;
   J.parcelas.forEach((p, i) => {
-    if (!p.crop || p.cosechada || parar) return;
+    if (!p.crop || p.cosechada || aviso) return;
     const v = vista(i), a = antes[i], nom = nombreCorto(p.crop);
-    if (v.lista && !a.lista) { decir(t(`¡La ${nom} está lista para cosechar! Toca «Cosechar todo» o la parcela para usar la azada.`, `The ${nom} is ready to harvest! Tap "Harvest all" or the plot to use the hoe.`)); parar = true; return; }
-    if (v.marchita && !a.marchita) { decir(t(`¡Arrarray! ¡Qué sequía! Hace días que no llueve y la tierra de la ${nom} se quedó sin agua. Sus hojas se doblan. Toca Regar para darle de beber.`,
-      `Arrarray! What a drought! It hasn't rained for days and the soil of the ${nom} has run out of water. Its leaves are drooping. Tap Water to give it a drink.`), "preocupada"); parar = true; return; }
-    if (v.etapa !== a.etapa && v.etapa === 2) decir(t(`¡La ${nom} ya está creciendo! Ahora saca hojas nuevas y sus raíces buscan agua más abajo.`, `The ${nom} is growing now! It sprouts new leaves and its roots look for water deeper down.`));
-    if (v.etapa !== a.etapa && v.etapa === 3) decir(t(`¡La ${nom} está floreciendo! Es cuando más agua toma: si le falta ahora, la cosecha sale pequeña.`, `The ${nom} is flowering! That's when it drinks the most: if it lacks water now, the harvest will be small.`));
+    if (v.lista && !a.lista) aviso = { accion: "cosechar", texto: t(`¡La ${nom} está lista para cosechar! Toca «Cosechar todo» o la parcela para usar la azada.`, `The ${nom} is ready to harvest! Tap "Harvest all" or the plot to use the hoe.`) };
+    else if (v.marchita && !a.marchita) aviso = { accion: "regar", animo: "preocupada", texto: t(`¡Arrarray! ¡Qué sequía! Hace días que no llueve y la tierra de la ${nom} se quedó sin agua. Sus hojas se doblan. Toca Regar para darle de beber.`,
+      `Arrarray! What a drought! It hasn't rained for days and the soil of the ${nom} has run out of water. Its leaves are drooping. Tap Water to give it a drink.`) };
+    else if (v.etapa !== a.etapa && v.etapa === 2) aviso = { texto: t(`¡La ${nom} ya está creciendo! Ahora saca hojas nuevas y sus raíces buscan agua más abajo.`, `The ${nom} is growing now! It sprouts new leaves and its roots look for water deeper down.`) };
+    else if (v.etapa !== a.etapa && v.etapa === 3) aviso = { texto: t(`¡La ${nom} está floreciendo! Es cuando más agua toma: si le falta ahora, la cosecha sale pequeña.`, `The ${nom} is flowering! That's when it drinks the most: if it lacks water now, the harvest will be small.`) };
   });
-  if (hoy && !parar) {
+  if (hoy && !aviso) {
     if (hoy.calor && !avisos.has(`c${hoy.fecha.slice(0, 7)}`)) {
       avisos.add(`c${hoy.fecha.slice(0, 7)}`);
-      decir(t(`¡Arrarray! ¡Qué calor! Hoy hizo ${num(hoy.tmax)} grados. Con tanto sol la tierra pierde agua más rápido y las plantas se cansan.`,
-        `Arrarray! So hot! Today it reached ${num(hoy.tmax)} degrees. With so much sun the soil loses water faster and plants get tired.`), "preocupada");
+      aviso = { animo: "preocupada", texto: t(`¡Arrarray! ¡Qué calor! Hoy hizo ${num(hoy.tmax)} grados. Con tanto sol la tierra pierde agua más rápido y las plantas se cansan.`,
+        `Arrarray! So hot! Today it reached ${num(hoy.tmax)} degrees. With so much sun the soil loses water faster and plants get tired.`) };
     } else if (mesSeco(hoy) && !avisos.has(`s${hoy.fecha.slice(0, 7)}`)) {
       avisos.add(`s${hoy.fecha.slice(0, 7)}`);
-      decir(t(`¡Arrarray! Empieza el tiempo seco: en ${nombreMes(Number(hoy.fecha.slice(5, 7)) - 1)} casi no llueve y el sol seca la tierra. Mira las barras de humedad y riega cuando haga falta.`,
-        `Arrarray! The dry season begins: in ${nombreMes(Number(hoy.fecha.slice(5, 7)) - 1)} it hardly rains and the sun dries the soil. Watch the moisture bars and water when needed.`), "preocupada");
+      aviso = { animo: "preocupada", texto: t(`¡Arrarray! Empieza el tiempo seco: en ${nombreMes(Number(hoy.fecha.slice(5, 7)) - 1)} casi no llueve y el sol seca la tierra. Mira las barras de humedad y riega cuando haga falta.`,
+        `Arrarray! The dry season begins: in ${nombreMes(Number(hoy.fecha.slice(5, 7)) - 1)} it hardly rains and the sun dries the soil. Watch the moisture bars and water when needed.`) };
     } else if (hoy.lluvia >= 10 && J.dia - ultimoAguacero > 7) {
       ultimoAguacero = J.dia;
-      decir(t(`¡Achachay! Un aguacero. Cayeron ${num(hoy.lluvia)} litros en cada metro cuadrado. La tierra cubierta de plantas no se lava; la tierra desnuda se va con el agua.`,
-        `Achachay! A downpour. ${num(hoy.lluvia)} liters fell on each square meter. Soil covered with plants doesn't wash away; bare soil goes with the water.`), "lluvia");
+      aviso = { animo: "lluvia", texto: t(`¡Achachay! Un aguacero. Cayeron ${num(hoy.lluvia)} litros en cada metro cuadrado. La tierra cubierta de plantas no se lava; la tierra desnuda se va con el agua.`,
+        `Achachay! A downpour. ${num(hoy.lluvia)} liters fell on each square meter. Soil covered with plants doesn't wash away; bare soil goes with the water.`) };
     }
   }
-  return parar;
+  if (!aviso) return false;
+  hablarAviso(aviso);
+  return true;
+}
+
+/** El tiempo se detiene mientras Pachita habla. Si pide una acción, espera a que se haga (el globo queda a la vista y el botón late);
+ *  si solo cuenta algo, el play sigue solo apenas termina. */
+function hablarAviso(a: Aviso) {
+  const venia = !!auto || autoPendiente;
+  autoPendiente = !a.accion && venia;
+  detenerAuto();
+  if (a.accion) {
+    esperando = { accion: a.accion, venia };
+    pintarControles();
+    decir(a.texto, a.animo, { fijo: true });
+    return;
+  }
+  esperando = null;
+  const hablando = decir(a.texto, a.animo);
+  const mio = turnoActual();
+  pintarControles();
+  hablando.then(() => { if (turnoActual() === mio && autoPendiente) { autoPendiente = false; iniciarAuto(); } });
+}
+
+/** Play / pausa. Si el play estaba esperando a Pachita, tocarlo lo cancela. */
+function alternarAuto() {
+  if (autoPendiente) { autoPendiente = false; pintarControles(); return; }
+  esperando = null;
+  iniciarAuto();
 }
 
 /** El mes de hoy es de los que "faltan agua" (rojo) para el cultivo principal. */
@@ -861,12 +964,14 @@ let ultimoAguacero = -99;
 function iniciarAuto() {
   if (auto) { detenerAuto(); return; }
   if (!J.sembrado || todoCosechado()) return;
+  autoPendiente = false;
+  if (esperando?.accion === "regar") { esperando = null; pintarControles(); }
   $("#btn-auto").innerHTML = ic("pausa");
   const largo = Math.max(1, ...J.parcelas.map((p, i) => (p.crop && !p.cosechada && ciclos.has(i) ? ciclos.get(i)!.dias.length : 0)));
   const porPaso = Math.max(1, Math.ceil(largo / 100));
   auto = window.setInterval(() => avanzar(porPaso), 100);
 }
-function detenerAuto() { if (auto) { clearInterval(auto); auto = null; } const b = document.querySelector("#btn-auto"); if (b) b.innerHTML = ic("play"); }
+function detenerAuto() { if (auto) { clearInterval(auto); auto = null; } const b = document.querySelector("#btn-auto"); if (b) b.innerHTML = ic(autoPendiente ? "pausa" : "play"); }
 
 async function regar() {
   if (!J.sembrado) { decir(t("Primero siembra y empieza a crecer.", "First plant and let it start growing.")); return; }
@@ -891,8 +996,17 @@ async function regar() {
   }
   guardarTodo();
   pintarMundo();
-  if (!regadas.length) decir(J.tanque <= 0 ? t("El tanque está vacío. Hay que esperar la lluvia.", "The tank is empty. We have to wait for rain.") : t("La tierra todavía está húmeda. No hace falta regar.", "The soil is still moist. No need to water."));
-  else { sonido.riego(); decir(t(`Regamos la ${regadas[0]} con ${agua(gastado)} de agua. Ahora la tierra está húmeda y las raíces pueden beber.`, `We watered the ${regadas[0]} with ${agua(gastado)} of water. Now the soil is moist and the roots can drink.`)); }
+  const pidio = esperando?.accion === "regar", reanudar = pidio && esperando!.venia;
+  if (pidio) { esperando = null; pintarControles(); }
+  const hablando = !regadas.length
+    ? decir(J.tanque <= 0 ? t("El tanque está vacío. Hay que esperar la lluvia.", "The tank is empty. We have to wait for rain.") : t("La tierra todavía está húmeda. No hace falta regar.", "The soil is still moist. No need to water."))
+    : (sonido.riego(), decir(t(`Regamos la ${regadas[0]} con ${agua(gastado)} de agua. Ahora la tierra está húmeda y las raíces pueden beber.`, `We watered the ${regadas[0]} with ${agua(gastado)} of water. Now the soil is moist and the roots can drink.`)));
+  if (reanudar) {   // Pachita pidió regar: cuando termina de contestar, el tiempo sigue solo
+    autoPendiente = true;
+    pintarControles();
+    const mio = turnoActual();
+    hablando.then(() => { if (turnoActual() === mio && autoPendiente) { autoPendiente = false; iniciarAuto(); } });
+  }
 }
 
 // ---------------------------------------------------------------- 9. cosecha
@@ -915,24 +1029,74 @@ type Cosecha = { id: string; n: number; puntaje: number; estrellas: number; seco
 const semillasListas = () => [...new Set(listas().map((i) => J.parcelas[i].crop!))];
 let cosechando = false;
 
-/** Una azada golpea la tierra de cada parcela que se cosecha (se dibuja encima del mundo 3D o 2D). */
-async function animarCosecha(indices: number[]) {
+/** Cosecha animada: la azada golpea dos veces la tierra de cada parcela, saltan terrones, las plantas salen del suelo y los cultivos vuelan
+ *  en arco hasta la canasta, que rebota y cuenta lo recogido. `alImpacto` se llama en el segundo golpe (cuando la planta sale). */
+async function animarCosecha(indices: number[], cultivo: (i: number) => string, alImpacto: (i: number) => void) {
+  const quieto = matchMedia("(prefers-reduced-motion: reduce)").matches;
   const capa = document.createElement("div");
   capa.className = "capa-cosecha";
   capa.setAttribute("aria-hidden", "true");
+  const total = indices.length * 5;
+  capa.innerHTML = `<div class="cesta-cosecha">${ic("cesta")}<b>0</b></div>`;
+  document.body.appendChild(capa);
+  const cesta = capa.querySelector<HTMLElement>(".cesta-cosecha")!, cuenta = cesta.querySelector("b")!;
+  let n = 0;
+  const llego = () => { cuenta.textContent = String(++n); cesta.classList.remove("rebota"); void cesta.offsetWidth; cesta.classList.add("rebota"); };
+  sonido.cosecha();
+  const paso = quieto ? 0.05 : 0.16;
   indices.forEach((i, k) => {
     const pos = mundo?.posicion(i) ?? { x: innerWidth / 2, y: innerHeight / 2 };
+    const retraso = k * paso;
     const g = document.createElement("div");
     g.className = "azada-anim";
     g.style.left = `${pos.x}px`;
     g.style.top = `${pos.y}px`;
-    g.style.setProperty("--retraso", `${k * 0.12}s`);
-    g.innerHTML = `${ic("azada", "ic-azada")}${Array.from({ length: 7 }, (_, j) => `<i class="terron" style="--dx:${(j - 3) * 16 + (j % 2) * 6}px;--dy:${-30 - (j % 3) * 18}px"></i>`).join("")}`;
+    g.style.setProperty("--retraso", `${retraso}s`);
+    g.innerHTML = ic("azada", "ic-azada");
     capa.appendChild(g);
+    // terrones en cada golpe (a 0,32 s y a 0,68 s)
+    const golpe = document.createElement("div");
+    golpe.className = "punto-golpe";
+    golpe.style.left = `${pos.x}px`;
+    golpe.style.top = `${pos.y}px`;
+    golpe.innerHTML = [0.32, 0.68].map((h) => Array.from({ length: 6 }, (_, j) =>
+      `<i class="terron" style="--dx:${(j - 2.5) * 15}px;--dy:${-26 - (j % 3) * 16}px;animation-delay:${retraso + h}s"></i>`).join("")).join("");
+    capa.appendChild(golpe);
+    // al segundo golpe la planta sale y los cultivos vuelan a la canasta
+    setTimeout(() => {
+      alImpacto(i);
+      const meta = cesta.getBoundingClientRect();
+      const mx = meta.left + meta.width / 2, my = meta.top + meta.height / 2;
+      const mas = document.createElement("div");
+      mas.className = "mas-uno";
+      mas.textContent = "+5";
+      mas.style.left = `${pos.x}px`;
+      mas.style.top = `${pos.y - 20}px`;
+      capa.appendChild(mas);
+      for (let j = 0; j < 5; j++) {
+        const f = document.createElement("img");
+        f.className = "vuela-cultivo";
+        f.src = urlIcono(cultivo(i));
+        f.alt = "";
+        const ox = pos.x + (j - 2) * 14, oy = pos.y - 6 - (j % 2) * 8;
+        f.style.left = `${ox - 22}px`;
+        f.style.top = `${oy - 22}px`;
+        capa.appendChild(f);
+        const dx = mx - ox, dy = my - oy, alto = -90 - Math.random() * 60;
+        const anim = f.animate([
+          { transform: "translate(0, 0) scale(.3) rotate(0deg)", opacity: 0 },
+          { transform: `translate(${dx * 0.18}px, ${alto * 0.55}px) scale(1.15) rotate(-14deg)`, opacity: 1, offset: 0.22 },
+          { transform: `translate(${dx * 0.55}px, ${alto}px) scale(1) rotate(10deg)`, opacity: 1, offset: 0.55 },
+          { transform: `translate(${dx}px, ${dy}px) scale(.45) rotate(0deg)`, opacity: 0.95 },
+        ], { duration: quieto ? 300 : 950, delay: j * 70, easing: "cubic-bezier(.3,.6,.4,1)", fill: "forwards" });
+        anim.onfinish = () => { f.remove(); llego(); };
+      }
+    }, (quieto ? 150 : 700) + retraso * 1000);
   });
-  document.body.appendChild(capa);
-  sonido.cosecha();
-  await espera(1250 + indices.length * 120);
+  await espera((quieto ? 700 : 2000) + indices.length * paso * 1000 + 400);
+  cesta.classList.add("sale");
+  await espera(250);
+  void total;
   capa.remove();
 }
 
@@ -942,11 +1106,12 @@ async function cosechar(ids: string[]) {
   const idx = listas().filter((i) => ids.includes(J.parcelas[i].crop!));
   if (!idx.length) return;
   cosechando = true;
+  esperando = null;
+  autoPendiente = false;
   detenerAuto();
   cerrarPanel();
-  idx.forEach((i) => mundo?.cosechar(i));
   decir(t("¡A cosechar con la azada!", "Time to harvest with the hoe!"));
-  await animarCosecha(idx);
+  await animarCosecha(idx, (i) => J.parcelas[i].crop!, (i) => mundo?.cosechar(i));
   const cola: Cosecha[] = [];
   for (const id of ids) {
     const is = idx.filter((i) => J.parcelas[i].crop === id);
@@ -1009,7 +1174,7 @@ async function leccionRotacion() {
   abrirPanel(titulo, `<div class="cargando-mundo chico"><div class="girar"></div></div>`);
   let rots: any[] = [];
   try {
-    const cu = await consultar("cultivo", { crop: ultimo, mes: J.mes });
+    const cu = await conCarga(t("Calculando tus rotaciones…", "Working out your rotations…"), () => consultar("cultivo", { crop: ultimo, mes: J.mes }));
     rots = cu.rotaciones || [];
     rots.forEach((r: any) => r.pasos.forEach((s: any) => cultivos.set(s.id, { ...cultivos.get(s.id), ...s })));
   } catch { /* sin señal: queda la lección */ }
@@ -1227,6 +1392,8 @@ async function nuevaTemporada() {
   const c = cicloPrincipal();
   const fin = c ? c.dias[c.dias.length - 1].fecha : null;
   const proximo = fin ? (Number(fin.slice(5, 7)) % 12) + 1 : ((J.mes ?? 1) % 12) + 1;
+  esperando = null;
+  autoPendiente = false;
   J.temporada++;
   J.mes = null;
   J.anio = fin ? Number(fin.slice(0, 4)) + (proximo === 1 ? 1 : 0) : J.anio;
@@ -1249,6 +1416,8 @@ async function nuevaTemporada() {
 }
 
 function reiniciar() {
+  esperando = null;
+  autoPendiente = false;
   detenerAuto();
   J = nuevo();
   guardarJuego(J);
@@ -1395,11 +1564,13 @@ function pintarControles() {
       <button class="t" data-d="1" aria-label="${t("Avanzar un día", "Advance one day")}">${t("+1 día", "+1 day")}</button>
       <button class="t" data-d="7" aria-label="${t("Avanzar una semana", "Advance one week")}">${t("+1 sem", "+1 wk")}</button>
       <button class="t" data-d="30" aria-label="${t("Avanzar un mes", "Advance one month")}">${t("+1 mes", "+1 mo")}</button>
-      <button class="t redondo" id="btn-auto" aria-label="${t("Avance automático", "Automatic advance")}">${ic(auto ? "pausa" : "play")}</button>`;
+      <button class="t redondo" id="btn-auto" aria-label="${t("Avance automático", "Automatic advance")}">${ic(auto || autoPendiente ? "pausa" : "play")}</button>`;
     ctl.querySelector("[data-cosechar]")?.addEventListener("click", () => cosechar(semillasListas()));
     ctl.querySelectorAll<HTMLButtonElement>("[data-d]").forEach((b) => b.addEventListener("click", () => avanzar(Number(b.dataset.d))));
-    $("#btn-auto").addEventListener("click", iniciarAuto);
+    $("#btn-auto").addEventListener("click", alternarAuto);
   }
+  $("#btn-regar").classList.toggle("pide", esperando?.accion === "regar");
+  ctl.querySelector("[data-cosechar]")?.classList.toggle("pide", esperando?.accion === "cosechar");
   pintarHud();
 }
 
@@ -1461,6 +1632,8 @@ export function arrancar() {
   window.addEventListener("resize", medirLayout);
   new MutationObserver(medirLayout).observe($("#escena"), { attributes: true, attributeFilter: ["hidden"] });
   new MutationObserver(medirLayout).observe($("#panel"), { attributes: true, attributeFilter: ["hidden", "class"] });
+  // equipos modestos (pocos núcleos o poca memoria): sin adornos animados en el paisaje
+  if ((navigator.hardwareConcurrency || 4) <= 2 || ((navigator as unknown as { deviceMemory?: number }).deviceMemory || 4) <= 2) document.body.classList.add("economico");
   medirLayout();
   aplicarEstatico();
   menuPrincipal();
@@ -1478,13 +1651,17 @@ const COHETE = `<svg viewBox="0 0 160 260" class="cohete-svg" aria-hidden="true"
     <linearGradient id="toberaC" x1="0" x2="1"><stop offset="0" stop-color="#4b525f"/><stop offset=".5" stop-color="#9aa3b2"/><stop offset="1" stop-color="#3d434e"/></linearGradient>
     <radialGradient id="fuegoC" cx=".5" cy=".1" r=".9"><stop offset="0" stop-color="#fffbe0"/><stop offset=".3" stop-color="#ffe066"/><stop offset=".65" stop-color="#ff9a1f"/><stop offset="1" stop-color="#e2401c" stop-opacity="0"/></radialGradient>
   </defs>
-  <g class="fuego"><path class="llama l1" d="M58 186 Q80 262 102 186 Q80 204 58 186Z" fill="url(#fuegoC)"/>
-    <path class="llama l2" d="M66 186 Q80 236 94 186 Q80 196 66 186Z" fill="#fff6b8"/></g>
+  <g class="fuego"><ellipse class="brillo-llama" cx="80" cy="226" rx="46" ry="58" fill="url(#fuegoC)" opacity=".5"/>
+    <path class="llama l1" d="M56 186 Q80 270 104 186 Q80 206 56 186Z" fill="url(#fuegoC)"/>
+    <path class="llama l2" d="M65 186 Q80 242 95 186 Q80 198 65 186Z" fill="#ffd34d"/>
+    <path class="llama l3" d="M72 186 Q80 220 88 186 Q80 192 72 186Z" fill="#fffbe0"/></g>
   <g class="patas-g"><path d="M52 150 L34 196 L46 196 L60 160Z M108 150 L126 196 L114 196 L100 160Z" fill="#6c7380" stroke="#2c241c" stroke-width="3" stroke-linejoin="round"/>
     <rect x="28" y="194" width="22" height="6" rx="3" fill="#3d434e"/><rect x="110" y="194" width="22" height="6" rx="3" fill="#3d434e"/></g>
   <path d="M46 120 L18 170 Q16 178 24 176 L50 164Z" fill="url(#aletaC)" stroke="#2c241c" stroke-width="3.5" stroke-linejoin="round"/>
   <path d="M114 120 L142 170 Q144 178 136 176 L110 164Z" fill="url(#aletaC)" stroke="#2c241c" stroke-width="3.5" stroke-linejoin="round"/>
   <path d="M80 8 C112 36 120 92 114 168 L46 168 C40 92 48 36 80 8Z" fill="url(#cuerpoC)" stroke="#2c241c" stroke-width="3.5" stroke-linejoin="round"/>
+  <path d="M80 8 C112 36 120 92 114 168 L96 168 C100 96 96 40 80 8Z" fill="#6b7282" opacity=".22"/>
+  <path d="M58 40 Q52 90 56 150" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round" opacity=".55"/>
   <path d="M80 8 C96 22 106 40 111 60 L49 60 C54 40 64 22 80 8Z" fill="url(#narizC)" stroke="#2c241c" stroke-width="3.5" stroke-linejoin="round"/>
   <path d="M70 22 Q76 16 82 14" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round" opacity=".6"/>
   <rect x="47" y="132" width="66" height="13" fill="#c8372d"/>
@@ -1498,27 +1675,82 @@ const COHETE = `<svg viewBox="0 0 160 260" class="cohete-svg" aria-hidden="true"
   <text x="80" y="126" text-anchor="middle" font-size="11" font-weight="900" fill="#1d4f8f" font-family="Fredoka, sans-serif" letter-spacing="1">PACHA</text>
   <path d="M54 168 h52 l-6 18 h-40z" fill="url(#toberaC)" stroke="#2c241c" stroke-width="3.5" stroke-linejoin="round"/>
 </svg>`;
-const PAISAJE = `<svg viewBox="0 0 800 600" preserveAspectRatio="xMidYMax slice" aria-hidden="true" class="paisaje-svg">
+// El paisaje va en capas: la fija se dibuja una sola vez y solo se mueven las capas pequeñas (nubes, rayos, hierba, montañas lejanas),
+// así el celular no vuelve a pintar todo el dibujo en cada cuadro.
+const PAISAJE = `<div class="paisaje-caja"><svg viewBox="0 0 800 600" preserveAspectRatio="xMidYMax slice" aria-hidden="true" class="paisaje-svg capa c-fondo">
   <defs>
-    <linearGradient id="cieloM" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffcf8a"/><stop offset=".45" stop-color="#ffe6b5"/><stop offset="1" stop-color="#fff4dc"/></linearGradient>
-    <radialGradient id="solM" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#fff8d6"/><stop offset=".6" stop-color="#ffd25a"/><stop offset="1" stop-color="#ffb03a" stop-opacity="0"/></radialGradient>
-    <linearGradient id="volcanM" x1="0" x2="1"><stop offset="0" stop-color="#7f8ea3"/><stop offset=".55" stop-color="#9eacbf"/><stop offset="1" stop-color="#6f7d92"/></linearGradient>
+    <linearGradient id="cieloM" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ff9f5f"/><stop offset=".3" stop-color="#ffc784"/><stop offset=".62" stop-color="#ffe6b8"/><stop offset="1" stop-color="#fff5de"/></linearGradient>
+    <radialGradient id="solM" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#fffbe6"/><stop offset=".35" stop-color="#ffe27a"/><stop offset="1" stop-color="#ffb03a" stop-opacity="0"/></radialGradient>
+    <linearGradient id="volcanM" x1="0" x2="1"><stop offset="0" stop-color="#6d7d96"/><stop offset=".5" stop-color="#a2b0c6"/><stop offset="1" stop-color="#62718a"/></linearGradient>
+    <linearGradient id="volcan2" x1="0" x2="1"><stop offset="0" stop-color="#8a9ab2"/><stop offset=".6" stop-color="#b3c0d4"/><stop offset="1" stop-color="#7585a0"/></linearGradient>
+    <linearGradient id="neveM" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#dfe9f8"/><stop offset=".5" stop-color="#ffffff"/><stop offset="1" stop-color="#cdd9ee"/></linearGradient>
+    <linearGradient id="brumaM" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff3d6" stop-opacity="0"/><stop offset="1" stop-color="#fff3d6" stop-opacity=".85"/></linearGradient>
+    <linearGradient id="colina1" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8fbf5a"/><stop offset="1" stop-color="#5f9a3e"/></linearGradient>
+    <linearGradient id="campoA" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#b9d86c"/><stop offset="1" stop-color="#8fc04e"/></linearGradient>
+    <linearGradient id="campoB" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ecd070"/><stop offset="1" stop-color="#d4aa48"/></linearGradient>
+    <linearGradient id="campoC" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#bddc74"/><stop offset="1" stop-color="#93c250"/></linearGradient>
+    <linearGradient id="campoD" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#d9a877"/><stop offset="1" stop-color="#b98456"/></linearGradient>
+    <linearGradient id="tierraM" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#9a6538"/><stop offset="1" stop-color="#5e3a1f"/></linearGradient>
+    <radialGradient id="nubeG" cx=".5" cy=".35" r=".7"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#ffe9d0"/></radialGradient>
   </defs>
   <rect width="800" height="600" fill="url(#cieloM)"/>
-  <g class="sol-menu"><circle cx="490" cy="150" r="110" fill="url(#solM)"/><circle cx="490" cy="150" r="44" fill="#ffd84d"/></g>
-  <g class="nube-m n1" fill="#fff"><ellipse cx="140" cy="120" rx="60" ry="22"/><ellipse cx="180" cy="104" rx="40" ry="26"/><ellipse cx="110" cy="108" rx="30" ry="18"/></g>
-  <g class="nube-m n2" fill="#fff" opacity=".9"><ellipse cx="470" cy="80" rx="50" ry="18"/><ellipse cx="500" cy="68" rx="32" ry="20"/></g>
-  <path d="M190 400 L336 186 Q352 166 368 186 L520 400Z" fill="url(#volcanM)"/>
-  <path d="M312 222 L336 186 Q352 166 368 186 L392 222 Q380 230 370 224 Q360 236 348 226 Q336 234 326 226 Q318 230 312 222Z" fill="#fbfdff"/>
-  <path d="M520 410 L650 250 Q662 238 676 250 L800 380 L800 420Z" fill="#8597ad"/>
-  <path d="M630 274 L650 250 Q662 238 676 250 L696 274 Q684 282 672 276 Q660 286 648 278 Q640 284 630 274Z" fill="#fbfdff"/>
-  <path d="M0 420 Q140 360 300 392 T600 380 T800 372 L800 600 L0 600Z" fill="#7fb24f"/>
-  <path d="M0 440 Q120 410 240 424 L232 456 Q120 446 0 474Z" fill="#a8cf62"/><path d="M240 424 Q400 404 560 418 L552 448 Q400 440 232 456Z" fill="#e2c35c"/>
-  <path d="M560 418 Q690 404 800 410 L800 442 Q690 438 552 448Z" fill="#8bc34a"/>
-  <path d="M0 474 Q120 446 232 456 L222 492 Q120 488 0 512Z" fill="#5f9a3e"/><path d="M232 456 Q400 440 552 448 L542 484 Q400 478 222 492Z" fill="#b5d36b"/>
-  <path d="M552 448 Q690 438 800 442 L800 478 Q690 476 542 484Z" fill="#d4a373"/>
+  <g class="sol-menu"><circle cx="490" cy="150" r="120" fill="url(#solM)"/><circle cx="490" cy="150" r="46" fill="#ffe066"/><circle cx="478" cy="138" r="20" fill="#fffbe0" opacity=".7"/></g>
+</svg>
+<svg viewBox="0 0 800 600" preserveAspectRatio="xMidYMax slice" aria-hidden="true" class="paisaje-svg capa c-rayos"><g class="rayos" fill="#fff3b0" fill-opacity=".22"><path d="M490 150 L750 150 L747 191Z"/><path d="M490 150 L674 334 L642 361Z"/><path d="M490 150 L490 410 L449 407Z"/><path d="M490 150 L306 334 L279 302Z"/><path d="M490 150 L230 150 L233 109Z"/><path d="M490 150 L306 -34 L338 -61Z"/><path d="M490 150 L490 -110 L531 -107Z"/><path d="M490 150 L674 -34 L701 -2Z"/></g></svg>
+<svg viewBox="0 0 800 600" preserveAspectRatio="xMidYMax slice" aria-hidden="true" class="paisaje-svg capa c-lejos">
+  <path d="M-20 400 L90 290 Q110 272 132 296 L220 400Z" fill="#b8c5dc" opacity=".8"/>
+  <path d="M560 410 L690 280 Q712 258 736 282 L840 410Z" fill="#b3c1d8" opacity=".85"/>
+</svg>
+<svg viewBox="0 0 800 600" preserveAspectRatio="xMidYMax slice" aria-hidden="true" class="paisaje-svg capa c-nubes">
+  <g class="nube-m n1"><g fill="url(#nubeG)"><ellipse cx="140" cy="122" rx="62" ry="20"/><ellipse cx="182" cy="106" rx="42" ry="24"/><ellipse cx="108" cy="110" rx="32" ry="18"/><ellipse cx="150" cy="96" rx="28" ry="18"/></g><ellipse cx="140" cy="132" rx="62" ry="6" fill="#f2b98a" opacity=".35"/></g>
+  <g class="nube-m n2"><g fill="url(#nubeG)" opacity=".92"><ellipse cx="500" cy="70" rx="52" ry="16"/><ellipse cx="530" cy="58" rx="34" ry="19"/><ellipse cx="474" cy="62" rx="24" ry="13"/></g><ellipse cx="500" cy="78" rx="52" ry="5" fill="#f2b98a" opacity=".3"/></g>
+  <g class="nube-m n3"><g fill="url(#nubeG)" opacity=".85"><ellipse cx="690" cy="170" rx="46" ry="14"/><ellipse cx="716" cy="160" rx="30" ry="16"/></g></g>
+  <g class="condor"><path d="M0 0 Q-16 -9 -34 -3 Q-18 -2 -8 3 Q0 6 8 3 Q18 -2 34 -3 Q16 -9 0 0Z" fill="#2c2a35"/></g>
+</svg>
+<svg viewBox="0 0 800 600" preserveAspectRatio="xMidYMax slice" aria-hidden="true" class="paisaje-svg capa c-medio">
+  <path d="M190 405 L336 186 Q352 166 368 186 L520 405Z" fill="url(#volcanM)"/>
+  <path d="M336 186 Q352 166 368 186 L520 405 L430 405 L368 230Z" fill="#4a5870" opacity=".35"/>
+  <path d="M312 222 L336 186 Q352 166 368 186 L392 222 Q380 232 370 225 Q360 238 348 227 Q336 236 326 227 Q318 232 312 222Z" fill="url(#neveM)"/>
+  <path d="M330 230 L322 262 M352 232 L352 270 M372 230 L384 262" stroke="#8b9bb5" stroke-width="2" opacity=".5" fill="none"/>
+  <path d="M520 415 L650 252 Q662 238 676 252 L810 395 L810 425Z" fill="url(#volcan2)"/>
+  <path d="M630 276 L650 252 Q662 238 676 252 L696 276 Q684 284 672 278 Q660 288 648 280 Q640 286 630 276Z" fill="url(#neveM)"/>
+  <rect x="0" y="330" width="800" height="100" fill="url(#brumaM)"/>
+</svg>
+<svg viewBox="0 0 800 600" preserveAspectRatio="xMidYMax slice" aria-hidden="true" class="paisaje-svg capa c-tierra">
+  <path d="M0 422 Q140 366 300 396 T600 384 T800 376 L800 600 L0 600Z" fill="url(#colina1)"/>
+  <path d="M0 440 Q120 410 240 424 L232 456 Q120 446 0 474Z" fill="url(#campoA)"/>
+  <path d="M240 424 Q400 404 560 418 L552 448 Q400 440 232 456Z" fill="url(#campoB)"/>
+  <path d="M560 418 Q690 404 800 410 L800 442 Q690 438 552 448Z" fill="url(#campoC)"/>
+  <path d="M0 474 Q120 446 232 456 L222 492 Q120 488 0 512Z" fill="#6aa544"/>
+  <path d="M232 456 Q400 440 552 448 L542 484 Q400 478 222 492Z" fill="url(#campoC)"/>
+  <path d="M552 448 Q690 438 800 442 L800 478 Q690 476 542 484Z" fill="url(#campoD)"/>
+  <g stroke="#fff" stroke-opacity=".28" stroke-width="1.6" fill="none">
+    <path d="M262 436 Q400 420 540 430 M256 444 Q400 430 534 438 M250 452 Q400 438 548 446"/>
+    <path d="M244 462 Q400 450 530 458 M236 472 Q400 462 526 470 M228 482 Q400 474 520 480"/>
+    <path d="M580 424 Q690 414 790 420 M576 432 Q690 424 790 430 M574 440 Q690 432 790 438"/>
+    <path d="M14 462 Q120 440 226 452 M10 474 Q120 456 224 466 M8 486 Q120 470 222 480"/>
+  </g>
   <g transform="translate(600 392)"><rect x="0" y="0" width="58" height="34" rx="5" fill="#f1d9b5" stroke="#6e3f17" stroke-width="3"/>
-    <path d="M-8 2 L29 -24 L66 2Z" fill="#c0533a" stroke="#6e3f17" stroke-width="3" stroke-linejoin="round"/><rect x="22" y="12" width="13" height="22" rx="2" fill="#8a5a33"/></g>
-  <path d="M0 512 Q240 480 420 500 T800 492 L800 600 L0 600Z" fill="#8a5a33"/>
-  <path d="M0 540 Q260 512 460 530 T800 524 L800 600 L0 600Z" fill="#6e4426"/>
-</svg>`;
+    <rect x="40" y="-22" width="9" height="20" fill="#a5682a" stroke="#6e3f17" stroke-width="2"/>
+    <path d="M-8 2 L29 -24 L66 2Z" fill="#c0533a" stroke="#6e3f17" stroke-width="3" stroke-linejoin="round"/><rect x="22" y="12" width="13" height="22" rx="2" fill="#8a5a33"/>
+    <rect x="42" y="14" width="10" height="10" rx="2" fill="#7cc4ec" stroke="#6e3f17" stroke-width="2"/></g>
+  <path d="M0 512 Q240 480 420 500 T800 492 L800 600 L0 600Z" fill="url(#tierraM)"/>
+  <path d="M0 546 Q260 518 460 536 T800 530 L800 600 L0 600Z" fill="#5a381d"/>
+</svg>
+<svg viewBox="0 0 800 600" preserveAspectRatio="xMidYMax slice" aria-hidden="true" class="paisaje-svg capa c-viva">
+  <g class="polylepis">
+    <g class="arbol a1"><rect x="96" y="402" width="5" height="22" fill="#6e3f17"/><circle cx="98" cy="396" r="17" fill="#3f8a3c"/><circle cx="90" cy="402" r="11" fill="#4f9d45"/></g>
+    <g class="arbol a2"><rect x="716" y="390" width="5" height="22" fill="#6e3f17"/><circle cx="718" cy="384" r="15" fill="#3f8a3c"/><circle cx="726" cy="390" r="10" fill="#4f9d45"/></g>
+  </g>
+  <g class="humo-casa" fill="#fff"><circle cx="644" cy="366" r="5"/><circle cx="644" cy="366" r="5"/><circle cx="644" cy="366" r="5"/></g>
+  <g class="aves" fill="none" stroke="#3b2a4a" stroke-width="2" stroke-linecap="round">
+    <path class="ave v1" d="M0 0 q6 -6 12 0 q6 -6 12 0"/><path class="ave v2" d="M0 0 q5 -5 10 0 q5 -5 10 0"/><path class="ave v3" d="M0 0 q4 -4 8 0 q4 -4 8 0"/>
+  </g>
+  <g class="hierba" fill="#4f9d45" stroke="#2e6b2a" stroke-width="1">
+    <path class="brizna" d="M20 512 q-3 -22 -11 -30 q8 6 14 28Z"/><path class="brizna" d="M26 514 q2 -26 10 -34 q-3 12 -4 34Z"/>
+    <path class="brizna" d="M120 506 q-3 -20 -10 -27 q7 5 12 25Z"/><path class="brizna" d="M126 508 q3 -24 11 -31 q-4 11 -5 31Z"/>
+    <path class="brizna" d="M300 500 q-3 -18 -10 -25 q7 4 12 23Z"/><path class="brizna" d="M560 498 q2 -22 10 -29 q-4 10 -5 29Z"/>
+    <path class="brizna" d="M690 494 q-3 -22 -11 -30 q8 5 14 28Z"/><path class="brizna" d="M697 496 q3 -26 11 -33 q-4 12 -5 33Z"/><path class="brizna" d="M770 492 q-3 -20 -10 -28 q7 5 12 26Z"/>
+  </g>
+  <g class="polvo" fill="#fff" opacity=".7"><circle cx="150" cy="300" r="1.8"/><circle cx="300" cy="360" r="1.4"/><circle cx="460" cy="330" r="2"/><circle cx="620" cy="350" r="1.5"/><circle cx="720" cy="300" r="1.8"/><circle cx="60" cy="380" r="1.5"/></g>
+</svg></div>`;

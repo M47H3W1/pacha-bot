@@ -115,13 +115,13 @@ export function cosecha() {
   const c = preparar();
   if (!c || estaSilenciado()) return;
   const t0 = c.currentTime;
-  [0, 0.28].forEach((d) => {
+  [0.32, 0.68].forEach((d) => {
     tono(c, c.destination, 190, 70, t0 + d, 0.16, 0.5, "triangle");
     const r = fuente(c);
     r.connect(filtro(c, "lowpass", 700)).connect(ganancia(c, t0 + d, [[0.01, 0.3], [0.2, 0.0001]])).connect(c.destination);
     r.start(t0 + d); r.stop(t0 + d + 0.25);
   });
-  [660, 880, 1320].forEach((f, k) => tono(c, c.destination, f, f, t0 + 0.7 + k * 0.13, 0.5, 0.18));
+  [660, 880, 1320].forEach((f, k) => tono(c, c.destination, f, f, t0 + 0.9 + k * 0.13, 0.5, 0.18));
 }
 
 /** Chorro de agua. */
