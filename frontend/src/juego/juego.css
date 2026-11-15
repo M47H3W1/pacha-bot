@@ -71,17 +71,28 @@ body.en-mapa .creditos { display: none; }
 .tiempo .btn-juego.grande { max-width: 320px; }
 .aviso2d { position: absolute; bottom: 80px; left: 50%; transform: translateX(-50%); background: #fff8ec; padding: 4px 10px; border-radius: 99px; font-size: .8rem; }
 
-/* ---------- mundo 2D ---------- */
-.mundo2d { position: absolute; inset: 0; }
+/* ---------- mundo 2D (sin WebGL): la misma granja dibujada, con las parcelas en perspectiva ---------- */
+.mundo2d { position: absolute; inset: 0; overflow: hidden; background: #86bd52; }
 .fondo2d { position: absolute; inset: 0; width: 100%; height: 100%; }
-.franjas2d { position: absolute; left: 90px; right: 20px; top: 44%; bottom: 90px; display: grid; gap: 8px; }
-.franja2d { border: 0; border-radius: 14px; box-shadow: inset 0 -6px 0 rgb(0 0 0 / .15); display: flex; align-items: flex-end; justify-content: center; overflow: hidden; }
-.franja2d.lista { outline: 4px solid var(--sol); animation: latir 1s ease-in-out infinite; }
-.franja2d.resaltada { outline: 4px dashed #fff; }
-.franja2d.marchita .plantas2d { filter: sepia(1) saturate(.6); transform: rotate(8deg); }
-.franja2d.cosechando .plantas2d { animation: saltar .8s ease-in forwards; }
-.plantas2d { letter-spacing: .3em; line-height: 1; }
+.campo2d { position: absolute; left: 50%; bottom: max(84px, 11vh); width: min(80vw, 58vh, 540px); aspect-ratio: 1.1; transform: translateX(-50%); perspective: 1000px; perspective-origin: 50% -30%; }
+.franjas2d { position: absolute; inset: 0; display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 7%; padding: 6%; border-radius: 22px;
+  background: radial-gradient(circle at 20% 30%, rgb(255 255 255 / .12) 0 2px, transparent 3px) 0 0 / 22px 22px, linear-gradient(#7cb342, #689f38);
+  box-shadow: 0 14px 0 #4e7d2a, 0 26px 30px rgb(0 0 0 / .25); transform: rotateX(50deg); transform-origin: 50% 100%; transform-style: preserve-3d; }
+.franja2d { --tierra: #8a5a33; position: relative; border: 0; padding: 0; border-radius: 10px; cursor: pointer; transform-style: preserve-3d;
+  background: repeating-linear-gradient(0deg, rgb(0 0 0 / .24) 0 4px, rgb(255 255 255 / .08) 4px 7px, transparent 7px 16.66%), radial-gradient(circle at 30% 40%, rgb(0 0 0 / .14) 0 1.5px, transparent 2px) 0 0 / 14px 14px, var(--tierra);
+  box-shadow: 0 10px 0 color-mix(in srgb, var(--tierra) 55%, #000), inset 0 0 0 3px rgb(0 0 0 / .12); transition: box-shadow .3s, outline-color .3s; }
+.franja2d.lista { outline: 5px solid var(--sol); outline-offset: 3px; }
+.franja2d.resaltada { outline: 5px dashed #fff; outline-offset: 3px; }
+.franja2d.regando { box-shadow: 0 10px 0 color-mix(in srgb, var(--tierra) 55%, #000), inset 0 0 0 999px rgb(79 195 247 / .35); }
+.plantas2d { position: absolute; inset: 7%; display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 1fr); transform-style: preserve-3d; }
+.planta2d-hueco { position: relative; transform-style: preserve-3d; }
+.planta2d-hueco > .planta2d { position: absolute; left: 50%; bottom: 35%; width: calc(var(--tam, 0px) * 1.5); height: auto; aspect-ratio: 1; margin-left: calc(var(--tam, 0px) * -.75);
+  transform-origin: 50% 100%; transform: rotateX(-50deg); animation: brotar2d .5s var(--retraso, 0ms) cubic-bezier(.3, 1.6, .5, 1) both; filter: drop-shadow(0 4px 0 rgb(0 0 0 / .18)); }
+.franja2d.marchita .planta2d { filter: sepia(1) saturate(.6) brightness(.9); transform: rotateX(-50deg) rotate(10deg); }
+.franja2d.cosechando .planta2d { animation: saltar2d .8s ease-in forwards; }
 .mundo2d.lloviendo::after { content: ""; position: absolute; inset: 0; background: repeating-linear-gradient(105deg, transparent 0 10px, rgb(255 255 255 / .35) 10px 11px); animation: lluvia .4s linear infinite; pointer-events: none; }
+@keyframes brotar2d { from { transform: rotateX(-50deg) scale(0); } to { transform: rotateX(-50deg) scale(1); } }
+@keyframes saltar2d { to { transform: rotateX(-50deg) translateY(-140px) scale(.2); opacity: 0; } }
 @keyframes latir { 50% { transform: scale(1.02); } }
 @keyframes saltar { to { transform: translateY(-120px) scale(.2); opacity: 0; } }
 @keyframes lluvia { to { background-position: 0 20px; } }
@@ -193,7 +204,7 @@ body.en-mapa .creditos { display: none; }
 }
 /* Movimiento reducido: se calman los adornos que se repiten; quedan los que cuentan algo (cohete, fuego, boca de Pachita). */
 @media (prefers-reduced-motion: reduce) {
-  .icono-sobre, .icono-grande, .nube-m, .sol-menu, .estrellas-fondo, .tiempo .t.cosechar, .franja2d.lista, .nitro-dibujo.aire span, .pachita.habla { animation: none !important; }
+  .icono-sobre, .icono-grande, .nube-m, .sol-menu, .estrellas-fondo, .tiempo .t.cosechar, .nitro-dibujo.aire span, .pachita.habla { animation: none !important; }
   .logo, .menu-tablero, .carta { animation-duration: .01s !important; }
 }
 
@@ -363,7 +374,6 @@ body.en-mapa .pachita { width: 74px; height: 124px; }
 .medalla-carta.ganada { border: 4px solid var(--oro); box-shadow: 0 4px 0 #c98b00; }
 
 /* ---------- mundo 2D y riego ---------- */
-.franja2d.regando { box-shadow: inset 0 0 0 999px rgb(79 195 247 / .35); transition: box-shadow .3s; }
 .acciones { top: auto; bottom: calc(96px + env(safe-area-inset-bottom)); transform: none; }
 @media (max-height: 640px) { .acciones button { width: 54px; height: 54px; font-size: .62rem; } }
 
@@ -397,8 +407,6 @@ body.en-mapa .pachita { width: 74px; height: 124px; }
 img.icono-sobre, img.icono-grande, img.icono-mini, img.icono-rueda, img.icono-familia, img.icono-nitro, img.planta2d { object-fit: contain; display: block; }
 img.icono-familia { display: inline-block; }
 img.icono-nitro { width: 70px; height: 70px; margin: 0 auto; }
-.planta2d { width: var(--tam, 30px); height: var(--tam, 30px); display: inline-block; }
-.plantas2d { display: flex; gap: 2px; align-items: flex-end; }
 
 /* ---------- Pachita: poses con boca animada ---------- */
 .pachita .pose { inset: auto; left: 50%; bottom: 0; height: 100%; width: auto; max-width: none; object-fit: initial;
@@ -554,7 +562,6 @@ body.juego:has(#escena:not([hidden])) .creditos { display: none; }
 .panel-cuerpo { scrollbar-width: thin; scrollbar-color: #d9a066 transparent; }
 .panel-cuerpo::-webkit-scrollbar { width: 6px; }
 .panel-cuerpo::-webkit-scrollbar-thumb { background: #d9a066; border-radius: 6px; }
-.franjas2d { grid-template-columns: 1fr 1fr; }
 
 /* ---------- mapa: ubicación propia y tamaño de la chacra ---------- */
 .mapa-gps { position: absolute; z-index: 600; left: 12px; top: calc(12px + env(safe-area-inset-top)); display: inline-flex; align-items: center; gap: 6px;
@@ -871,3 +878,17 @@ body.en-mapa .globo { margin-top: 26px; }
 
 .economico .paisaje-svg.capa, .economico .paisaje-svg.capa * { animation: none !important; }
 .economico .paisaje-svg.capa { will-change: auto; }
+
+/* ---------- cosecha con guadaña: barre de lado a lado dos veces y vuelan pajitas ---------- */
+.hoz-anim { position: absolute; width: 104px; height: 104px; margin: -86px 0 0 -18px; transform-origin: 12% 92%; opacity: 0;
+  animation: segar 1.1s ease-in-out var(--retraso, 0s) both; filter: drop-shadow(0 6px 3px rgb(0 0 0 / .35)); }
+.ic-hoz { width: 100%; height: 100%; }
+@keyframes segar {
+  0% { transform: rotate(-75deg) scale(.6); opacity: 0; } 10% { transform: rotate(-70deg) scale(1); opacity: 1; }
+  30% { transform: rotate(30deg); } 42% { transform: rotate(-65deg); } 62% { transform: rotate(32deg); } 80% { transform: rotate(-20deg); opacity: 1; }
+  100% { transform: rotate(-40deg) translateY(-16px) scale(.9); opacity: 0; } }
+.terron.paja { width: 4px; height: 16px; margin: -8px 0 0 -2px; border-radius: 2px; background: linear-gradient(#f6d26b, #c99a2e); }
+.terron.paja { animation-name: paja; }
+@keyframes paja { 0% { opacity: 0; transform: translate(0, 0) rotate(0) scale(.6); } 12% { opacity: 1; } 55% { transform: translate(var(--dx), var(--dy)) rotate(var(--giro)) scale(1); opacity: 1; }
+  100% { opacity: 0; transform: translate(calc(var(--dx) * 1.3), calc(var(--dy) + 46px)) rotate(calc(var(--giro) * 2)) scale(.7); } }
+@media (prefers-reduced-motion: reduce) { .hoz-anim { animation-duration: .6s; } }

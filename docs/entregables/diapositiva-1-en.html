@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Astro Granja · Aquarela Team</title>
+  <style>
+    :root{--fuente-titulo:"Trebuchet MS","Arial Rounded MT Bold",sans-serif;--faja:#c0533a;--madera:#b8783a;--madera-osc:#6e3f17}
+    *{box-sizing:border-box}html,body{width:100%;height:100%;margin:0}body{overflow:hidden;background:#ffe6b5;color:#4a2a0e;font-family:var(--fuente-titulo)}
+    .intro,.menu-fondo,.paisaje-svg{position:absolute;inset:0;width:100%;height:100%}.intro{background:#ffe6b5;overflow:hidden}.paisaje-svg{display:block}
+    .sol-menu{transform-origin:490px 150px;animation:latirSol 4s ease-in-out infinite}.nube-m{animation:derivar 38s linear infinite alternate}.nube-m.n2{animation-duration:52s;animation-direction:alternate-reverse}
+    @keyframes latirSol{50%{transform:scale(1.06)}}@keyframes derivar{to{transform:translateX(120px)}}
+    .menu-capa{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:14px;padding:calc(18px + env(safe-area-inset-top)) 16px 24px;overflow-y:auto}
+    .logo{display:grid;justify-items:center;margin:2vh 0 0;line-height:.9;text-align:center;animation:logoEntra .8s cubic-bezier(.3,1.6,.5,1) both}
+    .logo span{font-size:clamp(3.6rem,17vw,6.4rem);font-weight:900;letter-spacing:.02em;-webkit-text-stroke:4px #4a2a0e;paint-order:stroke fill;filter:drop-shadow(0 7px 0 #4a2a0e) drop-shadow(0 12px 14px rgb(0 0 0/.25));animation:logoFlota 3.2s ease-in-out infinite}
+    .logo-1{color:#2b8fc4;background:linear-gradient(#7fd3ff,#2b6cb0);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;transform:rotate(-4deg)}
+    .logo-2{margin-top:-.12em;color:#5fb35a;background:linear-gradient(#b9f07a,#3a9d3a);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;transform:rotate(2deg)}
+    .logo small{margin-top:14px;padding:6px 16px;border:3px solid #4a2a0e;border-radius:99px;color:#fff;background:var(--faja);box-shadow:0 4px 0 #4a2a0e;font:900 1.08rem var(--fuente-titulo);animation:etiquetaPulso 2.8s ease-in-out infinite}
+    @keyframes logoEntra{from{opacity:0;transform:scale(.4) translateY(-40px)}}
+    .menu-tablero{position:relative;display:grid;width:min(430px,100%);gap:14px;padding:20px 18px 18px;border:5px solid var(--madera-osc);border-radius:28px;background:linear-gradient(#e2a865,var(--madera));box-shadow:inset 0 3px 0 rgb(255 255 255/.35),0 8px 0 var(--madera-osc),0 18px 30px rgb(0 0 0/.3);animation:logoEntra .7s .15s cubic-bezier(.3,1.5,.5,1) both,tableroFlota 4.5s 1s ease-in-out infinite}
+    .menu-tablero:before{position:absolute;top:-5px;right:14px;left:14px;height:10px;border-radius:0 0 6px 6px;background:var(--faja);content:""}
+    .btn-juego{display:flex;min-height:62px;align-items:center;justify-content:center;gap:.45em;width:100%;padding:12px 16px;border:3px solid #1f6b2c;border-radius:18px;color:#fff;background:linear-gradient(#8fe07a,#4cb848 48%,#3a9d3a 52%,#2f8a33);box-shadow:inset 0 3px 0 rgb(255 255 255/.5),0 5px 0 #1f5a24;cursor:pointer;font:900 clamp(.95rem,3.8vw,1.16rem) var(--fuente-titulo);text-shadow:0 2px 0 #276b2b;text-align:center;animation:botonBrillo 3.5s ease-in-out infinite}
+    .btn-juego:hover{filter:brightness(1.08)}.btn-juego:active{transform:translateY(4px);box-shadow:inset 0 3px 0 rgb(255 255 255/.5),0 1px 0 #1f5a24}
+    .btn-juego.borde{color:var(--madera-osc);background:linear-gradient(#fff9ec,#f6e3bd);border-color:var(--madera);text-shadow:none}
+    .menu-granja{display:grid;gap:5px;margin:-4px 0 2px;color:#fff8ec;font-size:.92rem;font-weight:900;line-height:1.15;text-align:center;text-shadow:0 2px 0 var(--madera-osc)}
+    .menu-granja span{display:block;padding:2px 4px;border-bottom:2px solid rgb(255 248 236/.35)}
+    .menu-granja span:last-child{border-bottom:0}
+    .menu-granja b{display:block;margin-top:3px;color:#fff8ec;font-size:1.45rem;line-height:1.05;text-shadow:0 2px 0 #276b2b}
+    .menu-granja .sede b{font-size:1.12rem;color:#2b1c12;text-shadow:0 1px 0 #fff8ec}
+    .menu-fila{display:flex;justify-content:center;gap:14px}.btn-redondo{display:grid;width:64px;height:64px;place-items:center;border:3px solid var(--madera-osc);border-radius:18px;color:var(--madera-osc);background:radial-gradient(circle at 30% 25%,#fff8e6,#f3d9a4 70%);box-shadow:inset 0 3px 0 #fff,0 4px 0 var(--madera-osc);cursor:pointer;font-size:1.9rem;animation:iconoRebote 2.4s ease-in-out infinite}
+    .btn-redondo:active{transform:translateY(3px);box-shadow:inset 0 3px 0 #fff,0 1px 0 var(--madera-osc)}.menu-creditos{max-width:500px;margin:0;color:#fff8ec;font-size:.9rem;font-weight:900;line-height:1.4;text-align:center;text-shadow:0 1px 2px rgb(0 0 0/.5)}
+    @keyframes logoFlota{50%{transform:translateY(-5px) rotate(1deg)}}@keyframes etiquetaPulso{50%{transform:scale(1.04)}}@keyframes tableroFlota{50%{transform:translateY(-4px)}}@keyframes botonBrillo{0%,100%{filter:brightness(1)}50%{filter:brightness(1.08)}}@keyframes iconoRebote{50%{transform:translateY(-5px) rotate(-3deg)}}
+    @media(max-width:420px){.logo span{font-size:clamp(3rem,17vw,5.2rem)}.logo small{font-size:.95rem}.menu-capa{padding-bottom:18px}.menu-granja b{font-size:1.28rem}.menu-granja .sede b{font-size:1.05rem}.menu-creditos{font-size:.78rem}}
+    @media(prefers-reduced-motion:reduce){*,*:before,*:after{animation-duration:.01ms!important;animation-iteration-count:1!important}}
+  </style>
+</head>
+<body>
+  <main class="intro">
+    <div class="menu-fondo" aria-hidden="true"><svg viewBox="0 0 800 600" preserveAspectRatio="xMidYMax slice" class="paisaje-svg">
+      <defs><linearGradient id="cieloM" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffcf8a"/><stop offset=".45" stop-color="#ffe6b5"/><stop offset="1" stop-color="#fff4dc"/></linearGradient><radialGradient id="solM" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#fff8d6"/><stop offset=".6" stop-color="#ffd25a"/><stop offset="1" stop-color="#ffb03a" stop-opacity="0"/></radialGradient><linearGradient id="volcanM" x1="0" x2="1"><stop offset="0" stop-color="#7f8ea3"/><stop offset=".55" stop-color="#9eacbf"/><stop offset="1" stop-color="#6f7d92"/></linearGradient></defs>
+      <rect width="800" height="600" fill="url(#cieloM)"/><g class="sol-menu"><circle cx="490" cy="150" r="110" fill="url(#solM)"/><circle cx="490" cy="150" r="44" fill="#ffd84d"/></g><g class="nube-m n1" fill="#fff"><ellipse cx="140" cy="120" rx="60" ry="22"/><ellipse cx="180" cy="104" rx="40" ry="26"/><ellipse cx="110" cy="108" rx="30" ry="18"/></g><g class="nube-m n2" fill="#fff" opacity=".9"><ellipse cx="470" cy="80" rx="50" ry="18"/><ellipse cx="500" cy="68" rx="32" ry="20"/></g>
+      <path d="M190 400 336 186Q352 166 368 186L520 400Z" fill="url(#volcanM)"/><path d="m312 222 24-36q16-20 32 0l24 36q-12 8-22 2-10 12-22 2-12 8-22-2-8 4-14-2Z" fill="#fbfdff"/><path d="M520 410 650 250q12-12 26 0l124 130v40Z" fill="#8597ad"/><path d="m630 274 20-24q12-12 26 0l20 24q-12 8-24 2-12 10-24 2-8 6-18-4Z" fill="#fbfdff"/>
+      <path d="M0 420q140-60 300-28t300-12 200-8v228H0Z" fill="#7fb24f"/><path d="M0 440q120-30 240-16l-8 32q-112-10-232 18Z" fill="#a8cf62"/><path d="M240 424q160-20 320-6l-8 30q-152-8-320 8Z" fill="#e2c35c"/><path d="M560 418q130-14 240-8v32q-110-4-248 6Z" fill="#8bc34a"/>
+      <g transform="translate(600 392)"><rect width="58" height="34" rx="5" fill="#f1d9b5" stroke="#6e3f17" stroke-width="3"/><path d="m-8 2 37-26L66 2Z" fill="#c0533a" stroke="#6e3f17" stroke-width="3"/><rect x="22" y="12" width="13" height="22" rx="2" fill="#8a5a33"/></g><path d="M0 512q240-32 420-12t380-8v108H0Z" fill="#8a5a33"/><path d="M0 540q260-28 460-10t340-6v76H0Z" fill="#6e4426"/>
+    </svg></div>
+    <div class="menu-capa">
+      <h1 class="logo" aria-label="Astro Granja"><span class="logo-1">Astro</span><span class="logo-2">Granja</span><small>with Pachita and NASA data</small></h1>
+      <section class="menu-tablero" aria-label="Main menu">
+        <button class="btn-juego" type="button" onclick="this.textContent='Welcome to Sangolquí!';">🚀 NASA Space Apps Challenge Sangolquí</button>
+        <p class="menu-granja"><span class="equipo">TEAM <b>Aquarela Team</b></span><span class="sede">LOCAL EVENT <b>Sangolquí, ESPE</b></span></p>
+        <button class="btn-juego borde" type="button" onclick="location.href='https://pacha-chat.vercel.app';">🚀 Play!</button>
+        <div class="menu-fila"><button class="btn-redondo" type="button" aria-label="Sound">🔊</button><button class="btn-redondo" type="button" aria-label="Medals">🏅</button></div>
+      </section>
+      <p class="menu-creditos">NASA Space Apps 2026 · Challenge: Field Shift: Adapting Farms with NASA Data<br>Data: NASA POWER, FAO-56, INIAP · Terrain: Open-Meteo</p>
+    </div>
+  </main>
+</body>
+</html>

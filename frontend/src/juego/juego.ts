@@ -12,7 +12,7 @@ import { epocaTexto, mesCorto, mesDeApi, nombreDe, nombreMes, razonAltura, usoDe
 import * as sonido from "./sonido";
 import { crearMundo2D } from "./mundo2d";
 import { ETAPAS, type Mundo, type Terreno, type VistaParcela } from "./mundo";
-import { callar, decir, decirVarias, turnoActual, desbloquearAudio, estaSilenciado, PACHITA_SVG, silenciar, urlPose, type Animo } from "./pachita";
+import { callar, decir, decirVarias, precargar, turnoActual, desbloquearAudio, estaSilenciado, PACHITA_SVG, silenciar, urlPose, type Animo } from "./pachita";
 import { ic, icG } from "./ui";
 import { urlIcono } from "./iconos";
 
@@ -824,6 +824,8 @@ function empezarTemporada() {
   J.salud = Math.max(0, Math.min(100, J.salud + cambio));
   J.tanque = J.tanqueMax = plantadas.reduce((acc, [, i]) => acc + (ciclos.get(i)?.tanque_litros || 0), 0);
   J.sembrado = true;
+  ultimoInfo = -99; ultimoAguacero = -99; aguacerosTemporada = 0;
+  precargarAvisos();
   J.dia = 0;
   paso("crecer");
   if (J.salud >= 85) ganar("sana");
@@ -894,34 +896,60 @@ let esperando: { accion: "regar" | "cosechar"; venia: boolean } | null = null;
 /** El play estaba encendido y se reanuda solo cuando Pachita termine de hablar. */
 let autoPendiente = false;
 
+/** Frases de los avisos que se repiten. Son fijas (sin cifras) para precargarlas al sembrar y que suenen al instante. */
+const FRASE = {
+  lista: (nom: string) => t(`¡Tu ${nom} está lista para cosechar! Toca «Cosechar todo» o la parcela para usar la guadaña.`, `The ${nom} is ready to harvest! Tap "Harvest all" or the plot to use the sickle.`),
+  seca: (nom: string) => t(`¡Arrarray! ¡Qué sequía! Hace días que no llueve y la tierra de tu ${nom} se quedó sin agua. Sus hojas se doblan. Toca Regar para darle de beber.`,
+    `Arrarray! What a drought! It hasn't rained for days and the soil of the ${nom} has run out of water. Its leaves are drooping. Tap Water to give it a drink.`),
+  crece: (nom: string) => t(`¡Tu ${nom} ya está creciendo! Ahora saca hojas nuevas y sus raíces buscan agua más abajo.`, `The ${nom} is growing now! It sprouts new leaves and its roots look for water deeper down.`),
+  flor: (nom: string) => t(`¡Tu ${nom} está floreciendo! Es cuando más agua toma: si le falta ahora, la cosecha sale pequeña.`, `The ${nom} is flowering! That's when it drinks the most: if it lacks water now, the harvest will be small.`),
+  calor: () => t("¡Arrarray! ¡Qué calor! Con tanto sol la tierra pierde agua más rápido y las plantas se cansan.", "Arrarray! So hot! With so much sun the soil loses water faster and plants get tired."),
+  secoMes: () => t("¡Arrarray! Empieza el tiempo seco: casi no llueve y el sol seca la tierra. Mira las barras de humedad y riega cuando haga falta.",
+    "Arrarray! The dry season begins: it hardly rains and the sun dries the soil. Watch the moisture bars and water when needed."),
+  aguacero: () => t("¡Achachay! Un aguacero. La tierra cubierta de plantas no se lava; la tierra desnuda se va con el agua.",
+    "Achachay! A downpour. Soil covered with plants doesn't wash away; bare soil goes with the water."),
+};
+/** Pide de antemano la voz de todos los avisos posibles de los cultivos sembrados. */
+function precargarAvisos() {
+  const noms = [...new Set(J.parcelas.filter((p) => p.crop && !p.cosechada).map((p) => nombreCorto(p.crop!)))];
+  precargar([FRASE.calor(), FRASE.secoMes(), FRASE.aguacero(), ...noms.flatMap((n) => [FRASE.lista(n), FRASE.seca(n), FRASE.crece(n), FRASE.flor(n)])]);
+}
+// Los avisos que solo cuentan algo no detienen el tiempo y tienen un respiro entre uno y otro;
+// el del aguacero sale de vez en cuando (máximo una vez cada 45 días de juego y dos por temporada).
+let ultimoInfo = -99, aguacerosTemporada = 0;
+
 function eventos(antes: VistaParcela[]): boolean {
   const hoy = diaActual();
   let aviso: Aviso | null = null;
   J.parcelas.forEach((p, i) => {
     if (!p.crop || p.cosechada || aviso) return;
     const v = vista(i), a = antes[i], nom = nombreCorto(p.crop);
-    if (v.lista && !a.lista) aviso = { accion: "cosechar", texto: t(`¡La ${nom} está lista para cosechar! Toca «Cosechar todo» o la parcela para usar la azada.`, `The ${nom} is ready to harvest! Tap "Harvest all" or the plot to use the hoe.`) };
-    else if (v.marchita && !a.marchita) aviso = { accion: "regar", animo: "preocupada", texto: t(`¡Arrarray! ¡Qué sequía! Hace días que no llueve y la tierra de la ${nom} se quedó sin agua. Sus hojas se doblan. Toca Regar para darle de beber.`,
-      `Arrarray! What a drought! It hasn't rained for days and the soil of the ${nom} has run out of water. Its leaves are drooping. Tap Water to give it a drink.`) };
-    else if (v.etapa !== a.etapa && v.etapa === 2) aviso = { texto: t(`¡La ${nom} ya está creciendo! Ahora saca hojas nuevas y sus raíces buscan agua más abajo.`, `The ${nom} is growing now! It sprouts new leaves and its roots look for water deeper down.`) };
-    else if (v.etapa !== a.etapa && v.etapa === 3) aviso = { texto: t(`¡La ${nom} está floreciendo! Es cuando más agua toma: si le falta ahora, la cosecha sale pequeña.`, `The ${nom} is flowering! That's when it drinks the most: if it lacks water now, the harvest will be small.`) };
+    if (v.lista && !a.lista) aviso = { accion: "cosechar", texto: FRASE.lista(nom) };
+    else if (v.marchita && !a.marchita) aviso = { accion: "regar", animo: "preocupada", texto: FRASE.seca(nom) };
+    else if (v.etapa !== a.etapa && v.etapa === 2) aviso = { texto: FRASE.crece(nom) };
+    else if (v.etapa !== a.etapa && v.etapa === 3) aviso = { texto: FRASE.flor(nom) };
   });
   if (hoy && !aviso) {
     if (hoy.calor && !avisos.has(`c${hoy.fecha.slice(0, 7)}`)) {
       avisos.add(`c${hoy.fecha.slice(0, 7)}`);
-      aviso = { animo: "preocupada", texto: t(`¡Arrarray! ¡Qué calor! Hoy hizo ${num(hoy.tmax)} grados. Con tanto sol la tierra pierde agua más rápido y las plantas se cansan.`,
-        `Arrarray! So hot! Today it reached ${num(hoy.tmax)} degrees. With so much sun the soil loses water faster and plants get tired.`) };
+      aviso = { animo: "preocupada", texto: FRASE.calor() };
     } else if (mesSeco(hoy) && !avisos.has(`s${hoy.fecha.slice(0, 7)}`)) {
       avisos.add(`s${hoy.fecha.slice(0, 7)}`);
-      aviso = { animo: "preocupada", texto: t(`¡Arrarray! Empieza el tiempo seco: en ${nombreMes(Number(hoy.fecha.slice(5, 7)) - 1)} casi no llueve y el sol seca la tierra. Mira las barras de humedad y riega cuando haga falta.`,
-        `Arrarray! The dry season begins: in ${nombreMes(Number(hoy.fecha.slice(5, 7)) - 1)} it hardly rains and the sun dries the soil. Watch the moisture bars and water when needed.`) };
-    } else if (hoy.lluvia >= 10 && J.dia - ultimoAguacero > 7) {
+      aviso = { animo: "preocupada", texto: FRASE.secoMes() };
+    } else if (hoy.lluvia >= 15 && J.dia - ultimoAguacero > 45 && aguacerosTemporada < 2) {
       ultimoAguacero = J.dia;
-      aviso = { animo: "lluvia", texto: t(`¡Achachay! Un aguacero. Cayeron ${num(hoy.lluvia)} litros en cada metro cuadrado. La tierra cubierta de plantas no se lava; la tierra desnuda se va con el agua.`,
-        `Achachay! A downpour. ${num(hoy.lluvia)} liters fell on each square meter. Soil covered with plants doesn't wash away; bare soil goes with the water.`) };
+      aguacerosTemporada++;
+      aviso = { animo: "lluvia", texto: FRASE.aguacero() };
     }
   }
   if (!aviso) return false;
+  if (!aviso.accion) {
+    // solo informa: Pachita lo dice sin parar el tiempo, y no más de un aviso cada 20 días de juego
+    if (J.dia - ultimoInfo < 20) return false;
+    ultimoInfo = J.dia;
+    decir(aviso.texto, aviso.animo);
+    return false;
+  }
   hablarAviso(aviso);
   return true;
 }
@@ -1029,7 +1057,7 @@ type Cosecha = { id: string; n: number; puntaje: number; estrellas: number; seco
 const semillasListas = () => [...new Set(listas().map((i) => J.parcelas[i].crop!))];
 let cosechando = false;
 
-/** Cosecha animada: la azada golpea dos veces la tierra de cada parcela, saltan terrones, las plantas salen del suelo y los cultivos vuelan
+/** Cosecha animada: la guadaña siega dos veces cada parcela de cada parcela, saltan terrones, las plantas salen del suelo y los cultivos vuelan
  *  en arco hasta la canasta, que rebota y cuenta lo recogido. `alImpacto` se llama en el segundo golpe (cuando la planta sale). */
 async function animarCosecha(indices: number[], cultivo: (i: number) => string, alImpacto: (i: number) => void) {
   const quieto = matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -1048,11 +1076,11 @@ async function animarCosecha(indices: number[], cultivo: (i: number) => string, 
     const pos = mundo?.posicion(i) ?? { x: innerWidth / 2, y: innerHeight / 2 };
     const retraso = k * paso;
     const g = document.createElement("div");
-    g.className = "azada-anim";
+    g.className = "hoz-anim";
     g.style.left = `${pos.x}px`;
     g.style.top = `${pos.y}px`;
     g.style.setProperty("--retraso", `${retraso}s`);
-    g.innerHTML = ic("azada", "ic-azada");
+    g.innerHTML = ic("hoz", "ic-hoz");
     capa.appendChild(g);
     // terrones en cada golpe (a 0,32 s y a 0,68 s)
     const golpe = document.createElement("div");
@@ -1060,7 +1088,7 @@ async function animarCosecha(indices: number[], cultivo: (i: number) => string, 
     golpe.style.left = `${pos.x}px`;
     golpe.style.top = `${pos.y}px`;
     golpe.innerHTML = [0.32, 0.68].map((h) => Array.from({ length: 6 }, (_, j) =>
-      `<i class="terron" style="--dx:${(j - 2.5) * 15}px;--dy:${-26 - (j % 3) * 16}px;animation-delay:${retraso + h}s"></i>`).join("")).join("");
+      `<i class="terron paja" style="--dx:${(j - 2.5) * 15}px;--dy:${-26 - (j % 3) * 16}px;--giro:${(j - 2.5) * 50}deg;animation-delay:${retraso + h}s"></i>`).join("")).join("");
     capa.appendChild(golpe);
     // al segundo golpe la planta sale y los cultivos vuelan a la canasta
     setTimeout(() => {
@@ -1110,7 +1138,7 @@ async function cosechar(ids: string[]) {
   autoPendiente = false;
   detenerAuto();
   cerrarPanel();
-  decir(t("¡A cosechar con la azada!", "Time to harvest with the hoe!"));
+  decir(t("¡A cosechar con la guadaña!", "Time to harvest with the sickle!"));
   await animarCosecha(idx, (i) => J.parcelas[i].crop!, (i) => mundo?.cosechar(i));
   const cola: Cosecha[] = [];
   for (const id of ids) {
@@ -1295,7 +1323,11 @@ function svgCertificado(vertical = certificadoVertical()): string {
   const W = vertical ? 560 : 800, Hh = vertical ? 800 : 560, cx = W / 2;
   const mes = nombreMes(hoy.getMonth());
   const fechaTxt = t(`${hoy.getDate()} de ${mes} de ${hoy.getFullYear()}`, `${mes} ${hoy.getDate()}, ${hoy.getFullYear()}`);
-  const estrellas = Array.from({ length: 26 }, (_, k) => `<circle cx="${(k * 97) % (W - 20) + 10}" cy="${(k * 53) % (vertical ? 120 : 90) + 30}" r="${1 + (k % 3)}" fill="#fff" opacity=".8"/>`).join("");
+  // estrellas solo en los bordes de la banda: nunca encima del título ni del subtítulo
+  const libre = (x: number, y: number) => vertical ? !(x > 50 && x < 480 && y > 50 && y < 162) : !(x > 120 && x < 660 && y > 42 && y < 118);
+  const estrellas = Array.from({ length: 60 }, (_, k) => [(k * 97) % (W - 60) + 30, (k * 53) % (vertical ? 112 : 78) + 32, 1 + (k % 3)])
+    .filter(([x, y]) => libre(x, y)).slice(0, 22)
+    .map(([x, y, r]) => `<circle cx="${x}" cy="${y}" r="${r}" fill="#fff" opacity=".8"/>`).join("");
   const medallas = (y: number) => J.medallas.map((m, k, todas) => icG(MEDALLAS[m]?.icono || "medalla", cx - todas.length * 20 + k * 40, y, 34)).join("");
   const nombreTam = Math.max(24, Math.min(vertical ? 46 : 44, (vertical ? 470 : 700) / (Math.max(J.granja.length, 1) * 0.56)));
   const pie = t("Datos: NASA POWER, FAO-56, INIAP", "Data: NASA POWER, FAO-56, INIAP");
@@ -1325,14 +1357,19 @@ function svgCertificado(vertical = certificadoVertical()): string {
        <text x="400" y="306" text-anchor="middle" font-size="19" fill="#3b2a1a">${estad.map(([n, v]) => `${n}: <tspan font-weight="900">${v}</tspan>`).join("  ·  ")}</text>
        ${rot.length ? `<text x="400" y="346" text-anchor="middle" font-size="17" fill="#5b4a3a">${t("Rotación elegida", "Chosen rotation")}: <tspan font-weight="800" fill="#2e7d4f">${esc(rot.join(" → "))}</tspan></text>` : ""}
        ${medallas(360)}`;
-  const pachita = pachitaDatos ? `<image href="${pachitaDatos}" width="${vertical ? 96 : 104}" height="${vertical ? 207 : 224}"/>` : "";
+  // la mano de la ilustración llega justo al borde derecho: un desvanecido corto evita el corte recto
+  const pw = vertical ? 96 : 104, ph = vertical ? 207 : 224;
+  const pachita = pachitaDatos ? `<defs><linearGradient id="pFade" x1="0" x2="1"><stop offset=".9" stop-color="#fff"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>
+    <mask id="pMask" maskContentUnits="userSpaceOnUse"><rect width="${pw}" height="${ph}" fill="url(#pFade)"/></mask></defs>
+    <image href="${pachitaDatos}" width="${pw}" height="${ph}" mask="url(#pMask)"/>
+    <text x="${pw - 4}" y="${ph - 4}" text-anchor="end" font-size="9" font-weight="900" fill="#fff" stroke="#3b2a1a" stroke-width="2" paint-order="stroke">IA</text>` : "";
   const firma = vertical
-    ? `<g transform="translate(46 566)">${pachita}</g>
+    ? `<g transform="translate(46 552)">${pachita}</g>
        <line x1="290" y1="716" x2="508" y2="716" stroke="#3b2a1a" stroke-width="1.5"/>
        <text x="399" y="708" text-anchor="middle" font-size="28" font-style="italic" fill="#2b4a7a">Pachita</text>
        <text x="399" y="738" text-anchor="middle" font-size="14" fill="#5b4a3a">${t("Granjera de la sierra", "Highland farmer")}</text>
        <text x="${W - 30}" y="772" text-anchor="end" font-size="12" fill="#8a7a6a">${fechaTxt} · ${pie}</text>`
-    : `<g transform="translate(60 316)">${pachita}</g>
+    : `<g transform="translate(62 296)">${pachita}</g>
        <line x1="520" y1="482" x2="720" y2="482" stroke="#3b2a1a" stroke-width="1.5"/>
        <text x="620" y="474" text-anchor="middle" font-size="26" font-style="italic" fill="#2b4a7a">Pachita</text>
        <text x="620" y="502" text-anchor="middle" font-size="14" fill="#5b4a3a">${t("Granjera de la sierra", "Highland farmer")}</text>
@@ -1557,10 +1594,10 @@ function pintarControles() {
     ctl.innerHTML = `<button class="btn-juego grande" data-rotar>${btn("rotar", txt)}</button>`;
     ctl.querySelector("[data-rotar]")!.addEventListener("click", () => { paso("rotacion"); rotarTierra(); });
   } else if (listas().length && J.dia >= diaFinal()) {
-    ctl.innerHTML = `<button class="btn-juego grande" data-cosechar>${btn("azada", t("Cosechar todo", "Harvest all"))}</button>`;
+    ctl.innerHTML = `<button class="btn-juego grande" data-cosechar>${btn("hoz", t("Cosechar todo", "Harvest all"))}</button>`;
     ctl.querySelector("[data-cosechar]")!.addEventListener("click", () => cosechar(semillasListas()));
   } else {
-    ctl.innerHTML = `${listas().length ? `<button class="t cosechar" data-cosechar aria-label="${t("Cosechar todo", "Harvest all")}">${ic("azada")}<span>${t("Cosechar todo", "Harvest all")}</span></button>` : ""}
+    ctl.innerHTML = `${listas().length ? `<button class="t cosechar" data-cosechar aria-label="${t("Cosechar todo", "Harvest all")}">${ic("hoz")}<span>${t("Cosechar todo", "Harvest all")}</span></button>` : ""}
       <button class="t" data-d="1" aria-label="${t("Avanzar un día", "Advance one day")}">${t("+1 día", "+1 day")}</button>
       <button class="t" data-d="7" aria-label="${t("Avanzar una semana", "Advance one week")}">${t("+1 sem", "+1 wk")}</button>
       <button class="t" data-d="30" aria-label="${t("Avanzar un mes", "Advance one month")}">${t("+1 mes", "+1 mo")}</button>
@@ -1577,6 +1614,7 @@ function pintarControles() {
 async function restaurar() {
   // al volver a la página: recupera los ciclos sembrados (la API los guarda en sessionStorage)
   await Promise.all(J.parcelas.map(async (p, i) => { if (p.crop) { try { await pedirCiclo(i); } catch { /* sin señal */ } } }));
+  if (J.sembrado) precargarAvisos();
   try { await cargarSemillas(J.mes ?? (new Date().getMonth() + 1) % 12 + 1); } catch { /* sin señal */ }
   if (!parcelaInfo) { try { parcelaInfo = await consultar("parcela"); } catch { /* sin señal */ } }
 }

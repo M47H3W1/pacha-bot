@@ -55,9 +55,10 @@ async function urlVoz(texto: string): Promise<string | null> {
   if (!texto) return null;
   const lang = idioma(), clave = `${lang}|${texto}`;
   if (!audios.has(clave)) {
-    audios.set(clave, fetch("/api/voz", {
-      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ texto, estilo: "nina", lang }),
-    }).then(async (r) => (r.ok ? URL.createObjectURL(await r.blob()) : null)).catch(() => null));
+    // GET cacheable: el navegador y el CDN guardan cada frase, así las que se repiten salen al instante
+    const q = new URLSearchParams({ texto, estilo: "nina", lang });
+    audios.set(clave, fetch(`/api/voz?${q}`)
+      .then(async (r) => (r.ok ? URL.createObjectURL(await r.blob()) : null)).catch(() => null));
   }
   return audios.get(clave)!;
 }
