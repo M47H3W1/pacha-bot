@@ -90,19 +90,25 @@ function cerrarPanel() { $("#panel").hidden = true; }
 
 /** Mide el HUD, el globo y a Pachita y deja el panel en el hueco libre: nada se tapa. */
 function medirLayout() {
-  const alto = window.innerHeight, ancho = window.innerWidth;
+  const alto = window.innerHeight;
   const hud = document.querySelector<HTMLElement>("#hud");
   const enEscena = !$("#escena").hidden && hud && !hud.hidden;
   const arriba = enEscena ? hud!.getBoundingClientRect().bottom + 8 : 12;
-  const globo = $("#globo"), pachita = $("#pachita");
-  let techo = alto;
+  const globo = $("#globo"), pachita = $("#pachita"), panel = $("#panel");
   // medidas de diseño (sin transformaciones): el globo entra con una animación de escala que engaña a getBoundingClientRect
   const caja = pachita.parentElement!.getBoundingClientRect();
-  if (!globo.hidden) techo = Math.min(techo, caja.bottom - parseFloat(getComputedStyle(globo).marginBottom || "0") - globo.offsetHeight);
-  if (ancho < 900) techo = Math.min(techo, caja.bottom - pachita.offsetHeight + 24);
-  const abajo = Math.max(16, alto - techo + 8);
+  const topeGlobo = globo.hidden ? alto : caja.bottom - parseFloat(getComputedStyle(globo).marginBottom || "0") - globo.offsetHeight;
+  const topePachita = caja.bottom - pachita.offsetHeight + 24;
+  // el panel solo se achica si Pachita o su globo quedan debajo de él; si están a un lado, usa todo el alto
+  const pr = panel.hidden ? null : panel.getBoundingClientRect();
+  const choca = (izq: number, der: number) => !!pr && der > pr.left && izq < pr.right;
+  let techo = alto;
+  if (!globo.hidden && choca(caja.left, caja.right)) techo = Math.min(techo, topeGlobo);
+  if (choca(caja.right - pachita.offsetWidth, caja.right)) techo = Math.min(techo, topePachita);
+  const dock = (t: number) => `${Math.round(Math.min(Math.max(16, alto - t + 8), alto * 0.5))}px`;
   document.body.style.setProperty("--hud-alto", `${Math.round(arriba)}px`);
-  document.body.style.setProperty("--dock", `${Math.round(Math.min(abajo, alto * 0.5))}px`);
+  document.body.style.setProperty("--dock", dock(techo));
+  document.body.style.setProperty("--dock-total", dock(Math.min(topeGlobo, topePachita)));
 }
 
 // ---------------------------------------------------------------- 0. menú principal, nombre de la granja y llegada en cohete
@@ -995,6 +1001,7 @@ export function arrancar() {
   ["#globo", "#pachita", "#hud"].forEach((sel) => ro.observe($(sel)));
   window.addEventListener("resize", medirLayout);
   new MutationObserver(medirLayout).observe($("#escena"), { attributes: true, attributeFilter: ["hidden"] });
+  new MutationObserver(medirLayout).observe($("#panel"), { attributes: true, attributeFilter: ["hidden", "class"] });
   medirLayout();
   menuPrincipal();
 }

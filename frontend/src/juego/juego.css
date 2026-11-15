@@ -542,6 +542,17 @@ body.bajo-cohete .pachita-caja { animation: salirCohete .9s cubic-bezier(.3,1.5,
 .tiempo .btn-juego:not(.grande) { flex: 1; max-width: 110px; }
 .globo { margin-bottom: 80px; }
 body.juego:has(#escena:not([hidden])) .creditos { display: none; }
-.menu-capa { padding-bottom: calc(var(--dock, 150px) + 12px); }
+.menu-capa { padding-bottom: calc(var(--dock-total, 150px) + 12px); }
 .logo span { font-size: clamp(2.4rem, min(15vw, 10vh), 5.6rem); }
 .logo { margin-top: 2vh; }
+
+/* ---------- pantallas anchas: el panel va a la izquierda, junto a la barra de acciones, y usa todo el alto libre ---------- */
+@media (min-width: 900px) {
+  .panel { left: 104px; right: auto; width: min(760px, calc(100vw - 124px)); max-width: none; margin: 0; }
+  .hud-fila.medidores, .semaforo { max-width: 760px; }
+}
+/* sin barras de desplazamiento a la vista: el globo crece con su texto y el panel se desliza con una barra fina */
+.globo { max-height: none; overflow: visible; }
+.panel-cuerpo { scrollbar-width: thin; scrollbar-color: #d9a066 transparent; }
+.panel-cuerpo::-webkit-scrollbar { width: 6px; }
+.panel-cuerpo::-webkit-scrollbar-thumb { background: #d9a066; border-radius: 6px; }

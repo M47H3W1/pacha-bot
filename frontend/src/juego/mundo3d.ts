@@ -196,7 +196,8 @@ export function crearMundo3D(cont: HTMLElement, t: Terreno, elev: number): Mundo
     astroLuna.position.set(-Math.cos(th) * R, -alto2 * R * 0.75, -R * 0.35);
     astroSol.visible = alto2 > -0.15;
     astroLuna.visible = alto2 < 0.15;
-    sol.position.copy(astroSol.position).multiplyScalar(0.3);
+    const elev = Math.max(alto2, 0.62);
+    sol.position.set(Math.cos(th) * Math.sqrt(1 - elev * elev) * R * 0.3, elev * R * 0.3, -R * 0.08);
     sol.intensity = (2.4 + alto * 0.6) * escalon(-0.04, 0.3, alto2) * (lloviendoAhora ? 0.55 : 1);
     sol.color.lerpColors(C_SOL_BAJO, C_SOL_ALTO, escalon(0, 0.45, alto2));
     luzLuna.position.copy(astroLuna.position).multiplyScalar(0.3);
@@ -272,6 +273,30 @@ export function crearMundo3D(cont: HTMLElement, t: Terreno, elev: number): Mundo
   postes.castShadow = true;
   escena.add(postes);
 
+  // --- sombra de contacto: mancha suave bajo árboles y casa, siempre pegada al suelo ---
+  const lienzoSombra = document.createElement("canvas");
+  lienzoSombra.width = lienzoSombra.height = 64;
+  const cs = lienzoSombra.getContext("2d")!;
+  const gr = cs.createRadialGradient(32, 32, 2, 32, 32, 31);
+  gr.addColorStop(0, "rgba(30,20,10,.55)"); gr.addColorStop(0.6, "rgba(30,20,10,.28)"); gr.addColorStop(1, "rgba(30,20,10,0)");
+  cs.fillStyle = gr; cs.fillRect(0, 0, 64, 64);
+  const texSombra = new THREE.CanvasTexture(lienzoSombra);
+  const matSombra = new THREE.MeshBasicMaterial({ map: texSombra, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -4 });
+  const geoSombra = new THREE.PlaneGeometry(1, 1, 6, 6);
+  geoSombra.rotateX(-Math.PI / 2);
+  /** Mancha de sombra que sigue la forma del terreno (cada vértice a la altura del suelo). */
+  function sombraEn(x: number, z: number, radio: number) {
+    const g = geoSombra.clone();
+    const pp = g.attributes.position as THREE.BufferAttribute;
+    for (let k = 0; k < pp.count; k++) {
+      const vx = x + pp.getX(k) * radio * 2, vz = z + pp.getZ(k) * radio * 2;
+      pp.setXYZ(k, vx, H(vx, vz) + tam * 0.04, vz);
+    }
+    const m = new THREE.Mesh(g, matSombra);
+    m.renderOrder = 1;
+    escena.add(m);
+  }
+
   // --- casa de adobe con techo de teja ---
   const casa = new THREE.Group();
   const paredes = new THREE.Mesh(new RoundedBoxGeometry(tam * 3, tam * 1.8, tam * 2.2, 3, tam * 0.15), toon(0xf1d9b5));
@@ -285,9 +310,10 @@ export function crearMundo3D(cont: HTMLElement, t: Terreno, elev: number): Mundo
   const ventana = new THREE.Mesh(new THREE.BoxGeometry(tam * 0.55, tam * 0.5, tam * 0.08), matVentana);  // se enciende de noche
   ventana.position.set(tam * 0.9, tam * 1.05, tam * 1.11);
   casa.add(paredes, techo, puerta, ventana);
-  casa.traverse((o) => { if ((o as THREE.Mesh).isMesh) { o.castShadow = true; o.receiveShadow = true; } });
+  casa.traverse((o) => { if ((o as THREE.Mesh).isMesh) o.receiveShadow = true; });
   const cx = -borde2 - tam * 3.2, cz = -borde2 * 0.2;
-  casa.position.set(cx, H(cx, cz), cz);
+  casa.position.set(cx, Math.min(H(cx - tam * 1.5, cz), H(cx + tam * 1.5, cz), H(cx, cz - tam), H(cx, cz + tam)), cz);  // apoyada, sin flotar
+  sombraEn(cx, cz, tam * 2.2);
   casa.rotation.y = Math.PI / 5;
   escena.add(casa);
 
@@ -303,8 +329,8 @@ export function crearMundo3D(cont: HTMLElement, t: Terreno, elev: number): Mundo
     const tr = new THREE.Mesh(tronco, madera); tr.position.y = tam * 0.6;
     const cp = new THREE.Mesh(copa, toon(verdes[k % 3])); cp.position.y = tam * 1.6; cp.scale.setScalar(0.85 + (k % 4) * 0.12);
     arbol.add(tr, cp);
-    arbol.traverse((o) => { if ((o as THREE.Mesh).isMesh) o.castShadow = true; });
-    arbol.position.set(x, H(x, z), z);
+    arbol.position.set(x, H(x, z) - tam * 0.05, z);
+    sombraEn(x, z, tam * 0.95 * cp.scale.x);
     escena.add(arbol);
   }
 
@@ -530,6 +556,7 @@ export function crearMundo3D(cont: HTMLElement, t: Terreno, elev: number): Mundo
         mats.forEach((x) => x.dispose());
       });
       gradiente.dispose();
+      texSombra.dispose();
       renderer.dispose();
       renderer.domElement.remove();
     },
