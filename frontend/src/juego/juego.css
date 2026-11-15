@@ -556,3 +556,4 @@ body.juego:has(#escena:not([hidden])) .creditos { display: none; }
 .panel-cuerpo { scrollbar-width: thin; scrollbar-color: #d9a066 transparent; }
 .panel-cuerpo::-webkit-scrollbar { width: 6px; }
 .panel-cuerpo::-webkit-scrollbar-thumb { background: #d9a066; border-radius: 6px; }
+.franjas2d { grid-template-columns: 1fr 1fr; }

@@ -1,4 +1,4 @@
-// Mundo 2D de respaldo (sin WebGL): vista de lado con las cuatro franjas, plantas en SVG y el mismo paso del día a la noche.
+// Mundo 2D de respaldo (sin WebGL): vista de lado con las cuatro parcelas (2 x 2), plantas en SVG y el mismo paso del día a la noche.
 import type { Mundo, VistaParcela } from "./mundo";
 import { N_PARCELAS } from "./estado";
 import { icono } from "./iconos";

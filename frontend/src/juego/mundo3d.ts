@@ -9,7 +9,7 @@ import { N_PARCELAS } from "./estado";
 import { urlIcono } from "./iconos";
 
 const EXAG_MAX = 1.6; // relieve un poco más marcado en terrenos planos para que se lea en pantalla
-const POR_FRANJA = 12;
+const POR_PARCELA = 9;  // 3 x 3 plantas en cada parcela cuadrada
 const ESCALA = [0, 0.32, 0.62, 1, 0.96];
 
 
@@ -203,66 +203,58 @@ export function crearMundo3D(cont: HTMLElement, t: Terreno, elev: number): Mundo
     matVentana.emissiveIntensity = 1.4 * (1 - dia);
   }
 
-  // --- camas de cultivo con surcos ---
-  const anchoF = (S / N_PARCELAS) * 0.78;
+  // --- cuatro parcelas cuadradas (2 x 2) con surcos y bordes redondeados ---
+  const Q = (S / 2) * 0.84;                  // lado de cada parcela
   const parcelas: THREE.Mesh[] = [];
   const matSuelo: THREE.MeshToonMaterial[] = [];
   const plantas: THREE.Group[][] = [];
   const anillos: THREE.Mesh[] = [];
+  const centros: [number, number][] = [];
   const tam = S / 13;
   for (let i = 0; i < N_PARCELAS; i++) {
-    const zc = -S / 2 + (i + 0.5) * (S / N_PARCELAS);
-    const g = new THREE.PlaneGeometry(S, anchoF, 80, 24);
+    const xc = (i % 2 === 0 ? -1 : 1) * (S / 4), zc = (i < 2 ? -1 : 1) * (S / 4);
+    centros.push([xc, zc]);
+    const g = new THREE.PlaneGeometry(Q, Q, 48, 48);
     g.rotateX(-Math.PI / 2);
     const p = g.attributes.position as THREE.BufferAttribute;
     for (let k = 0; k < p.count; k++) {
-      const z = p.getZ(k);
-      const surco = Math.cos((z / anchoF) * Math.PI * 4) * 0.12 * tam;            // tres lomos de tierra
-      const orilla = 1 - Math.pow(Math.abs(z) / (anchoF / 2), 6);                 // bordes redondeados
-      p.setY(k, H(p.getX(k), z + zc) + (0.25 * tam + surco) * Math.max(0, orilla));
+      const x = p.getX(k), z = p.getZ(k);
+      const surco = Math.cos((z / Q) * Math.PI * 6) * 0.1 * tam;                      // tres lomos de tierra
+      const orilla = (1 - Math.pow(Math.abs(x) / (Q / 2), 8)) * (1 - Math.pow(Math.abs(z) / (Q / 2), 8));  // esquinas redondeadas
+      p.setY(k, H(x + xc, z + zc) + (0.25 * tam + surco) * Math.max(0, orilla));
     }
     g.computeVertexNormals();
     const m = new THREE.MeshToonMaterial({ color: 0x8a5a33, gradientMap: gradiente });
     const malla = new THREE.Mesh(g, m);
-    malla.position.z = zc;
+    malla.position.set(xc, 0, zc);
     malla.userData.i = i;
     malla.receiveShadow = true;
     escena.add(malla);
     parcelas.push(malla);
     matSuelo.push(m);
-    // anillo dorado que marca cosecha o franja elegida
-    const anillo = new THREE.Mesh(new THREE.TorusGeometry(anchoF * 0.32, anchoF * 0.07, 16, 48), new THREE.MeshBasicMaterial({ color: 0xffd34d }));
+    // anillo dorado sobre la parcela lista para cosechar o elegida
+    const anillo = new THREE.Mesh(new THREE.TorusGeometry(Q * 0.13, Q * 0.028, 16, 48), new THREE.MeshBasicMaterial({ color: 0xffd34d }));
     anillo.rotation.x = -Math.PI / 2;
-    anillo.position.set(S / 2 + anchoF * 0.7, 0, zc);
+    anillo.position.set(xc, 0, zc);
     anillo.visible = false;
     escena.add(anillo);
     anillos.push(anillo);
-    const fila: THREE.Group[] = [];
-    for (let k = 0; k < POR_FRANJA; k++) {
-      const x = -S / 2 + (k % 6 + 0.5) * (S / 6), z = zc + (k < 6 ? -anchoF * 0.24 : anchoF * 0.24);
+    const grupo: THREE.Group[] = [];
+    for (let k = 0; k < POR_PARCELA; k++) {
+      const x = xc - Q / 2 + ((k % 3) + 0.5) * (Q / 3), z = zc - Q / 2 + (Math.floor(k / 3) + 0.5) * (Q / 3);
       const planta = new THREE.Group();
       planta.position.set(x, H(x, z) + 0.3 * tam, z);
       planta.rotation.y = k * 1.7;
       planta.visible = false;
       planta.userData = { k, nace: -1, fase: k * 0.7, i };
       escena.add(planta);
-      fila.push(planta);
+      grupo.push(planta);
     }
-    plantas.push(fila);
+    plantas.push(grupo);
   }
 
-  // --- cerco de madera alrededor de las chacras ---
-  const poste = new THREE.CylinderGeometry(tam * 0.09, tam * 0.11, tam * 0.9, 12);
   const madera = toon(0x8d5a2b);
-  const borde2 = S / 2 + anchoF * 1.2;
-  const puntos: [number, number][] = [];
-  for (let k = -6; k <= 6; k++) { puntos.push([k * borde2 / 6, -borde2 * 0.62], [k * borde2 / 6, borde2 * 0.62]); }
-  for (let k = -3; k <= 3; k++) { puntos.push([-borde2, k * borde2 * 0.62 / 3], [borde2, k * borde2 * 0.62 / 3]); }
-  const postes = new THREE.InstancedMesh(poste, madera, puntos.length);
-  const mtx = new THREE.Matrix4();
-  puntos.forEach(([x, z], k) => { mtx.makeTranslation(x, H(x, z) + tam * 0.45, z); postes.setMatrixAt(k, mtx); });
-  postes.castShadow = true;
-  escena.add(postes);
+  const borde2 = S / 2 + tam * 2.2;          // orilla de la zona sembrada (para ubicar casa y árboles)
 
   // --- sombra de contacto: mancha suave bajo árboles y casa, siempre pegada al suelo ---
   const lienzoSombra = document.createElement("canvas");
@@ -408,7 +400,7 @@ export function crearMundo3D(cont: HTMLElement, t: Terreno, elev: number): Mundo
   const chorros: { p: THREE.Points; t0: number }[] = [];
   const geoChorro = new THREE.BufferGeometry();
   const pc = new Float32Array(120 * 3);
-  for (let k = 0; k < 120; k++) pc.set([(Math.random() - 0.5) * S, Math.random() * tam * 3, (Math.random() - 0.5) * anchoF], k * 3);
+  for (let k = 0; k < 120; k++) pc.set([(Math.random() - 0.5) * Q, Math.random() * tam * 3, (Math.random() - 0.5) * Q], k * 3);
   geoChorro.setAttribute("position", new THREE.BufferAttribute(pc, 3));
   const matChorro = new THREE.PointsMaterial({ color: 0x4fc3f7, size: tam * 0.18, transparent: true, opacity: 0.9 });
 
@@ -469,7 +461,7 @@ export function crearMundo3D(cont: HTMLElement, t: Terreno, elev: number): Mundo
     anillos.forEach((a, i) => {
       if (!a.visible) return;
       a.rotation.z += dt * 2;
-      a.position.y = H(a.position.x, a.position.z) + tam * 1.1 + Math.sin(ahora * 4 + i) * tam * 0.15;
+      a.position.y = H(a.position.x, a.position.z) + tam * 3.4 + Math.sin(ahora * 4 + i) * tam * 0.15;
     });
     for (const fila of plantas) for (const g of fila) {
       if (!g.visible || cosechando.has(g.userData.i)) continue;
@@ -549,7 +541,8 @@ export function crearMundo3D(cont: HTMLElement, t: Terreno, elev: number): Mundo
     cosechar(i) { cosechando.set(i, reloj.elapsedTime); anillos[i].visible = false; },
     regar(i) {
       const p = new THREE.Points(geoChorro, matChorro.clone());
-      p.position.set(0, H(0, parcelas[i].position.z) + tam * 2, parcelas[i].position.z);
+      const [xc, zc] = centros[i];
+      p.position.set(xc, H(xc, zc) + tam * 3, zc);
       escena.add(p);
       chorros.push({ p, t0: reloj.elapsedTime });
     },
