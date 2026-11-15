@@ -94,9 +94,6 @@ body.en-mapa .creditos { display: none; }
 /* ---------- Pachita ---------- */
 .pachita-caja { position: fixed; right: 6px; bottom: calc(6px + env(safe-area-inset-bottom)); z-index: 30; display: flex; align-items: flex-end; gap: 4px; pointer-events: none; max-width: calc(100vw - 12px); }
 .pachita { width: 104px; height: 138px; flex: 0 0 auto; }
-.pachita-svg { width: 100%; height: 100%; }
-.pachita.habla .boca { animation: hablar .25s ease-in-out infinite alternate; transform-origin: 60px 68px; }
-.pachita .ojo { animation: parpadear 4s infinite; transform-origin: center; transform-box: fill-box; }
 .pachita[data-animo="preocupada"] .pachita-svg { animation: temblar .5s 2; }
 @keyframes hablar { to { transform: scaleY(1.9); } }
 @keyframes parpadear { 0%, 94%, 100% { transform: scaleY(1); } 97% { transform: scaleY(.1); } }
@@ -286,3 +283,87 @@ body.bajo-cohete .pachita-caja { animation: salirCohete .8s ease-out; }
 .confeti { position: fixed; inset: 0; pointer-events: none; z-index: 60; overflow: hidden; }
 .confeti i { position: absolute; top: -20px; width: 10px; height: 16px; border-radius: 3px; animation: caer 2.8s linear forwards; }
 @keyframes caer { to { transform: translateY(110vh) rotate(720deg); } }
+
+/* =====================================================================
+   TEMA "casual cute 3D" con identidad andina ecuatoriana
+   Botones gruesos con brillo y relieve, marcos de madera, faja tejida (chumbi) en los paneles,
+   tipografía redonda y colores cálidos de la sierra. Estilo propio, sin recursos de otros juegos.
+   ===================================================================== */
+body.juego {
+  --fuente-titulo: "Fredoka", "Nunito", system-ui, sans-serif;
+  --madera: #a5682a; --madera-osc: #6e3f17; --madera-cla: #d9a066;
+  --crema-j: #fff6e3; --anaco: #1f2a5c; --poncho-r: #c8372d; --oro: #ffc93c; --hoja-j: #5cb85c;
+  --faja: repeating-linear-gradient(90deg, #c8372d 0 10px, #ffc93c 10px 14px, #2e7d4f 14px 24px, #ffc93c 24px 28px, #1f6fb5 28px 38px, #ffc93c 38px 42px);
+  font-family: "Nunito", system-ui, sans-serif;
+}
+body.juego h2, body.juego h3, body.juego .carta-valor, body.juego button { font-family: var(--fuente-titulo); letter-spacing: .01em; }
+
+/* ---------- Pachita con las poses del equipo ---------- */
+.pachita { width: 112px; height: 190px; position: relative; filter: drop-shadow(0 6px 6px rgb(0 0 0 / .25)); }
+.pachita .pose { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; object-position: bottom; opacity: 0; transform: scale(.92) translateY(6px); transition: opacity .25s, transform .3s cubic-bezier(.3,1.6,.5,1); }
+.pachita[data-pose="saluda"] .pose-saluda, .pachita:not([data-pose]) .pose-saluda,
+.pachita[data-pose="piensa"] .pose-piensa, .pachita[data-pose="paraguas"] .pose-paraguas { opacity: 1; transform: none; }
+.pachita.habla { animation: rebotar .5s ease-in-out infinite; }
+@keyframes rebotar { 50% { transform: translateY(-5px) scaleY(1.02); } }
+body.en-mapa .pachita { width: 74px; height: 124px; }
+@media (min-width: 900px) { .pachita { width: 150px; height: 250px; } }
+
+/* ---------- globo de diálogo ---------- */
+.globo { background: #fffdf6; border: 4px solid var(--anaco); border-radius: 22px 22px 6px 22px; font-family: var(--fuente-titulo);
+  font-weight: 600; font-size: 1.12rem; color: #2a1c10; box-shadow: 0 6px 0 rgb(31 42 92 / .25), 0 12px 22px rgb(0 0 0 / .18); }
+.globo::after { content: ""; position: absolute; right: -14px; bottom: 10px; border: 10px solid transparent; border-left: 14px solid var(--anaco); }
+
+/* ---------- botones tipo caramelo ---------- */
+.btn-juego { border: 3px solid #1f6b2c; border-radius: 18px; background: linear-gradient(#8fe07a, #4cb848 48%, #3a9d3a 52%, #2f8a33);
+  box-shadow: inset 0 3px 0 rgb(255 255 255 / .55), 0 5px 0 #1f5a24, 0 8px 14px rgb(0 0 0 / .25); text-shadow: 0 2px 0 rgb(0 0 0 / .25); font-weight: 700; }
+.btn-juego:active { transform: translateY(4px); box-shadow: inset 0 3px 0 rgb(255 255 255 / .5), 0 1px 0 #1f5a24; }
+.btn-juego.borde { background: linear-gradient(#fff9ec, #f6e3bd); color: var(--madera-osc); border-color: var(--madera); text-shadow: none;
+  box-shadow: inset 0 3px 0 #fff, 0 5px 0 var(--madera-osc), 0 8px 14px rgb(0 0 0 / .2); }
+.tiempo .t { border: 3px solid var(--madera-osc); background: linear-gradient(#ffe6b0, #f2c879); color: #4a2a0e; box-shadow: inset 0 2px 0 #fff4d6, 0 4px 0 var(--madera-osc); }
+.tiempo .t.redondo { background: linear-gradient(#ffe066, #ffb703); border-radius: 50%; width: 56px; flex: 0 0 56px; }
+
+/* ---------- barra de acciones: insignias redondas ---------- */
+.acciones button { width: 64px; height: 64px; border-radius: 20px; border: 3px solid var(--madera-osc);
+  background: radial-gradient(circle at 30% 25%, #fff8e6, #f3d9a4 70%); box-shadow: inset 0 3px 0 #fff, 0 4px 0 var(--madera-osc), 0 6px 10px rgb(0 0 0 / .2); color: #4a2a0e; }
+.acciones button span { font-size: 1.6rem; filter: drop-shadow(0 2px 0 rgb(0 0 0 / .15)); }
+
+/* ---------- HUD: tablones de madera ---------- */
+.hud-textos, .medidor-mini, .hud-casa, .hud-boton { background: linear-gradient(#e2a865, #b8783a); border: 3px solid var(--madera-osc);
+  box-shadow: inset 0 2px 0 rgb(255 255 255 / .35), 0 3px 0 var(--madera-osc); color: #fff8ec; }
+.hud-textos b { color: #fff; text-shadow: 0 2px 0 var(--madera-osc); font-family: var(--fuente-titulo); }
+.hud-textos span, .medidor-mini small { color: #fff3dc; text-shadow: 0 1px 0 var(--madera-osc); }
+.barra { background: #5b3414; border: 2px solid var(--madera-osc); height: 14px; }
+.barra i { background: linear-gradient(#7fd3ff, #2b8fc4); box-shadow: inset 0 2px 0 rgb(255 255 255 / .5); }
+
+/* ---------- paneles con marco de madera y faja tejida ---------- */
+.panel { background: var(--crema-j); border: 6px solid var(--madera); border-radius: 28px;
+  box-shadow: inset 0 0 0 3px var(--madera-cla), 0 8px 0 var(--madera-osc), 0 18px 40px rgb(0 0 0 / .35); overflow: hidden; }
+.panel-cabeza { background: linear-gradient(#ffe7b3, #f7cf7d); border-bottom: 10px solid transparent; border-image: var(--faja) 10; padding: 12px 14px 10px; }
+.panel-cabeza h2 { color: var(--madera-osc); font-size: 1.45rem; text-shadow: 0 2px 0 #fff3cf; }
+.cerrar { background: linear-gradient(#ff8a7a, #e0473a); color: #fff; border: 3px solid #9e2a1f; box-shadow: inset 0 2px 0 rgb(255 255 255 / .5), 0 3px 0 #9e2a1f; }
+
+/* ---------- cartas coleccionables ---------- */
+.carta { border-radius: 20px; border: 4px solid var(--color); background: linear-gradient(#ffffff, color-mix(in srgb, var(--color) 10%, #fffaf0));
+  box-shadow: inset 0 3px 0 #fff, 0 5px 0 color-mix(in srgb, var(--color) 70%, #000), 0 8px 14px rgb(0 0 0 / .12); }
+.carta-icono { width: 54px; height: 54px; margin: 0 auto; display: grid; place-items: center; border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #fff, color-mix(in srgb, var(--color) 25%, #fff)); border: 3px solid var(--color); font-size: 1.7rem; }
+.carta-valor { font-size: 1.45rem; }
+
+/* ---------- semillas y familias ---------- */
+.sobre { border-radius: 20px; border: 3px solid var(--madera-cla); background: radial-gradient(circle at 50% 30%, #fffdf5, #f6e6c2);
+  box-shadow: inset 0 3px 0 #fff, 0 5px 0 var(--madera), 0 8px 12px rgb(0 0 0 / .12); }
+.sobre::before { height: 10px; background: var(--faja); opacity: .9; }
+.sobre.elegido, .sobre:focus-visible { outline: 4px solid var(--oro); outline-offset: 2px; }
+.sello-n { background: linear-gradient(#5fd068, #2e9e3e); border: 2px solid #1d6b28; }
+.familia { border-width: 4px; border-radius: 22px; box-shadow: 0 4px 0 color-mix(in srgb, var(--color) 45%, #fff); }
+.leccion { border-left: 0; border: 3px dashed var(--madera-cla); background: #fffdf5; border-radius: 18px; }
+.leccion::before { content: "💡 "; }
+
+/* ---------- toasts y medallas ---------- */
+.toast-medalla { border: 5px solid var(--oro); background: radial-gradient(circle at 30% 20%, #fffdf3, #ffe9a8); box-shadow: 0 6px 0 #c98b00, 0 16px 30px rgb(0 0 0 / .3); }
+.medalla-carta.ganada { border: 4px solid var(--oro); box-shadow: 0 4px 0 #c98b00; }
+
+/* ---------- mundo 2D y riego ---------- */
+.franja2d.regando { box-shadow: inset 0 0 0 999px rgb(79 195 247 / .35); transition: box-shadow .3s; }
+.acciones { top: auto; bottom: calc(96px + env(safe-area-inset-bottom)); transform: none; }
+@media (max-height: 640px) { .acciones button { width: 54px; height: 54px; font-size: .62rem; } }

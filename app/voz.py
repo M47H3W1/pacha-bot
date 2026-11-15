@@ -17,6 +17,8 @@ from .clients import CACHE
 log = logging.getLogger(__name__)
 VOZ = os.getenv("PACHA_VOZ", "es-EC-AndreaNeural")
 VELOCIDAD = os.getenv("PACHA_VOZ_VELOCIDAD", "-8%")
+# Estilos: la voz del chat (adulta y pausada) y la de Pachita en el juego para niños (más aguda, ágil y alegre)
+ESTILOS = {"normal": (VOZ, VELOCIDAD, "+0Hz"), "nina": (VOZ, "+4%", "+38Hz")}
 CACHE_AUDIO = CACHE / "audio"
 CACHE_AUDIO.mkdir(parents=True, exist_ok=True)
 KICHWA = Path(__file__).with_name("audios") / "kichwa"
@@ -43,10 +45,11 @@ def grabacion_kichwa(clave: str | None) -> bytes | None:
     return None
 
 
-async def audio(texto: str) -> bytes | None:
+async def audio(texto: str, estilo: str = "normal") -> bytes | None:
     """MP3 con voz natural en español de Ecuador. Usa caché: el mismo texto sale al instante."""
     limpio = limpiar(texto)
-    clave = hashlib.sha1(f"{VOZ}|{VELOCIDAD}|{limpio}".encode()).hexdigest()[:20]
+    voz, velocidad, tono = ESTILOS.get(estilo, ESTILOS["normal"])
+    clave = hashlib.sha1(f"{voz}|{velocidad}|{tono}|{limpio}".encode()).hexdigest()[:20]
     f = CACHE_AUDIO / f"{clave}.mp3"
     if f.exists():
         return f.read_bytes()
@@ -54,7 +57,7 @@ async def audio(texto: str) -> bytes | None:
     try:
         import edge_tts
         buf = io.BytesIO()
-        async for chunk in edge_tts.Communicate(limpio, VOZ, rate=VELOCIDAD).stream():
+        async for chunk in edge_tts.Communicate(limpio, voz, rate=velocidad, pitch=tono).stream():
             if chunk["type"] == "audio":
                 buf.write(chunk["data"])
         datos = buf.getvalue() or None

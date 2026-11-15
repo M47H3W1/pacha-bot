@@ -38,6 +38,27 @@ def _cached(name: str, fetch):
     return data
 
 
+def power_clima(lat: float, lon: float) -> dict | None:
+    """Climatología mensual de NASA POWER: humedad del suelo en la zona de raíces y superficial (GWETROOT, GWETTOP; 0–1)."""
+    lat, lon = round(lat, 2), round(lon, 2)
+
+    def fetch():
+        try:
+            r = httpx.get("https://power.larc.nasa.gov/api/temporal/climatology/point", headers=UA, timeout=60,
+                          params=dict(parameters="GWETROOT,GWETTOP", community="AG", latitude=lat, longitude=lon,
+                                      format="JSON"))
+            r.raise_for_status()
+            par = r.json()["properties"]["parameter"]
+            meses = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"]
+            return {"ok": True, **{k: [par[k][m] for m in meses] for k in ("GWETROOT", "GWETTOP")}}
+        except Exception as e:
+            log.warning("POWER climatología no disponible: %s", e)
+            return {"ok": False}
+
+    data = _cached(_key("powerclima", lat, lon), fetch)
+    return data if data.get("ok") else None
+
+
 def power_daily(lat: float, lon: float) -> dict:
     """Serie diaria 2001-2024 de NASA POWER (comunidad AG). Devuelve parámetros y elevación de la celda."""
     lat, lon = round(lat, 2), round(lon, 2)

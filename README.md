@@ -128,9 +128,9 @@ La guía **Pachita**, una granjera de la sierra (sombrero, poncho y anaco), con 
 2. **Llegada:** el cohete aterriza junto al volcán, Pachita da la bienvenida y pide elegir la parcela en un mapa
    satelital con un punto y un círculo de radio variable (20–600 m).
 3. **Así es tu tierra:** la parcela aparece en 3D con su relieve real (`/api/app/terreno`) y una ficha técnica con los
-   parámetros que el equipo priorizó en su investigación: altitud, **pendiente** (%, calculada de la grilla de alturas),
-   textura del suelo, materia orgánica, agua que guarda el suelo, **humedad del suelo mes a mes**, lluvia de un año
-   normal y seco, evaporación, temperatura y días de calor, y cambio de la última década (`/api/app/parcela`).
+   datos que vienen solo de NASA POWER: lluvia de un año normal y seco, evaporación, temperatura y días de calor, sol (CERES),
+   humedad del aire y viento, **humedad del suelo en las raíces mes a mes** (GWETROOT) y cambio de la última década
+   (`/api/app/parcela`).
    Pachita lo explica con frases simples.
 4. **Semillas por familia botánica:** los 13 cultivos como íconos animados, agrupados en leguminosas, solanáceas,
    gramíneas, amarantáceas, tubérculos andinos y pastos/cobertura, con el porqué de cada familia para rotar. Los que no
@@ -166,8 +166,8 @@ Los 18 íconos de cultivos (`frontend/src/juego/iconos.ts`) son SVG redibujados 
   reconocimiento de voz del navegador.
 - **Imágenes:** los dibujos de la app se generan por código a partir de los datos; las fotos de cultivos son de
   Wikimedia Commons con autor y licencia en [`app/imagenes/cultivos/README.md`](app/imagenes/cultivos/README.md).
-  En el juego Astro Granja, la ilustración de Pachita (SVG) y los modelos 3D low-poly se hicieron con asistencia
-  de IA: Pachita lleva la marca "IA" y el juego lo indica en sus créditos.
+  En el juego Astro Granja, las ilustraciones de Pachita (tres poses entregadas por el equipo, generadas con IA) llevan
+  la marca "IA"; los modelos 3D se programaron con asistencia de IA. La voz de Pachita es edge-tts con tono de niña.
 - No se usan logotipos de la NASA.
 
 ## Créditos y licencia
