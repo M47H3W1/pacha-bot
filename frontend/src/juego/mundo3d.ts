@@ -6,21 +6,12 @@ import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeometry.js";
 import type { Mundo, Terreno, VistaParcela } from "./mundo";
 import { N_PARCELAS } from "./estado";
+import { urlIcono } from "./iconos";
 
 const EXAG_MAX = 1.6; // relieve un poco más marcado en terrenos planos para que se lea en pantalla
-const POR_FRANJA = 12;
+const POR_PARCELA = 9;  // 3 x 3 plantas en cada parcela cuadrada
 const ESCALA = [0, 0.32, 0.62, 1, 0.96];
 
-const FAMILIA: Record<string, { hoja: number; flor: number; fruto: number; forma: "mata" | "espiga" | "rastrera" }> = {
-  solanacea: { hoja: 0x4caf50, flor: 0xf3e9ff, fruto: 0xb7804a, forma: "mata" },
-  poacea: { hoja: 0x9ccc65, flor: 0xf2c94c, fruto: 0xf2c94c, forma: "espiga" },
-  fabacea: { hoja: 0x43a047, flor: 0xffffff, fruto: 0x8bc34a, forma: "mata" },
-  amarantacea: { hoja: 0x66bb6a, flor: 0xec407a, fruto: 0xe53935, forma: "espiga" },
-  basellacea: { hoja: 0x5cb85c, flor: 0xffd54f, fruto: 0xf06292, forma: "rastrera" },
-  oxalidacea: { hoja: 0x5aa84a, flor: 0xffe082, fruto: 0xff8a65, forma: "rastrera" },
-  pasto: { hoja: 0x66bb6a, flor: 0xffffff, fruto: 0x66bb6a, forma: "rastrera" },
-  ninguna: { hoja: 0x8bc34a, flor: 0xffffff, fruto: 0x8bc34a, forma: "rastrera" },
-};
 
 export function hayWebGL(): boolean {
   try {
@@ -212,66 +203,58 @@ export function crearMundo3D(cont: HTMLElement, t: Terreno, elev: number): Mundo
     matVentana.emissiveIntensity = 1.4 * (1 - dia);
   }
 
-  // --- camas de cultivo con surcos ---
-  const anchoF = (S / N_PARCELAS) * 0.78;
+  // --- cuatro parcelas cuadradas (2 x 2) con surcos y bordes redondeados ---
+  const Q = (S / 2) * 0.84;                  // lado de cada parcela
   const parcelas: THREE.Mesh[] = [];
   const matSuelo: THREE.MeshToonMaterial[] = [];
   const plantas: THREE.Group[][] = [];
   const anillos: THREE.Mesh[] = [];
+  const centros: [number, number][] = [];
   const tam = S / 13;
   for (let i = 0; i < N_PARCELAS; i++) {
-    const zc = -S / 2 + (i + 0.5) * (S / N_PARCELAS);
-    const g = new THREE.PlaneGeometry(S, anchoF, 80, 24);
+    const xc = (i % 2 === 0 ? -1 : 1) * (S / 4), zc = (i < 2 ? -1 : 1) * (S / 4);
+    centros.push([xc, zc]);
+    const g = new THREE.PlaneGeometry(Q, Q, 48, 48);
     g.rotateX(-Math.PI / 2);
     const p = g.attributes.position as THREE.BufferAttribute;
     for (let k = 0; k < p.count; k++) {
-      const z = p.getZ(k);
-      const surco = Math.cos((z / anchoF) * Math.PI * 4) * 0.12 * tam;            // tres lomos de tierra
-      const orilla = 1 - Math.pow(Math.abs(z) / (anchoF / 2), 6);                 // bordes redondeados
-      p.setY(k, H(p.getX(k), z + zc) + (0.25 * tam + surco) * Math.max(0, orilla));
+      const x = p.getX(k), z = p.getZ(k);
+      const surco = Math.cos((z / Q) * Math.PI * 6) * 0.1 * tam;                      // tres lomos de tierra
+      const orilla = (1 - Math.pow(Math.abs(x) / (Q / 2), 8)) * (1 - Math.pow(Math.abs(z) / (Q / 2), 8));  // esquinas redondeadas
+      p.setY(k, H(x + xc, z + zc) + (0.25 * tam + surco) * Math.max(0, orilla));
     }
     g.computeVertexNormals();
     const m = new THREE.MeshToonMaterial({ color: 0x8a5a33, gradientMap: gradiente });
     const malla = new THREE.Mesh(g, m);
-    malla.position.z = zc;
+    malla.position.set(xc, 0, zc);
     malla.userData.i = i;
     malla.receiveShadow = true;
     escena.add(malla);
     parcelas.push(malla);
     matSuelo.push(m);
-    // anillo dorado que marca cosecha o franja elegida
-    const anillo = new THREE.Mesh(new THREE.TorusGeometry(anchoF * 0.32, anchoF * 0.07, 16, 48), new THREE.MeshBasicMaterial({ color: 0xffd34d }));
+    // anillo dorado sobre la parcela lista para cosechar o elegida
+    const anillo = new THREE.Mesh(new THREE.TorusGeometry(Q * 0.13, Q * 0.028, 16, 48), new THREE.MeshBasicMaterial({ color: 0xffd34d }));
     anillo.rotation.x = -Math.PI / 2;
-    anillo.position.set(S / 2 + anchoF * 0.7, 0, zc);
+    anillo.position.set(xc, 0, zc);
     anillo.visible = false;
     escena.add(anillo);
     anillos.push(anillo);
-    const fila: THREE.Group[] = [];
-    for (let k = 0; k < POR_FRANJA; k++) {
-      const x = -S / 2 + (k % 6 + 0.5) * (S / 6), z = zc + (k < 6 ? -anchoF * 0.24 : anchoF * 0.24);
+    const grupo: THREE.Group[] = [];
+    for (let k = 0; k < POR_PARCELA; k++) {
+      const x = xc - Q / 2 + ((k % 3) + 0.5) * (Q / 3), z = zc - Q / 2 + (Math.floor(k / 3) + 0.5) * (Q / 3);
       const planta = new THREE.Group();
       planta.position.set(x, H(x, z) + 0.3 * tam, z);
       planta.rotation.y = k * 1.7;
       planta.visible = false;
       planta.userData = { k, nace: -1, fase: k * 0.7, i };
       escena.add(planta);
-      fila.push(planta);
+      grupo.push(planta);
     }
-    plantas.push(fila);
+    plantas.push(grupo);
   }
 
-  // --- cerco de madera alrededor de las chacras ---
-  const poste = new THREE.CylinderGeometry(tam * 0.09, tam * 0.11, tam * 0.9, 12);
   const madera = toon(0x8d5a2b);
-  const borde2 = S / 2 + anchoF * 1.2;
-  const puntos: [number, number][] = [];
-  for (let k = -6; k <= 6; k++) { puntos.push([k * borde2 / 6, -borde2 * 0.62], [k * borde2 / 6, borde2 * 0.62]); }
-  for (let k = -3; k <= 3; k++) { puntos.push([-borde2, k * borde2 * 0.62 / 3], [borde2, k * borde2 * 0.62 / 3]); }
-  const postes = new THREE.InstancedMesh(poste, madera, puntos.length);
-  const mtx = new THREE.Matrix4();
-  puntos.forEach(([x, z], k) => { mtx.makeTranslation(x, H(x, z) + tam * 0.45, z); postes.setMatrixAt(k, mtx); });
-  postes.castShadow = true;
-  escena.add(postes);
+  const borde2 = S / 2 + tam * 2.2;          // orilla de la zona sembrada (para ubicar casa y árboles)
 
   // --- sombra de contacto: mancha suave bajo árboles y casa, siempre pegada al suelo ---
   const lienzoSombra = document.createElement("canvas");
@@ -352,44 +335,57 @@ export function crearMundo3D(cont: HTMLElement, t: Terreno, elev: number): Mundo
 
   // --- plantas: geometrías compartidas ---
   const geoTallo = new THREE.CylinderGeometry(0.05, 0.08, 1, 8);
-  const geoMata = new THREE.IcosahedronGeometry(0.55, 3);
-  const geoEspiga = new THREE.CapsuleGeometry(0.16, 0.9, 6, 12);
-  const geoRastrera = new THREE.SphereGeometry(0.5, 20, 14);
-  const geoFlor = new THREE.SphereGeometry(0.13, 12, 8);
+  // Las plantas que crecen usan la misma ilustración 3D del cultivo que el jugador ve en las semillas
+  // (sprite que mira a la cámara, con sombra de contacto); el brote recién sembrado es un modelo 3D pequeño.
+  const cargador = new THREE.TextureLoader();
+  const texturas = new Map<string, THREE.Texture>();
+  const matsPlanta = new Map<string, THREE.SpriteMaterial>();
+  function matCultivo(id: string, estado: "bien" | "seca" | "madura") {
+    const clave = `${id}|${estado}`;
+    if (!matsPlanta.has(clave)) {
+      if (!texturas.has(id)) {
+        const tx = cargador.load(urlIcono(id));
+        tx.colorSpace = THREE.SRGBColorSpace;
+        tx.anisotropy = 4;
+        texturas.set(id, tx);
+      }
+      matsPlanta.set(clave, new THREE.SpriteMaterial({
+        map: texturas.get(id)!, transparent: true, alphaTest: 0.25,
+        color: estado === "seca" ? 0xc9a46a : estado === "madura" ? 0xfff1c4 : 0xffffff,
+      }));
+    }
+    return matsPlanta.get(clave)!;
+  }
+  const geoHojita = new THREE.SphereGeometry(0.22, 16, 10);
   function armarPlanta(g: THREE.Group, v: VistaParcela) {
     g.clear();
-    const f = FAMILIA[v.familia || "ninguna"] || FAMILIA.ninguna;
-    const hoja = v.marchita ? 0xb08a4a : v.etapa >= 4 ? 0xd4c25a : f.hoja;
-    const tallo = new THREE.Mesh(geoTallo, toon(v.marchita ? 0xa0804a : 0x4f8f2f));
-    tallo.position.y = 0.5;
-    g.add(tallo);
-    if (f.forma === "espiga") {
-      for (let k = 0; k < 3; k++) {
-        const e = new THREE.Mesh(geoEspiga, toon(v.etapa >= 3 ? f.fruto : hoja));
-        e.position.set(Math.cos(k * 2.1) * 0.18, 1.05, Math.sin(k * 2.1) * 0.18);
-        e.rotation.z = (k - 1) * 0.25;
-        g.add(e);
-      }
+    g.userData.sprite = null;
+    const sombra = new THREE.Mesh(geoSombra, matSombra);
+    sombra.position.y = 0.02;
+    if (v.etapa <= 1 || !v.crop) {
+      // brote: tallito con dos hojas redondas
+      const verde = toon(v.marchita ? 0xb08a4a : 0x6fb43f);
+      const tallo = new THREE.Mesh(geoTallo, toon(v.marchita ? 0xa0804a : 0x3d8a2e));
+      tallo.scale.set(1, 0.6, 1);
+      tallo.position.y = 0.3;
+      const h1 = new THREE.Mesh(geoHojita, verde), h2 = new THREE.Mesh(geoHojita, verde);
+      h1.scale.set(1.3, 0.45, 0.8); h2.scale.set(1.3, 0.45, 0.8);
+      h1.position.set(-0.2, 0.6, 0); h2.position.set(0.2, 0.62, 0);
+      h1.rotation.z = 0.5; h2.rotation.z = -0.5;
+      g.add(tallo, h1, h2);
+      g.traverse((o) => { if ((o as THREE.Mesh).isMesh) o.castShadow = true; });
+      sombra.scale.setScalar(0.9);
     } else {
-      const copaP = new THREE.Mesh(f.forma === "mata" ? geoMata : geoRastrera, toon(hoja));
-      copaP.position.y = f.forma === "rastrera" ? 0.32 : 1.0;
-      if (f.forma === "rastrera") copaP.scale.set(1.35, 0.6, 1.35);
-      g.add(copaP);
+      const sp = new THREE.Sprite(matCultivo(v.crop, v.marchita ? "seca" : v.etapa >= 4 ? "madura" : "bien"));
+      sp.center.set(0.5, 0.06);  // la base del dibujo toca la tierra
+      const alto = v.etapa === 2 ? 1.7 : 2.7;
+      sp.scale.set(alto, alto * (v.marchita ? 0.82 : 1), 1);
+      g.add(sp);
+      g.userData.sprite = sp;
+      g.userData.alto = sp.scale.y;
+      sombra.scale.setScalar(alto * 0.75);
     }
-    if (v.etapa === 3 && !v.marchita && f.forma !== "espiga") {
-      for (let k = 0; k < 4; k++) {
-        const flor = new THREE.Mesh(geoFlor, toon(f.flor));
-        flor.position.set(Math.cos(k * 1.6) * 0.42, 1.3, Math.sin(k * 1.6) * 0.42);
-        g.add(flor);
-      }
-    }
-    if (v.etapa >= 4 && !v.marchita && f.forma !== "espiga") {
-      const fruto = new THREE.Mesh(geoFlor, toon(f.fruto));
-      fruto.scale.setScalar(2.4);
-      fruto.position.set(0.4, f.forma === "rastrera" ? 0.55 : 0.4, 0);
-      g.add(fruto);
-    }
-    g.traverse((o) => { if ((o as THREE.Mesh).isMesh) o.castShadow = true; });
+    g.add(sombra);
     g.userData.marchita = v.marchita;
   }
 
@@ -404,7 +400,7 @@ export function crearMundo3D(cont: HTMLElement, t: Terreno, elev: number): Mundo
   const chorros: { p: THREE.Points; t0: number }[] = [];
   const geoChorro = new THREE.BufferGeometry();
   const pc = new Float32Array(120 * 3);
-  for (let k = 0; k < 120; k++) pc.set([(Math.random() - 0.5) * S, Math.random() * tam * 3, (Math.random() - 0.5) * anchoF], k * 3);
+  for (let k = 0; k < 120; k++) pc.set([(Math.random() - 0.5) * Q, Math.random() * tam * 3, (Math.random() - 0.5) * Q], k * 3);
   geoChorro.setAttribute("position", new THREE.BufferAttribute(pc, 3));
   const matChorro = new THREE.PointsMaterial({ color: 0x4fc3f7, size: tam * 0.18, transparent: true, opacity: 0.9 });
 
@@ -465,14 +461,18 @@ export function crearMundo3D(cont: HTMLElement, t: Terreno, elev: number): Mundo
     anillos.forEach((a, i) => {
       if (!a.visible) return;
       a.rotation.z += dt * 2;
-      a.position.y = H(a.position.x, a.position.z) + tam * 1.1 + Math.sin(ahora * 4 + i) * tam * 0.15;
+      a.position.y = H(a.position.x, a.position.z) + tam * 3.4 + Math.sin(ahora * 4 + i) * tam * 0.15;
     });
     for (const fila of plantas) for (const g of fila) {
       if (!g.visible || cosechando.has(g.userData.i)) continue;
       const u = g.userData;
       const crecer = u.nace >= 0 ? rebote(Math.max(0, ahora - u.nace) / 0.7) : 1;
       g.scale.setScalar((u.objetivo ?? 1) * crecer);
-      g.rotation.z = u.marchita ? 0.45 : Math.sin(ahora * 1.6 + u.fase) * 0.06;  // brisa
+      if (u.sprite) {  // brisa: la planta se estira y se mece apenas
+        u.sprite.scale.y = u.alto * (1 + (u.marchita ? 0 : 0.035 * Math.sin(ahora * 1.6 + u.fase)));
+        u.sprite.material.rotation = 0;
+        g.rotation.z = 0;
+      } else g.rotation.z = u.marchita ? 0.45 : Math.sin(ahora * 1.6 + u.fase) * 0.06;
     }
     // el sol camina despacio solo; cuando el juego avanza días, alcanza la meta a paso rápido pero continuo
     const falta = meta - fase;
@@ -541,7 +541,8 @@ export function crearMundo3D(cont: HTMLElement, t: Terreno, elev: number): Mundo
     cosechar(i) { cosechando.set(i, reloj.elapsedTime); anillos[i].visible = false; },
     regar(i) {
       const p = new THREE.Points(geoChorro, matChorro.clone());
-      p.position.set(0, H(0, parcelas[i].position.z) + tam * 2, parcelas[i].position.z);
+      const [xc, zc] = centros[i];
+      p.position.set(xc, H(xc, zc) + tam * 3, zc);
       escena.add(p);
       chorros.push({ p, t0: reloj.elapsedTime });
     },
@@ -557,6 +558,8 @@ export function crearMundo3D(cont: HTMLElement, t: Terreno, elev: number): Mundo
       });
       gradiente.dispose();
       texSombra.dispose();
+      texturas.forEach((tx) => tx.dispose());
+      matsPlanta.forEach((m) => m.dispose());
       renderer.dispose();
       renderer.domElement.remove();
     },

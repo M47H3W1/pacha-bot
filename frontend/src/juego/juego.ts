@@ -485,7 +485,7 @@ function pedirSiembra() {
   const c = cultivos.get(J.crop || "");
   if (!c || !J.mes) { abrirFamilias(); return; }
   pintarControles();
-  decir(`Tu parcela tiene cuatro franjas de tierra. Toca una franja para sembrar ${c.nombre.toLowerCase()} en ${MESES[J.mes - 1]}, o el botón Sembrar todo para llenar las cuatro.`);
+  decir(`Tu chacra tiene cuatro parcelas cuadradas. Toca una parcela para sembrar ${c.nombre.toLowerCase()} en ${MESES[J.mes - 1]}, o el botón Sembrar todo para llenar las cuatro.`);
 }
 
 async function pedirCiclo(i: number) {
@@ -501,7 +501,7 @@ async function sembrar(i: number) {
   const pc = J.parcelas[i];
   if (J.sembrado) { decir("La temporada ya empezó. Espera la cosecha para sembrar de nuevo."); return; }
   if (!J.crop || !J.mes) { abrirFamilias(); return; }
-  if (pc.crop === J.crop) { decir("Esa franja ya está sembrada. Toca otra o pulsa ¿Cuánta agua?"); return; }
+  if (pc.crop === J.crop) { decir("Esa parcela ya está sembrada. Toca otra o pulsa ¿Cuánta agua?"); return; }
   const antes = pc.crop;
   pc.crop = J.crop;
   pc.riegos = [];
@@ -517,7 +517,7 @@ async function sembrar(i: number) {
   pintarMundo();
   pintarControles();
   const n = J.parcelas.filter((p) => p.crop).length;
-  decir(`¡Sembraste ${nombreCorto(J.crop)} en la franja ${i + 1}!${n < N_PARCELAS ? " Puedes sembrar más franjas, o dejar alguna con descanso." : " Ahora veamos cuánta agua va a necesitar."}`);
+  decir(`¡Sembraste ${nombreCorto(J.crop)} en la parcela ${i + 1}!${n < N_PARCELAS ? " Puedes sembrar más parcelas, o dejar alguna con descanso." : " Ahora veamos cuánta agua va a necesitar."}`);
 }
 
 async function sembrarTodas() {
@@ -530,7 +530,7 @@ function panelAgua() {
   const c = plant.length ? ciclos.get(plant[0][1]) : null;
   if (!c) { pedirSiembra(); return; }
   paso("agua");
-  const k = plant.length; // franjas sembradas (el ciclo trae litros por franja)
+  const k = plant.length; // parcelas sembradas (el ciclo trae litros por parcela)
   const a = c.agua;
   const L = (x: number) => x * k;
   abrirPanel("¿Cuánta agua necesita?", `<div class="agua-panel">
@@ -573,7 +573,7 @@ function empezarTemporada() {
   });
   if (desnuda && (parcelaInfo?.clima?.meses_lluvia?.length || 0) > 0) {
     cambio -= 5;
-    razones.push("hay franjas sin cubrir y los aguaceros lavan la tierra desnuda");
+    razones.push("hay parcelas sin cubrir y los aguaceros lavan la tierra desnuda");
   }
   J.salud = Math.max(0, Math.min(100, J.salud + cambio));
   J.tanque = J.tanqueMax = plantadas.reduce((s, [, i]) => s + (ciclos.get(i)?.tanque_litros || 0), 0);
@@ -705,7 +705,7 @@ function tocarParcela(i: number) {
   const p = J.parcelas[i];
   if (vista(i).lista && !p.cosechada) { cosechar(i); return; }
   if (!J.sembrado) { if (J.paso === "sembrar" || J.paso === "agua") sembrar(i); else seguirHistoria(); return; }
-  if (!p.crop || p.cosechada) { decir("Esta franja está vacía."); return; }
+  if (!p.crop || p.cosechada) { decir("Esta parcela está vacía."); return; }
   const c = ciclos.get(i)!;
   const d = c.dias[Math.min(J.dia, c.dias.length - 1)];
   const h = Math.round(d.humedad * 100);
