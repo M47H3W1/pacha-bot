@@ -5,6 +5,8 @@ export default defineConfig({
   output: "static",
   trailingSlash: "ignore",
   build: { format: "directory" },
+  // El sitio es solo el juego Astro Granja; la ruta vieja /juego/ lleva a la portada
+  redirects: { "/juego": "/" },
   server: { port: 4321 },
   vite: {
     // En desarrollo, /api va al backend FastAPI local (uvicorn api.index:app --port 8765)

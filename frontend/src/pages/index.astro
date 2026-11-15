@@ -1,51 +1,70 @@
 ---
-import Base from "../layouts/Base.astro";
-import Paisaje from "../components/Paisaje.astro";
+// Astro Granja: la historia de Pachita, juego de granja para niños de 8 a 12 años con datos reales de la NASA. Todo corre en el navegador;
+// los números vienen de la API de Pacha (/api/app/*, /api/accion, /api/voz).
+import "../styles/global.css";
+import "../juego/juego.css";
+import { ic } from "../juego/ui";
 ---
-<Base titulo="Pacha" decoracion>
-  <section class="bienvenida">
-    <div class="foto">
-      <Paisaje />
-    </div>
-    <div class="texto">
-      <h1>Planifique su próxima siembra</h1>
-      <div class="raya"></div>
-      <p class="sub">Consulte la rotación de cultivos y estime el riego de su parcela, con datos de satélites de la NASA
-        corregidos con estaciones del Ecuador.</p>
-      <div class="pila acciones">
-        <button class="btn btn-primario" type="button" id="ejemplo">Probar con un ejemplo</button>
-        <a class="btn btn-borde" href="/ubicacion">Consultar mi parcela</a>
-        <a class="btn btn-borde" href="/juego/">🎮 Jugar Astro Granja (niños)</a>
+<!doctype html>
+<html lang="es" data-theme="light">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+  <meta name="theme-color" content="#2b6cb0" />
+  <meta name="description" content="Astro Granja: aprende a sembrar y cuidar la tierra de la sierra del Ecuador con Pachita y datos reales de la NASA." />
+  <title>Astro Granja</title>
+  <link rel="manifest" href="/manifest.webmanifest" />
+  <link rel="apple-touch-icon" href="/icono-192.png" />
+  <link rel="icon" href="/icono.svg" type="image/svg+xml" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@700;800;900&family=Nunito+Sans:wght@400;600;700;800&display=swap" rel="stylesheet" />
+</head>
+<body class="juego">
+  <div id="intro" class="intro" hidden></div>
+  <div id="mapa" class="pantalla-mapa" hidden></div>
+
+  <div id="escena" class="escena" hidden>
+    <div id="mundo" class="mundo"></div>
+    <header id="hud" class="hud" hidden>
+      <div class="hud-fila">
+        <a href="/" class="hud-casa" aria-label="Volver al menú"><Fragment set:html={ic("casa")} /></a>
+        <div class="hud-textos"><b id="hud-lugar">Mi chacra</b><span id="hud-fecha"></span></div>
+        <button id="silencio" class="hud-boton" type="button" aria-label="Silenciar la voz"><Fragment set:html={ic("sonido")} /></button>
       </div>
-      <ul class="sellos" aria-label="Qué usa Pacha">
-        <li>🛰️ NASA POWER · GPM · MODIS</li>
-        <li>🌧️ Validado con 85 estaciones del INAMHI</li>
-        <li>🔊 Lee en voz alta</li>
-      </ul>
-    </div>
-  </section>
-</Base>
+      <div class="hud-fila medidores">
+        <div class="medidor-mini" title="Agua guardada en el tanque para regar"><Fragment set:html={ic("tanque", "ic-mini")} /><div class="medidor-cuerpo"><span class="medidor-nombre">Tanque</span><div class="barra"><i id="hud-tanque"></i></div></div><small id="hud-tanque-txt">—</small></div>
+        <div class="medidor-mini" title="Salud de la tierra: sube al rotar y sembrar leguminosas (puntos del juego)"><Fragment set:html={ic("tierra", "ic-mini")} /><div class="medidor-cuerpo"><span class="medidor-nombre">Salud del suelo</span><div class="barra"><i id="hud-salud"></i></div></div><small id="hud-salud-txt">60</small></div>
+      </div>
+      <div id="semaforo" class="semaforo" hidden aria-label="Agua mes a mes del cultivo"></div>
+    </header>
+    <nav class="acciones" aria-label="Acciones del juego">
+      <button id="btn-tierra" type="button"><Fragment set:html={ic("ficha", "ic-accion")} />Mi tierra</button>
+      <button id="btn-semillas" type="button"><Fragment set:html={ic("semilla", "ic-accion")} />Semillas</button>
+      <button id="btn-calendario" type="button"><Fragment set:html={ic("calendario", "ic-accion")} />Mes</button>
+      <button id="btn-regar" type="button"><Fragment set:html={ic("gota", "ic-accion")} />Regar</button>
+      <button id="btn-logros" type="button"><Fragment set:html={ic("medalla", "ic-accion")} />Logros</button>
+    </nav>
+    <div id="tiempo" class="tiempo"></div>
+    <p id="aviso2d" class="aviso2d" hidden>Modo sin 3D</p>
+  </div>
 
-<script>
-  import { EJEMPLO, guardar } from "../lib/estado";
-  document.getElementById("ejemplo")!.addEventListener("click", () => {
-    guardar({ ...EJEMPLO, mes: undefined, crop: undefined });
-    location.href = "/parcela";
-  });
-</script>
+  <div class="pachita-caja">
+    <div id="globo" class="globo" role="status" aria-live="polite" hidden></div>
+    <div id="pachita" class="pachita" aria-hidden="true"></div>
+  </div>
 
-<style>
-  .bienvenida { display: grid; gap: 1.4rem; }
-  .foto { margin: 0 -1rem; aspect-ratio: 16 / 10; overflow: hidden;
-    clip-path: path("M0 0 H2000 V1000 H0 Z"); border-radius: 0 0 0 0; position: relative; }
-  .foto::after { content: ""; position: absolute; left: 0; right: 0; bottom: -1px; height: 34px;
-    background: var(--crema); clip-path: polygon(0 60%, 25% 20%, 55% 70%, 80% 30%, 100% 55%, 100% 100%, 0 100%); }
-  .acciones { margin-top: 1.4rem; }
-  .sellos { list-style: none; padding: 0; margin: 1.4rem 0 5rem; display: grid; gap: 0.4rem; color: var(--texto-2); font-weight: 700; font-size: 0.95rem; }
-  @media (min-width: 900px) {
-    .bienvenida { grid-template-columns: 1.1fr 1fr; align-items: center; gap: 3rem; min-height: 70vh; }
-    .foto { margin: 0; border-radius: 28px; aspect-ratio: 4 / 3.2; box-shadow: var(--sombra); }
-    .foto::after { display: none; }
-    .acciones { max-width: 420px; }
-  }
-</style>
+  <section id="panel" class="panel" hidden aria-live="polite"></section>
+  <div id="medalla" class="toast-medalla" hidden role="status"></div>
+  <div id="aviso" class="toast-aviso" hidden role="status"></div>
+  <p class="creditos">Datos: NASA POWER · FAO-56 · INIAP · Relieve: Open-Meteo · Ilustraciones de Pachita y cultivos con asistencia de IA (marcadas «IA») · Nombres del mapa: Esri</p>
+
+  <script>
+    import { arrancar } from "../juego/juego";
+    arrancar();
+    if ("serviceWorker" in navigator && location.hostname !== "localhost") {
+      navigator.serviceWorker.register("/sw.js").catch(() => {});
+    }
+  </script>
+</body>
+</html>
