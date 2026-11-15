@@ -64,6 +64,24 @@ flowchart TD
 
 **Caché y velocidad:** cada respuesta válida se guarda en `cache/*.json.gz` (nunca una respuesta fallida). Cuatro sitios de demostración van en `app/semillas/` para que el juego funcione sin red. En producción, un punto nuevo tarda ≈ 12 s la primera vez (NASA POWER) y la pantalla de carga cubre la espera.
 
+## 1.3b ¿De qué satélite salen los datos?
+
+**No hay un solo satélite.** NASA POWER entrega variables que vienen de un *reanálisis* (un modelo que asimila observaciones de muchos satélites, estaciones y globos) y de instrumentos satelitales específicos.
+
+| Dato del juego | Producto | Origen real | Satélites |
+|---|---|---|---|
+| Temperatura máx./mín. a 2 m, humedad relativa, viento | **MERRA-2** (NASA GMAO) | Reanálisis: modelo + observaciones asimiladas, malla de ≈ 50 × 60 km, desde 1980 | Muchos (no es una medición directa de un solo sensor) |
+| Lluvia corregida (`PRECTOTCORR`) | **MERRA-2** | Lluvia del modelo corregida con observaciones | Modelo; en la sierra centro duplica la lluvia (San Juan: 658 mm medidos frente a 1.415) |
+| Radiación solar (`ALLSKY_SFC_SW_DWN`) | **CERES** | Medición de radiación | Instrumentos CERES en **Terra, Aqua y Suomi NPP** |
+| Humedad del suelo en raíces (`GWETROOT`, `GWETTOP`) | **MERRA-2 / modelo GEOS** | Calculada por el modelo | No es medición satelital. SMAP sí mide humedad del suelo, pero el juego **todavía no lo usa** |
+| Relieve y pendiente | **Copernicus DEM** (ESA) vía Open-Meteo | Modelo digital de elevación de radar satelital | **No es NASA** |
+| Corrección de lluvia y temperatura | **ECMWF IFS 9 km** vía Open-Meteo | Modelo de pronóstico | **No es NASA** |
+| Textura del suelo | **SoilGrids** (ISRIC) | Aprendizaje automático con datos de suelo y satélite | **No es NASA** |
+
+**Lluvia satelital directa:** es **IMERG** (misión GPM, NASA). La investigación demostró que sigue mejor los meses que MERRA-2 (r 0,68 frente a 0,51; mejor en 50 de 85 estaciones del INAMHI) y está en la hoja de ruta, pero el juego aún no la usa. Ver [06-Investigacion.md](06-Investigacion.md).
+
+**Cómo decirlo en el pitch:** "Usamos datos de NASA POWER: un reanálisis (MERRA-2) que integra observaciones de muchos satélites, más la radiación solar medida por los instrumentos CERES. La lluvia satelital directa (IMERG) es nuestro siguiente paso."
+
 ## 1.4 Limpieza y transformación de datos
 
 | Paso | Qué se hace | Por qué |

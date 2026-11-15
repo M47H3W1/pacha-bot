@@ -65,6 +65,7 @@ python -m pytest -q tests                # 20 pruebas
 | ¿Por qué un juego y no una app técnica? | Quien más necesita los datos no lee tablas; los niños aprenden jugando y llevan el mensaje a casa. El mismo motor sirve al bot para adultos. |
 | ¿Los números son reales? | Sí: clima diario NASA POWER del punto, corregido por altura, con FAO-56 y balance de suelo. Ningún número lo inventa un modelo de lenguaje. |
 | ¿Dónde usa IA? | Para desarrollar el código (Claude Code), las ilustraciones y la voz sintética. Dentro del juego no hay modelos de lenguaje; el bot de Telegram usa Gemini solo para explicar resultados. |
+| ¿De qué satélite salen los datos? | De ninguno en particular: NASA POWER usa el reanálisis MERRA-2 (modelo que asimila muchos satélites y estaciones) y la radiación solar de los instrumentos CERES (Terra, Aqua, Suomi NPP). La lluvia satelital directa, IMERG de GPM, está en la hoja de ruta. Ver [01-Arquitectura.md](01-Arquitectura.md#13b-de-qué-satélite-salen-los-datos). |
 | ¿Por qué NASA POWER y no SMAP? | POWER da clima diario por punto desde 2001 y es abierto; SMAP no resuelve parcelas pequeñas. Se planea sumarlo. |
 | ¿Cómo se valida? | Pruebas automáticas del motor, contraste con INAMHI y casos publicados de rotación (Sicalpa, Illangama, Río Paute, Santa Catalina, Tumbaco). |
 | ¿Funciona sin internet? | La primera consulta de un lugar nuevo necesita red; los sitios de demostración y las consultas repetidas funcionan con datos guardados. |
