@@ -256,7 +256,13 @@ def terreno(st: dict) -> dict:
             z0 = 0.0
         alturas = [z0] * (n * n)
     grilla = [alturas[i * n:(i + 1) * n] for i in range(n)]
-    return {"n": n, "radio": radio, "lado_m": lado, "paso_m": round(paso, 2), "alturas": grilla,
+    z = np.array(grilla)
+    gy, gx = np.gradient(z, paso)
+    yy, xx = np.mgrid[0:n, 0:n]
+    dentro = (yy - n // 2) ** 2 + (xx - n // 2) ** 2 <= (n // 2) ** 2   # solo dentro del círculo
+    pend = float(np.mean(np.hypot(gx, gy)[dentro]) * 100)
+    clase = "plano" if pend < 5 else "suave" if pend < 12 else "moderada" if pend < 25 else "fuerte"
+    return {"pendiente_pct": round(pend, 1), "pendiente_clase": clase, "n": n, "radio": radio, "lado_m": lado, "paso_m": round(paso, 2), "alturas": grilla,
             "min": min(alturas), "max": max(alturas), "centro": grilla[n // 2][n // 2],
             "desnivel_m": round(max(alturas) - min(alturas), 1), "area_m2": round(S.area_m2(radio)),
             "sin_relieve": plano, "fuente": "Open-Meteo elevation (Copernicus DEM, 90 m)"}
@@ -336,6 +342,7 @@ def ciclo(st: dict) -> dict:
         seco = bool(etc[d] > 0 and falta >= max(0.5, E.UMBRAL_PROBLEMA * etc[d]))
         secos += seco
         dias.append({"fecha": clima.fechas[ini + d].isoformat(), "lluvia": round(float(P[d]), 1),
+                     "tmax": round(float(clima.tmax[ini + d]), 1), "calor": bool(clima.tmax[ini + d] >= S.CALOR),
                      "gasto": round(float(etc[d]), 2), "riego": round(float(riego[d]), 1),
                      "humedad": round(float(reserva / taw), 2), "falta": round(float(falta), 2),
                      "seco": seco, "etapa": E.etapa(crop, d)})
@@ -355,6 +362,11 @@ def ciclo(st: dict) -> dict:
             "en_epoca": en_epoca, "epoca": v["texto"] if v else None,
             "veredicto": b["veredicto"], "estado_mes": b["estado_mes"], "meses": b["meses"],
             "m2": round(m2), "litros_por_mm": round(m2 / S.EFICIENCIA, 1),
+            "agua": {"gasto_mm": round(b["total_gasto"]), "lluvia_util_mm": round(b["total_lluvia_util"]),
+                     "riego_mm": round(b["total_falta"]), "riego_seco_mm": round(b["total_falta_seco"]),
+                     "litros_cultivo": round(b["total_gasto"] * m2), "litros_lluvia": round(b["total_lluvia_util"] * m2),
+                     "litros_riego": round(b["total_falta"] * m2 / S.EFICIENCIA),
+                     "litros_riego_seco": round(b["total_falta_seco"] * m2 / S.EFICIENCIA)},
             "tanque_litros": round(max(b["total_falta_seco"], 20.0) * m2 / S.EFICIENCIA)}
 
 

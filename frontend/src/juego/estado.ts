@@ -5,14 +5,20 @@ export const N_PARCELAS = 4;
 export interface Parcela {
   crop: string | null;       // cultivo sembrado (o "descanso")
   riegos: [number, number][]; // [día del ciclo, mm] que puso el jugador
-  abono: boolean;            // abono orgánico en esta temporada
   cosechada: boolean;
   historial: string[];       // cultivos anteriores en esta franja (para rotar)
   puntaje?: number;
 }
 
+export type Paso = "nombre" | "mapa" | "tierra" | "semillas" | "calendario" | "sembrar" | "agua" | "crecer" | "rotacion" | "certificado";
+
 export interface Juego {
   version: 1;
+  granja: string;            // nombre que el jugador le pone a su granja
+  paso: Paso;                // momento de la historia
+  crop: string | null;       // semilla elegida en esta temporada
+  rotacion: string[] | null; // rotación elegida al final
+  puntajes: number[];        // puntaje de cada cosecha
   temporada: number;         // 1, 2, 3...
   mes: number | null;        // mes de siembra de la temporada
   anio: number | null;       // año de NASA POWER que se está jugando
@@ -30,8 +36,8 @@ const CLAVE = "pacha.juego.v1";
 
 export function nuevo(): Juego {
   return {
-    version: 1, temporada: 1, mes: null, anio: null, dia: 0, sembrado: false, tanque: 0, tanqueMax: 0, salud: 60,
-    parcelas: Array.from({ length: N_PARCELAS }, () => ({ crop: null, riegos: [], abono: false, cosechada: false, historial: [] })),
+    version: 1, granja: "", paso: "nombre", crop: null, rotacion: null, puntajes: [], temporada: 1, mes: null, anio: null, dia: 0, sembrado: false, tanque: 0, tanqueMax: 0, salud: 60,
+    parcelas: Array.from({ length: N_PARCELAS }, () => ({ crop: null, riegos: [], cosechada: false, historial: [] })),
     medallas: [], cosechas: 0,
   };
 }
@@ -39,7 +45,7 @@ export function nuevo(): Juego {
 export function cargar(): Juego {
   try {
     const j = JSON.parse(localStorage.getItem(CLAVE) || "null");
-    if (j && j.version === 1 && Array.isArray(j.parcelas)) return j;
+    if (j && j.version === 1 && Array.isArray(j.parcelas) && typeof j.granja === "string") return j;
   } catch { /* sin almacenamiento */ }
   return nuevo();
 }
@@ -66,4 +72,5 @@ export const MEDALLAS: Record<string, { icono: string; nombre: string; texto: st
   rotacion: { icono: "🔄", nombre: "Rotación completa", texto: "Una franja con tres familias distintas seguidas." },
   leguminosa: { icono: "🫘", nombre: "Amiga del suelo", texto: "Sembraste una leguminosa que alimenta la tierra." },
   sana: { icono: "🌱", nombre: "Tierra sana", texto: "La salud de tu tierra llegó a 85." },
+  cosmico: { icono: "🚀", nombre: "Granjero cósmico", texto: "Terminaste la historia y ganaste tu certificado." },
 };

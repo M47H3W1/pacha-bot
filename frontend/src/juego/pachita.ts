@@ -79,20 +79,23 @@ function vozDelTelefono(texto: string) {
 
 let turno = 0;
 let ocultar: number | undefined;
+let alTerminar: (() => void) | null = null;
 
 /** El globo se esconde unos segundos después de hablar, para no tapar la chacra. Tocarlo también lo esconde. */
 function terminar(mio: number) {
   if (mio !== turno) return;
   document.querySelector("#pachita")?.classList.remove("habla");
+  const fin = alTerminar; alTerminar = null; fin?.();
   clearTimeout(ocultar);
   ocultar = window.setTimeout(() => { if (mio === turno) document.querySelector<HTMLElement>("#globo")!.hidden = true; }, 4000);
 }
 
-/** Pachita dice algo: globo de diálogo (1–2 frases) y voz. */
-export async function decir(texto: string, animo: "feliz" | "pensando" | "preocupada" = "feliz") {
+/** Pachita dice algo: globo de diálogo (1–2 frases) y voz. La promesa se cumple cuando termina de hablar. */
+export function decir(texto: string, animo: "feliz" | "pensando" | "preocupada" = "feliz"): Promise<void> {
   const caja = document.querySelector<HTMLElement>("#pachita");
   const globo = document.querySelector<HTMLElement>("#globo");
-  if (!caja || !globo) return;
+  if (!caja || !globo) return Promise.resolve();
+  const anterior = alTerminar; alTerminar = null; anterior?.();
   const mio = ++turno;
   globo.textContent = texto;
   globo.hidden = false;
@@ -103,16 +106,31 @@ export async function decir(texto: string, animo: "feliz" | "pensando" | "preocu
   caja.classList.add("habla");
   clearTimeout(ocultar);
   globo.onclick = () => (globo.hidden = true);
-  if (silencio) { setTimeout(() => terminar(mio), 2500); return; }
-  const limpio = limpiarParaVoz(texto);
-  const url = await urlVoz(limpio);
-  if (mio !== turno) return;
-  if (url && reproductor) {
-    reproductor.src = url;
-    reproductor.onended = () => terminar(mio);
-    reproductor.play().catch(() => vozDelTelefono(limpio));
-  } else {
-    vozDelTelefono(limpio);
-    setTimeout(() => terminar(mio), 3500);
+  const espera = 1500 + texto.length * 55;  // si no hay voz, el tiempo de leer el globo
+  return new Promise<void>((resolver) => {
+    alTerminar = resolver;
+    if (silencio) { setTimeout(() => terminar(mio), espera); return; }
+    const limpio = limpiarParaVoz(texto);
+    urlVoz(limpio).then((url) => {
+      if (mio !== turno) return;
+      if (url && reproductor) {
+        reproductor.src = url;
+        reproductor.onended = () => terminar(mio);
+        reproductor.play().catch(() => { vozDelTelefono(limpio); setTimeout(() => terminar(mio), espera); });
+      } else {
+        vozDelTelefono(limpio);
+        setTimeout(() => terminar(mio), espera);
+      }
+    });
+  });
+}
+
+/** Varias frases seguidas (cada una espera a que termine la anterior). */
+export async function decirVarias(frases: string[], animo: "feliz" | "pensando" | "preocupada" = "feliz") {
+  for (const f of frases) {
+    const promesa = decir(f, animo);
+    const mio = turno;
+    await promesa;
+    if (turno !== mio) return;  // otra frase la interrumpió
   }
 }

@@ -121,27 +121,33 @@ libres; sin ella todo lo demás funciona con botones. El bot de Telegram necesit
 
 **Jugar:** https://pacha-chat.vercel.app/juego/ (en el celular; `?sin3d=1` fuerza el modo sin 3D)
 
-Juego de granja casual, original, para aprender a sembrar y cuidar la tierra de la sierra con datos reales.
-Lo guía **Pachita**, una granjera de la sierra (sombrero, poncho y anaco), que habla en globos cortos y con voz.
+Aplicación de granja casual, original, para aprender a sembrar y cuidar la tierra de la sierra con datos reales.
+La guía **Pachita**, una granjera de la sierra (sombrero, poncho y anaco), con globos cortos y voz. La historia:
 
-1. **Ubicación:** mapa satelital con un pin y un círculo de 20 a 600 m. Cuatro sitios de demostración
-   (Calpi, Guano, Cayambe, Saquisilí) traen sus datos guardados para jugar sin señal.
-2. **Mundo 3D** (three.js, carga diferida): relieve real del círculo (`/api/app/terreno`, grilla n×n),
-   escala en metros con exageración vertical suave, cielo y luz según la altura y volcán decorativo.
-3. **Mi tierra:** cartas coleccionables con altura, suelo, lluvia, evaporación, humedad del suelo mes a mes y
-   cambio de la última década (`/api/app/parcela` y `/api/accion` tierra).
-4. **Calendario:** rueda de 12 meses; cada mes muestra cuántos cultivos se siembran en la zona (`/api/app/semillas`).
-5. **Banco de semillas:** los 13 cultivos del equipo como sobres con foto; los que no sirven por altura o época
-   aparecen con candado y Pachita explica por qué.
-6. **Sembrar:** tocar la semilla y luego una franja, o arrastrarla. Guía "Cómo sembrar" según la pendiente.
-7. **El tiempo pasa:** día, semana, mes o automático. Cada día usa el clima real de un año de NASA POWER
-   y el balance de suelo del motor (`/api/app/ciclo`); las plantas cambian por las etapas FAO-56 y se
-   marchitan si falta agua. Regar descuenta litros del tanque y el servidor recalcula el ciclo.
-8. **Cosecha:** puntaje calculado en el servidor según el agua que faltó y la época, con el veredicto del motor.
-9. **Rotar y curar la tierra:** consejo de rotación (`/api/accion` rotacion), casos probados en campo
-   (`/api/app/probadas`), leguminosas, descanso, cobertura y abono. La "salud de la tierra" son puntos del juego
-   (no una medición) y se ve en el color del suelo.
-10. **Logros:** medallas sencillas. Sin compras ni anuncios.
+1. **Nombre de la granja:** Pachita, desde su cohete, pide el nombre de tu granja.
+2. **Llegada:** el cohete aterriza junto al volcán, Pachita da la bienvenida y pide elegir la parcela en un mapa
+   satelital con un punto y un círculo de radio variable (20–600 m).
+3. **Así es tu tierra:** la parcela aparece en 3D con su relieve real (`/api/app/terreno`) y una ficha técnica con los
+   parámetros que el equipo priorizó en su investigación: altitud, **pendiente** (%, calculada de la grilla de alturas),
+   textura del suelo, materia orgánica, agua que guarda el suelo, **humedad del suelo mes a mes**, lluvia de un año
+   normal y seco, evaporación, temperatura y días de calor, y cambio de la última década (`/api/app/parcela`).
+   Pachita lo explica con frases simples.
+4. **Semillas por familia botánica:** los 13 cultivos como íconos animados, agrupados en leguminosas, solanáceas,
+   gramíneas, amarantáceas, tubérculos andinos y pastos/cobertura, con el porqué de cada familia para rotar. Los que no
+   sirven por altura aparecen con candado y su razón (`/api/app/semillas`).
+5. **Calendario:** rueda de 12 meses con la época de siembra del cultivo en la zona (INIAP); fuera de época, Pachita avisa.
+6. **Sembrar:** tocar las franjas de la parcela (o sembrar todo).
+7. **¿Cuánta agua necesita?:** litros que bebe el cultivo en su ciclo (por metro cuadrado y en toda la parcela), lo que
+   da la lluvia y lo que hay que regar en un año normal y en uno seco, con el semáforo mes a mes (`/api/app/ciclo`).
+8. **Crecer:** el tiempo avanza con el clima real de un año de NASA POWER. Estrés por sequía (la planta se marchita),
+   por calor (días sobre 25 °C) y aguaceros; regar descuenta litros del tanque y el servidor recalcula el ciclo.
+9. **Cosecha:** puntaje calculado en el servidor según el agua que faltó y la época, con el veredicto del motor.
+10. **Rotar:** Pachita explica por qué rotar evita la degradación del suelo y recomienda **3 rotaciones** calculadas
+    para la parcela (`/api/app/cultivo`), más casos probados en campo (`/api/app/probadas`).
+11. **Certificado de Granjero Cósmico:** con el nombre de la granja, cosechas, puntaje, rotación elegida y medallas;
+    se puede descargar como imagen. Sin compras ni anuncios.
+
+Los 18 íconos de cultivos (`frontend/src/juego/iconos.ts`) son SVG redibujados a partir de la lámina del equipo.
 
 | Archivo | Qué hace |
 |---|---|
