@@ -555,6 +555,8 @@ const INFO_SEMILLAS: Record<string, { es: string; en: string; abre?: string; abr
   },
 };
 const NOMBRE_EXTRA_EN: Record<string, string> = { vicia: "Vetch", trebol: "Clover", alfalfa: "Alfalfa", biomasa: "Biomass" };
+/** «con chocho» / «with lupin», sin repetir la palabra cuando el nombre ya la trae («Avena con vicia» → «avena con vicia»). */
+const conLeguminosa = (nom: string) => esc(/\b(con|with)\b/.test(nom) ? nom : `${t("con", "with")} ${nom}`);
 const nombreExtra = (k: string) => t(NOMBRE_EXTRA[k], NOMBRE_EXTRA_EN[k]);
 
 async function abrirFamilias() {
@@ -1223,7 +1225,7 @@ async function leccionRotacion() {
     <div class="medidor"><span>${t("Salud de tu tierra", "Your soil's health")}</span><div class="barra"><i style="width:${J.salud}%;background:${colorSuelo(J.salud)}"></i></div><b>${J.salud}</b></div>
     <h3>${t("Pachita te recomienda 3 rotaciones", "Pachita recommends 3 rotations")}</h3>
     <div class="rotaciones">${rots.slice(0, 3).map((r, k) => `<article class="rotacion">
-      <p class="rot-titulo">${t("Opción", "Option")} ${k + 1}${r.leguminosa ? ` · ${ic("nitrogeno", "ic-linea")} ${t("con", "with")} ${esc(nombreLeg(r.leguminosa).toLowerCase())}` : ""}</p>
+      <p class="rot-titulo">${t("Opción", "Option")} ${k + 1}${r.leguminosa ? ` · ${ic("nitrogeno", "ic-linea")} ${conLeguminosa(nombreLeg(r.leguminosa).toLowerCase())}` : ""}</p>
       <div class="rot-pasos">${r.pasos.map((s: any, j: number) => `${j ? '<span class="flecha">→</span>' : ""}<span class="rot-paso">${icono(s.id, "icono-mini")}<b>${esc(nombreDe(s.id, s.nombre))}</b><small>${t("desde", "from")} ${esc(mesApi(s.desde))}</small></span>`).join("")}</div>
       ${r.repite_familia ? `<p class="malo">${ic("alerta", "ic-linea")} ${t("Repite una familia", "Repeats a family")}</p>` : `<p class="bueno">${ic("check", "ic-linea")} ${t("Cambia de familia en cada paso", "Changes family at every step")}</p>`}
       <button class="btn-juego" data-rot="${k}">${t("Elegir esta", "Choose this one")}</button></article>`).join("") || `<p>${t("No pude traer las rotaciones. Revisa la señal.", "I couldn't get the rotations. Check your signal.")}</p>`}</div>
