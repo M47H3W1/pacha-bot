@@ -1,4 +1,4 @@
-# Pacha 🌱 · NASA data for highland farmland
+# Astro Granja 🌱 · NASA data for highland farmland
 
 [Español](README.md) · **English**
 
@@ -7,7 +7,7 @@ NASA Space Apps Challenge 2026 · Sangolquí local event (ESPE) · Challenge **"
 | | |
 |---|---|
 | **Live game** | https://pacha-chat.vercel.app (Astro Granja, no account needed, built for phones) |
-| **Telegram bot** | [@Pacha_EC_Bot](https://t.me/Pacha_EC_Bot) |
+| **Pitch material** | [APP-PITCH/](APP-PITCH/) (architecture, plants, idea, water bank and rotation, demo; in Spanish) |
 | **License** | [MIT](LICENSE) |
 | **Core data** | [NASA POWER](https://power.larc.nasa.gov/) (AG community, daily, 2001–2024) |
 
@@ -20,19 +20,10 @@ them most (older farmers, people with low literacy or Kichwa speakers) cannot us
 ## The solution
 **Astro Granja**, a casual farming game for browsers and phones (Astro + three.js, installable), where **Pachita**
 teaches how to plant, water and rotate crops on a real highland plot with NASA data. The website is only the game; the
-story and screens are in [Astro Granja game](#astro-granja-game-kids-aged-8-to-12). The game is in Spanish.
+story and screens are in [Astro Granja game](#astro-granja-game-kids-aged-8-to-12). The game is available in Spanish and English.
 
-The **Telegram bot** ([@Pacha_EC_Bot](https://t.me/Pacha_EC_Bot)) uses the same engine for farming families: the
-farmer sends **a point and a circle** with the size of their land and Pacha answers with drawings, short messages and audio:
-
-1. **📋 See my land**: elevation, slope, soil, temperature, rainfall in a normal and a dry year, evaporation,
-   **month-by-month soil moisture** and how much rainfall changed over the last decade.
-2. **🌱 What to plant**: crops suited to the elevation that are in planting season for the zone, with a water
-   verdict (✅ rain is enough · ⚠️ water sometimes · ❌ needs irrigation) and harvest month.
-3. **🔁 What to plant next**: rotations that break pest cycles and feed the soil (legumes), plus
-   **📚 field-proven rotations** in Ecuador (Sicalpa, Illangama, Paute River, Santa Catalina, Tumbaco).
-4. **💧 How much to water**: which days this week to irrigate and how much water, counted in **buckets, tanks or
-   water trucks** for the real area of the land.
+In the game you live what the data say: the plot's weather is the **real NASA weather** of that point, water is counted in
+buckets and tanks, and rotations are calculated for that land (see [APP-PITCH/](APP-PITCH/)).
 
 ## NASA data and how they are used
 | Variable | Product | Use |
@@ -63,8 +54,7 @@ slope of the circle). Planting calendar, varieties and rotation cases: INIAP and
 6. **Land traits**: days above 25 °C, days above 10 mm, monthly soil moisture and the 2013–2024 vs 2001–2012 comparison.
 7. **Agronomic rules**: suitable elevation per crop, planting windows per zone (INIAP), botanical families for rotation
    and nitrogen-fixing legumes.
-8. **Answer**: in the game, JSON that the browser draws in 3D; in the bot, a matplotlib image, short text and audio
-   (Ecuadorian Spanish neural voice).
+8. **Answer**: JSON that the browser draws in 3D, with short text and Pachita's voice (neural es-EC / en-US).
 
 ## Architecture
 ```
@@ -78,8 +68,7 @@ FastAPI on Vercel (Python 3.12)
    ├─ app/clients.py    NASA POWER, ECMWF IFS, SoilGrids, elevation (cached)
    └─ app/voz.py        text to speech (edge-tts, gTTS fallback)
 ```
-The server stores no player data: the browser sends the location on every call. The Telegram bot
-([`app/bot.py`](app/bot.py)) uses the same engine and draws with `app/charts.py`.
+The server stores no player data: the browser sends the location on every call.
 
 ## Run and reproduce
 ```bash
@@ -91,27 +80,25 @@ python -m pytest -q tests                # engine and API tests
 To edit the game with live reload: `cd frontend && npm run dev` (http://localhost:4321, uses the API on 8765).
 Vercel builds `frontend/` as set in `vercel.json` and serves the Python API at `/api`.
 Demo sites ship with stored data in `app/semillas/` so the game does not depend on the network.
-The Telegram bot needs `TELEGRAM_BOT_TOKEN` in `.env` (never in code; see [`.env.example`](.env.example) and
-`docker compose up -d --build`).
 
 ## Known limitations
 - The NASA POWER cell is coarse; the ECMWF correction reduces the error but does not replace a weather station.
   Validation against INAMHI stations is in [Documentacion-Investigacion/03-Verificacion-Endpoints](Documentacion-Investigacion/03-Verificacion-Endpoints/).
 - Soil moisture is a water-balance model, not a satellite measurement (SMAP cannot resolve small plots).
-- Crop coefficients for lupin (chocho), melloco and oca are estimates. The bot's Kichwa words still need validation by native speakers.
+- Crop coefficients for lupin (chocho), melloco and oca are estimates. Kichwa words still need validation by native speakers.
 - Frost is not shown in the web demo by design choice.
 
 ## Impact and next steps
 - **Users:** smallholder families in the Ecuadorian highlands (Chimborazo, Cotopaxi, Tungurahua, Pichincha, Imbabura,
-  Carchi, Bolívar, Cañar, Azuay, Loja). Works on basic phones with mobile data and answers in audio.
-- **Next:** move from the mock-up to WhatsApp Business with extension officers from the Ministry of Agriculture (MAG) or
-  irrigation boards, pilot with 2–3 communities, add spoken Kichwa, and replace non-NASA sources with SMAP/NASADEM where
+  Carchi, Bolívar, Cañar, Azuay, Loja). Works on phones with mobile data and speaks aloud.
+- **Next:** pilot the game with schools and 2–3 communities, with extension officers from the Ministry of Agriculture (MAG) or
+  irrigation boards, add spoken Kichwa, and replace non-NASA sources with SMAP/NASADEM where
   resolution allows.
-- **Running cost:** free serverless function, free NASA POWER access and open language models.
+- **Running cost:** free serverless function and free NASA POWER access; no accounts, no ads.
 
 ## Astro Granja game (kids aged 8 to 12)
 
-**Play:** https://pacha-chat.vercel.app (on a phone; `?sin3d=1` forces the non-3D mode). **Spanish and English:** the ES/EN button is in the menu, on the map and in the top bar; Pachita's voice changes with the language.
+**Play:** https://pacha-chat.vercel.app (on a phone; `?sin3d=1` forces the 2D mode, which also kicks in by itself if the device cannot draw in 3D). **Spanish and English:** the ES/EN button is in the menu, on the map and in the top bar; Pachita's voice changes with the language.
 
 An original casual farming app to learn how to plant and care for highland soil with real data, in Spanish. It is guided
 by **Pachita**, a farmer from the Andes (felt hat, poncho and anaco skirt), with short speech bubbles and voice. The story:
@@ -136,8 +123,8 @@ by **Pachita**, a farmer from the Andes (felt hat, poncho and anaco skirt), with
    provides and what must be irrigated in a normal and a dry year, with the monthly traffic light (`/api/app/ciclo`).
 8. **Growing:** time advances with the real weather of one NASA POWER year. A **timeline** shows the crop's stages and
    the days left until harvest. Drought and heat stress (Arrarray!), and heavy rain (Achachay!); watering uses liters from
-   the tank and the server recomputes the cycle. **While Pachita talks, time waits**: if she asks you to water or harvest, the button pulses until you do; if she only tells something, play resumes by itself when she finishes. A loading screen with tips appears when something takes a while, and the plot's data is requested all at once to wait less.
-9. **Harvest:** "Harvest all" with an animated hoe; a single card per seed (average of its plots), with the score computed
+   the tank and the server recomputes the cycle. **When Pachita asks for something, time waits**: if she asks you to water or harvest, the button pulses until you do; notices that only tell you something don't stop time. Recurring notices use fixed phrases whose voice is preloaded at sowing, so they play instantly. A loading screen with tips appears when something takes a while, and the plot's data is requested all at once to wait less.
+9. **Harvest:** "Harvest all" with an animated sickle and a basket that counts the harvest; a single card per seed (average of its plots), with the score computed
    on the server from the water deficit and the season.
 10. **Rotate:** Pachita explains why rotation prevents soil degradation and recommends **3 rotations** computed for the
     plot (`/api/app/cultivo`). **The app follows the chosen rotation step by step** (for example pea → potato → mixed
@@ -158,10 +145,8 @@ The 18 3D crop icons (`frontend/public/img/cultivos3d/`) were cut from the team'
 - **Development:** code, documentation and analysis were assisted by **Claude Code (Anthropic)**. The team defined the
   problem, scientific method, crops, calendar and field cases, and reviewed every change through Pull Requests.
 - **Inside the game:** no language models; every number comes from the engine. Pachita's voice is generated with
-  edge-tts / gTTS (in English, the child-like voice `en-US-AnaNeural`); the rocket sounds are synthesized in the browser. The Telegram bot uses Gemini (Google AI Studio) to explain results and answer free questions.
-- **Images:** the bot's drawings are generated by code from the data; its crop photos come from Wikimedia Commons with
-  author and license in [`app/imagenes/cultivos/README.md`](app/imagenes/cultivos/README.md). In the Astro Granja
-  game, Pachita's illustrations (three poses) and the 18 3D crop icons, provided by the team and AI-generated, carry an "IA" mark; the 3D models were
+  edge-tts / gTTS (in English, the child-like voice `en-US-AnaNeural`); the rocket sounds are synthesized in the browser.
+- **Images:** in the Astro Granja game, Pachita's illustrations (three poses) and the 18 3D crop icons, provided by the team and AI-generated, carry an "IA" mark; the 3D models were
   coded with AI assistance. Pachita's voice is edge-tts with a child-like pitch.
 - No NASA logos are used.
 

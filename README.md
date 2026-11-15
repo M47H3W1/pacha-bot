@@ -1,4 +1,4 @@
-# Pacha 🌱 · Datos de la NASA para la tierra de la sierra
+# Astro Granja 🌱 · Datos de la NASA para la tierra de la sierra
 
 **Español** · [English](README.en.md)
 
@@ -7,7 +7,7 @@ NASA Space Apps Challenge 2026 · Sede Sangolquí (ESPE) · Reto **"Field Shift:
 | | |
 |---|---|
 | **Juego en vivo** | https://pacha-chat.vercel.app (Astro Granja, abre sin cuenta, pensado para celular) |
-| **Bot de Telegram** | [@Pacha_EC_Bot](https://t.me/Pacha_EC_Bot) |
+| **Material de presentación** | [APP-PITCH/](APP-PITCH/) (arquitectura, plantas, idea, banco de agua y rotación, demo) |
 | **Licencia** | [MIT](LICENSE) |
 | **Datos principales** | [NASA POWER](https://power.larc.nasa.gov/) (comunidad AG, diario, 2001–2024) |
 
@@ -22,18 +22,8 @@ quien más los necesita (personas mayores, con poca lectura o que hablan kichwa)
 **Pachita** enseña a sembrar, regar y rotar cultivos en una parcela real de la sierra con datos de la NASA. El sitio web
 es solo el juego; la historia y las pantallas están en [Juego Astro Granja](#juego-astro-granja-niños-de-8-a-12-años).
 
-El **bot de Telegram** ([@Pacha_EC_Bot](https://t.me/Pacha_EC_Bot)) usa el mismo motor para las familias campesinas:
-el agricultor manda **un punto y un círculo** con el tamaño de su tierra y Pacha responde con dibujos, mensajes
-cortos y audio:
-
-1. **📋 Ver mi tierra**: altura, pendiente, suelo, temperatura, lluvia de un año normal y de un año seco,
-   evaporación, **humedad del suelo mes a mes** y cuánto cambió la lluvia en la última década.
-2. **🌱 Qué sembrar**: los cultivos que sirven a su altura y que están en época de siembra en su zona, con un
-   veredicto de agua (✅ lluvia alcanza · ⚠️ regar a veces · ❌ necesita riego) y el mes de cosecha.
-3. **🔁 Qué sembrar después**: rotaciones que cortan plagas y alimentan la tierra (leguminosas), y
-   **📚 rotaciones probadas** en campo en Ecuador (Sicalpa, Illangama, Río Paute, Santa Catalina, Tumbaco).
-4. **💧 Cuánto regar**: qué días de esta semana regar y cuánta agua, contada en **baldes, tanques o tanqueros**
-   para el área real de su tierra.
+En el juego se vive lo que dicen los datos: el clima de la parcela es el **clima real de la NASA** de ese punto, el agua se cuenta en
+baldes y tanques, y las rotaciones se calculan para esa tierra (ver [APP-PITCH/](APP-PITCH/)).
 
 ## Datos de la NASA y cómo se usan
 | Dato | Producto | Para qué |
@@ -66,8 +56,7 @@ rotación: INIAP y estudios de campo recopilados por el equipo ([Documentacion-I
    comparación de la década 2013–2024 contra 2001–2012.
 7. **Reglas agronómicas**: altitud apta por cultivo, épocas de siembra por zona (INIAP), familias botánicas
    para rotar y leguminosas que fijan nitrógeno.
-8. **Respuesta**: en el juego, JSON que el navegador dibuja en 3D; en el bot, imagen de matplotlib, texto corto
-   y audio (voz neuronal es-EC).
+8. **Respuesta**: JSON que el navegador dibuja en 3D, con texto corto y la voz de Pachita (voz neuronal es-EC / en-US).
 
 ## Arquitectura
 ```
@@ -82,7 +71,6 @@ FastAPI en Vercel (Python 3.12)
    └─ app/voz.py        texto a voz (edge-tts, respaldo gTTS)
 ```
 El servidor no guarda datos del jugador: el navegador envía el lugar en cada llamada.
-El bot de Telegram ([`app/bot.py`](app/bot.py)) usa el mismo motor y dibuja con `app/charts.py`.
 
 ## Ejecutar y reproducir
 ```bash
@@ -94,27 +82,24 @@ python -m pytest -q tests                # pruebas del motor y de la API
 Para editar el juego con recarga: `cd frontend && npm run dev` (http://localhost:4321, usa la API del 8765).
 Vercel compila `frontend/` según `vercel.json` y publica la API de Python en `/api`.
 Los sitios de demostración traen datos guardados en `app/semillas/` para que el juego no dependa de la red.
-El bot de Telegram necesita `TELEGRAM_BOT_TOKEN` en `.env` (nunca en el código; ver [`.env.example`](.env.example)
-y `docker compose up -d --build`).
 
 ## Limitaciones conocidas
 - La celda de NASA POWER es gruesa; la corrección con ECMWF reduce el error, pero no reemplaza una estación.
   La validación contra estaciones del INAMHI está en [Documentacion-Investigacion/03-Verificacion-Endpoints](Documentacion-Investigacion/03-Verificacion-Endpoints/).
 - La humedad del suelo es un modelo de balance, no una medición satelital (SMAP no resuelve parcelas pequeñas).
-- Kc de chocho, melloco y oca son estimados. Las palabras en kichwa del bot están por validar con hablantes nativos.
+- Kc de chocho, melloco y oca son estimados. Las palabras en kichwa están por validar con hablantes nativos.
 - Las heladas no se muestran en la demo web por decisión de diseño.
 
 ## Impacto y siguientes pasos
 - **Usuarios:** familias campesinas de la sierra (Chimborazo, Cotopaxi, Tungurahua, Pichincha, Imbabura,
-  Carchi, Bolívar, Cañar, Azuay, Loja). Funciona con celular básico y datos móviles; responde en audio.
-- **Siguiente paso:** pasar de la maqueta a WhatsApp Business con técnicos del MAG o de juntas de riego,
-  validar con 2–3 comunidades, agregar kichwa hablado y sustituir fuentes no NASA por SMAP/NASADEM donde
+  Carchi, Bolívar, Cañar, Azuay, Loja). Funciona en celular con datos móviles y habla en audio.
+- **Siguiente paso:** validar el juego con escuelas y 2–3 comunidades, con técnicos del MAG o de juntas de riego, agregar kichwa hablado y sustituir fuentes no NASA por SMAP/NASADEM donde
   la resolución lo permita.
-- **Costo de operación:** función serverless gratuita, NASA POWER sin costo y modelos de lenguaje abiertos.
+- **Costo de operación:** función serverless gratuita y NASA POWER sin costo; sin cuentas ni anuncios.
 
 ## Juego Astro Granja (niños de 8 a 12 años)
 
-**Jugar:** https://pacha-chat.vercel.app (en el celular; `?sin3d=1` fuerza el modo sin 3D). **Español e inglés:** el botón ES/EN está en el menú, el mapa y la barra de arriba; la voz de Pachita cambia con el idioma.
+**Jugar:** https://pacha-chat.vercel.app (en el celular; `?sin3d=1` fuerza el modo 2D, que se usa solo si el equipo no tiene WebGL). **Español e inglés:** el botón ES/EN está en el menú, el mapa y la barra de arriba; la voz de Pachita cambia con el idioma.
 
 Aplicación de granja casual, original, para aprender a sembrar y cuidar la tierra de la sierra con datos reales.
 La guía **Pachita**, una granjera de la sierra (sombrero, poncho y anaco), con globos cortos y voz. La historia:
@@ -139,8 +124,8 @@ La guía **Pachita**, una granjera de la sierra (sombrero, poncho y anaco), con 
    da la lluvia y lo que hay que regar en un año normal y en uno seco, con el semáforo mes a mes (`/api/app/ciclo`).
 8. **Crecer:** el tiempo avanza con el clima real de un año de NASA POWER. Una **cronología** muestra las etapas del
    cultivo y los días que faltan para cosechar. Estrés por sequía y por calor (¡Arrarray!), y aguaceros (¡Achachay!);
-   regar descuenta litros del tanque y el servidor recalcula el ciclo. **Cuando Pachita habla, el tiempo espera**: si pide regar o cosechar, el botón late hasta que lo hagas; si solo cuenta algo, el play sigue solo al terminar. Una pantalla de carga con consejos aparece si algo tarda, y los datos de la parcela se piden a la vez para esperar menos.
-9. **Cosecha:** «Cosechar todo» con una azada animada; una sola tarjeta por semilla (promedio de sus parcelas), con el
+   regar descuenta litros del tanque y el servidor recalcula el ciclo. **Cuando Pachita pide algo, el tiempo espera**: si pide regar o cosechar, el botón late hasta que lo hagas; los avisos que solo cuentan algo no detienen el tiempo. Los avisos repetidos usan frases fijas cuya voz se precarga al sembrar, así suenan al instante. Una pantalla de carga con consejos aparece si algo tarda, y los datos de la parcela se piden a la vez para esperar menos.
+9. **Cosecha:** «Cosechar todo» con una hoz animada (guadaña) y una canasta que cuenta lo recogido; una sola tarjeta por semilla (promedio de sus parcelas), con el
    puntaje calculado en el servidor según el agua que faltó y la época.
 10. **Rotar:** Pachita explica por qué rotar evita la degradación del suelo y recomienda **3 rotaciones** calculadas
     para la parcela (`/api/app/cultivo`). **La app sigue la rotación elegida paso a paso** (por ejemplo arveja → papa →
@@ -153,7 +138,7 @@ Los 18 íconos 3D de cultivos (`frontend/public/img/cultivos3d/`) se recortaron 
 | Archivo | Qué hace |
 |---|---|
 | `frontend/src/pages/index.astro` | Página del juego (portada del sitio) |
-| `frontend/src/juego/` | Controlador, mundo 3D y 2D, mapa, Pachita, sonidos (Web Audio), idioma ES/EN y estado |
+| `frontend/src/juego/` | Controlador, mundo 3D (`mundo3d.ts`) y su versión 2D sin WebGL (`mundo2d.ts`, igual de completa: cielo día/noche, volcanes, parcelas en perspectiva), mapa, Pachita, sonidos (Web Audio), idioma ES/EN y estado |
 | `web/app_api.py` | `parcela`, `terreno`, `semillas`, `cultivo` y `ciclo` (todo número sale de aquí) |
 | `tests/test_juego.py` | Pruebas de `/api/app/terreno` sin red |
 
@@ -162,10 +147,8 @@ Los 18 íconos 3D de cultivos (`frontend/public/img/cultivos3d/`) se recortaron 
   El equipo definió el problema, la metodología científica, los cultivos, el calendario y los casos de campo,
   y revisó cada cambio por Pull Request.
 - **Dentro del juego:** no hay modelos de lenguaje; todo número sale del motor. La voz de Pachita se genera con
-  edge-tts / gTTS (en inglés, la voz infantil `en-US-AnaNeural`); los sonidos del cohete se sintetizan en el navegador. El bot de Telegram usa Gemini (Google AI Studio) para explicar resultados y preguntas libres.
-- **Imágenes:** los dibujos del bot se generan por código a partir de los datos; sus fotos de cultivos son de
-  Wikimedia Commons con autor y licencia en [`app/imagenes/cultivos/README.md`](app/imagenes/cultivos/README.md).
-  En el juego Astro Granja, las ilustraciones de Pachita (tres poses) y los 18 íconos 3D de cultivos, entregados por el equipo y
+  edge-tts / gTTS (en inglés, la voz infantil `en-US-AnaNeural`); los sonidos del cohete se sintetizan en el navegador.
+- **Imágenes:** las ilustraciones de Pachita (tres poses) y los 18 íconos 3D de cultivos, entregados por el equipo y
   generados con IA, llevan la marca "IA"; los modelos 3D se programaron con asistencia de IA. La voz de Pachita es edge-tts con tono de niña.
 - No se usan logotipos de la NASA.
 
