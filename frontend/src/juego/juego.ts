@@ -1101,7 +1101,7 @@ function rotacionCompleta() {
   abrirPanel(t("¡Rotación completa!", "Rotation complete!"), `
     <div class="leccion">${ic("medalla", "ic-leccion")}<div><b>${t("¡Lo lograste!", "You did it!")}</b> ${t("Sembraste y cosechaste toda la rotación: la tierra descansó, se alimentó y las plagas no se repitieron.", "You planted and harvested the whole rotation: the soil rested, was fed and pests did not repeat.")}</div></div>
     ${tiraRotacion()}
-    <div class="medidor"><span>Salud de tu tierra</span><div class="barra"><i style="width:${J.salud}%;background:${colorSuelo(J.salud)}"></i></div><b>${J.salud}</b></div>
+    <div class="medidor"><span>${t("Salud de tu tierra", "Your soil's health")}</span><div class="barra"><i style="width:${J.salud}%;background:${colorSuelo(J.salud)}"></i></div><b>${J.salud}</b></div>
     <div class="fila-botones"><button class="btn-juego grande" data-cert>${btn("medalla", t("Ver mi certificado", "See my certificate"))}</button></div>
     <div class="fila-botones"><button class="btn-juego borde" data-otra>${btn("rotar", t("Elegir una rotación nueva", "Choose a new rotation"))}</button></div>`, "centro");
   $("[data-cert]").addEventListener("click", () => { paso("certificado"); certificado(); });
@@ -1358,13 +1358,15 @@ function pintarCronologia() {
 }
 
 /** La rotación elegida, siempre a la vista: qué se hizo, qué toca ahora y qué sigue. */
+/** Nombre corto para la barra de rotación: en español la primera palabra; en inglés el nombre completo sin el paréntesis. */
+const nombreChip = (id: string) => (idioma() === "en" ? nombreCultivo(id).replace(/\s*\(.*\)/, "") : nombreCultivo(id).split(" ")[0]);
 function pintarRotHud() {
   const caja = $("#rot-hud");
   if (!J.rotacion || J.rotacion.length < 2) { caja.hidden = true; return; }
   const cur = rotPaso();
   caja.innerHTML = `<span class="rot-hud-t">${ic("rotar", "ic-chip")} ${t("Rotación", "Rotation")}</span>` + J.rotacion.map((id, k) => {
     const hecho = k < cur || (k === cur && J.sembrado && todoCosechado());
-    return `${k ? '<span class="flecha">›</span>' : ""}<span class="rot-chip ${hecho ? "hecho" : k === cur ? "ahora" : "luego"}" title="${esc(nombreCultivo(id))}">${icono(id, "icono-chip")}<b>${esc(nombreCultivo(id).split(" ")[0])}</b>${hecho ? '<i class="visto">✓</i>' : ""}</span>`;
+    return `${k ? '<span class="flecha">›</span>' : ""}<span class="rot-chip ${hecho ? "hecho" : k === cur ? "ahora" : "luego"}" title="${esc(nombreCultivo(id))}">${icono(id, "icono-chip")}<b>${esc(nombreChip(id))}</b>${hecho ? '<i class="visto">✓</i>' : ""}</span>`;
   }).join("");
   caja.hidden = false;
 }
